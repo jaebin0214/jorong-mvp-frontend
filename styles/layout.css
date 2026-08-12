@@ -69,6 +69,8 @@
 .header-login:hover { border-color:#96b8fa; background:#f5f8ff; }
 /* [로그인 회원명] 인증 이벤트가 오면 상단 로그인·회원가입 버튼 대신 표시되는 현재 회원의 닉네임입니다. */
 .header-member-name { display:inline-flex; align-items:center; min-height:35px; border-radius:5px; padding:0 13px; color:#163566; background:#eef4ff; font-size:15px; font-weight:850; white-space:nowrap; }
+/* [숨김 상태] 로그인 전 빈 닉네임 영역이 사각형으로 보이지 않도록 hidden 속성을 명시적으로 우선 적용합니다. */
+.header-member-name[hidden] { display:none; }
 .landing-view { height:calc(100dvh - 51px); min-height:0; padding:0; background:#f7f9fe; overflow:hidden; }
 .legacy-landing { display:none; }
 .landing-rebuild { height:100%; min-height:0; position:relative; display:grid; grid-template-columns:43% 57%; align-items:center; gap:0; overflow:hidden; padding:clamp(52px, 11vh, 96px) clamp(54px, 8vw, 128px) 0; background:#f7f9fe; }
