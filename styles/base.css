@@ -1,0 +1,27 @@
+/* [기본 토큰] 1차 MVP 전 화면에서 재사용하는 색상, 글자색, 테두리 규칙입니다. */
+:root { --navy:#0e2b61; --navy-deep:#0a2554; --blue:#2162ee; --blue-soft:#eaf2ff; --red:#f14d62; --red-soft:#ffebef; --ink:#142d5b; --muted:#70809a; --line:#dde6f1; --canvas:#f6f9fe; --panel:#ffffff; --shadow:0 14px 32px rgba(21, 51, 104, .12); }
+* { box-sizing:border-box; }
+html { min-height:100%; background:var(--canvas); }
+body { min-width:320px; min-height:100dvh; margin:0; color:var(--ink); background:var(--canvas); font-family:Inter, Pretendard, "Noto Sans KR", Arial, sans-serif; letter-spacing:-.035em; }
+button, input { font:inherit; }
+button { cursor:pointer; }
+button:focus-visible, input:focus-visible { outline:3px solid rgba(33, 98, 238, .3); outline-offset:2px; }
+button, a { -webkit-tap-highlight-color:transparent; }
+.eyebrow { margin:0 0 8px; color:var(--blue); font-size:10px; font-weight:850; letter-spacing:.04em; }
+.blue-text { color:var(--blue) !important; }
+.red-text { color:var(--red) !important; }
+
+/* [공통 버튼] 실제 기능 연결 전에도 화면별 행동 우선순위를 일관되게 보여줍니다. */
+.primary-button, .secondary-button, .dark-button, .text-button { min-height:36px; border-radius:5px; padding:0 14px; font-size:11px; font-weight:850; }
+.primary-button { border:1px solid var(--navy-deep); color:#fff; background:var(--navy); box-shadow:0 6px 13px rgba(10, 37, 84, .14); }
+.primary-button:hover { background:#174796; }
+.primary-button.compact { min-height:31px; padding-inline:12px; font-size:10px; }
+.secondary-button { border:1px solid #c9d8eb; color:var(--navy); background:#fff; }
+.secondary-button:hover { border-color:#8eb1fa; background:#f5f8ff; }
+.dark-button { border:0; color:#fff; background:var(--navy-deep); }
+.text-button { min-height:auto; border:0; padding:4px 0; color:var(--blue); background:transparent; }
+.text-button:hover { color:#164ec5; }
+
+/* [알림] 아직 서버와 연결되지 않은 버튼의 정적 안내 메시지입니다. */
+.toast { position:fixed; z-index:200; right:28px; bottom:28px; max-width:min(440px, calc(100% - 40px)); padding:18px 22px; border-radius:10px; color:#fff; background:var(--navy-deep); box-shadow:var(--shadow); font-size:16px; font-weight:750; line-height:1.5; opacity:0; transform:translateY(10px); pointer-events:none; transition:.18s ease; }
+.toast.is-visible { opacity:1; transform:translateY(0); }

@@ -1,0 +1,32 @@
+/* [회원가입 화면] 제공된 와이어프레임의 단일 카드형 가입 화면을 담당합니다. */
+.signup-view { min-height:calc(100dvh - 51px); display:none; place-items:center; padding:58px 20px; background:#f7f9fe; }
+.signup-view.is-active { display:grid; }
+.signup-card { width:min(560px, 100%); border:1px solid #d7e1f0; border-radius:17px; padding:44px 48px 22px; color:var(--ink); background:#fff; box-shadow:0 10px 22px rgba(29, 59, 108, .05); }
+.signup-card h1 { margin:0; font-size:29px; letter-spacing:-.075em; }
+.signup-intro { margin:11px 0 17px; color:#6f7f99; font-size:12px; }
+.signup-bonus { display:inline-flex; align-items:center; min-width:180px; height:27px; border-radius:14px; padding:0 19px; color:#2162ee; background:#e6efff; font-size:10px; }
+.signup-field { display:block; margin-top:27px; color:#263b5f; font-size:12px; font-weight:850; }
+.signup-field input { width:100%; height:46px; margin-top:9px; border:1px solid #d7e1ef; border-radius:7px; padding:0 13px; color:var(--ink); background:#fff; font-size:12px; outline:0; }
+.signup-field input::placeholder { color:#91a0b4; }
+.signup-field input:focus { border-color:#8db3fb; box-shadow:0 0 0 3px rgba(33,98,238,.09); }
+.nickname-control { height:46px; display:flex; align-items:center; gap:6px; margin-top:9px; border:1px solid #d7e1ef; border-radius:7px; padding:0 6px 0 13px; }
+.nickname-control input { height:100%; min-width:0; margin:0; border:0; padding:0; box-shadow:none !important; }
+.nickname-control button { min-width:76px; height:30px; border:0; border-radius:5px; color:#2162ee; background:#e8f0ff; font-size:10px; font-weight:850; }
+.signup-field small { display:block; margin-top:8px; color:#8796a9; font-size:9px; font-weight:500; }
+.terms-all { height:43px; display:flex; align-items:center; gap:11px; margin-top:38px; border:1px solid #d6e0ee; border-radius:7px; padding:0 12px; color:#21385f; background:#f9fbff; font-size:12px; font-weight:850; }
+.terms-all input { width:17px; height:17px; margin:0; accent-color:#2162ee; }
+.terms-list { display:grid; gap:12px; margin:20px 0 27px 14px; color:#61718c; font-size:10px; }
+.terms-list span:last-child { color:#8a99ad; }
+.signup-submit { width:100%; height:47px; border:0; border-radius:7px; color:#fff; background:#2162ee; box-shadow:0 6px 12px rgba(33, 98, 238, .17); font-size:12px; font-weight:850; }
+.signup-submit:hover { background:#1557df; }
+.signup-login-copy { margin:21px 0 0; color:#8997aa; font-size:10px; text-align:center; }
+.signup-login-copy button { border:0; padding:0; color:#2162ee; background:transparent; font-size:10px; font-weight:850; }
+.signup-note { display:block; margin-top:13px; color:#99a6b7; font-size:9px; text-align:center; }
+/* [로그인 카드] 약관 영역이 없는 로그인 폼에서도 제출 버튼과 입력 영역 사이의 호흡을 유지합니다. */
+.login-card .signup-submit { margin-top:34px; }
+/* [데스크톱 크기 보정] 내부 비율을 바꾸지 않고 카드 전체를 조금 더 크게 표시합니다. */
+@media (min-width:700px) { .signup-card { transform:scale(1.08); transform-origin:center; } }
+@media (max-width:520px) { 
+    .signup-view { padding:35px 18px; }
+    .signup-card { padding:30px 24px 16px; }
+    .signup-card h1 { font-size:23px; } }

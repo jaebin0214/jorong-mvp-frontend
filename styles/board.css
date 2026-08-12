@@ -1,0 +1,41 @@
+/* [자유게시판] 거래소 헤더 아래에서 게시글 목록과 분류 탭을 보여주는 화면입니다. */
+.board-view { min-height:calc(100dvh - 60px); padding:0; background:#fff; }
+.board-category-nav { height:50px; display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); border-bottom:1px solid #dfe7f1; }
+.board-category-nav button { border:0; border-bottom:2px solid transparent; color:#53647d; background:#fff; font-size:15px; font-weight:700; }
+.board-category-nav button:hover { color:#2162ee; background:#f8fbff; }
+.board-category-nav button.is-active { border-bottom-color:#2162ee; color:#2162ee; background:#eef5ff; font-weight:850; }
+.board-page { width:min(1240px, calc(100% - 64px)); margin:0 auto; padding:46px 0 62px; }
+.board-page-heading { padding:0 0 27px; }
+.board-page-heading h1 { margin:0; color:#162f5b; font-size:31px; letter-spacing:-.07em; }
+.board-page-heading p { margin:10px 0 0; color:#8694a8; font-size:13px; }
+.board-table-wrap { border-top:2px solid #95a0af; }
+.board-table { width:100%; border-collapse:collapse; table-layout:fixed; }
+.board-table th, .board-table td { height:48px; border-bottom:1px solid #e7edf4; color:#8190a3; font-size:12px; font-weight:500; text-align:center; }
+.board-table th { height:39px; color:#52627a; font-size:11px; font-weight:800; }
+.board-table th:nth-child(1), .board-table td:nth-child(1) { width:7%; }
+.board-table th:nth-child(2), .board-table td:nth-child(2) { width:57%; padding:0 18px; text-align:left; }
+.board-table th:nth-child(3), .board-table td:nth-child(3) { width:15%; }
+.board-table th:nth-child(4), .board-table td:nth-child(4) { width:13%; }
+.board-table th:nth-child(5), .board-table td:nth-child(5) { width:8%; }
+.board-table td:nth-child(2) button { width:100%; overflow:hidden; border:0; padding:0; color:#2e405d; background:transparent; font:inherit; text-align:left; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
+.board-table td:nth-child(2) button:hover { color:#2162ee; text-decoration:underline; }
+.board-table .board-empty-row td { height:420px; color:#a0adbe; font-size:13px; text-align:center; }
+.board-footer { min-height:66px; position:relative; display:flex; align-items:center; justify-content:center; }
+.board-pagination { display:flex; align-items:center; gap:16px; }
+.board-pagination button { border:0; padding:3px; color:#7e8ba0; background:transparent; font-size:12px; }
+.board-pagination button.is-active { color:#2162ee; font-weight:850; }
+.board-write-button { width:104px; height:38px; position:absolute; right:0; border:0; border-radius:5px; color:#fff; background:#2162ee; font-size:13px; font-weight:850; }
+.board-write-button:hover { background:#1557df; }
+
+@media (max-width:650px) {
+  .board-category-nav { height:39px; overflow-x:auto; grid-template-columns:repeat(5, 112px); justify-content:start; }
+  .board-category-nav button { font-size:10px; }
+  .board-page { width:calc(100% - 28px); padding-top:30px; }
+  .board-page-heading h1 { font-size:21px; }
+  .board-page-heading p { font-size:10px; }
+  .board-table th:nth-child(3), .board-table td:nth-child(3), .board-table th:nth-child(4), .board-table td:nth-child(4) { display:none; }
+  .board-table th:nth-child(1), .board-table td:nth-child(1) { width:13%; }
+  .board-table th:nth-child(2), .board-table td:nth-child(2) { width:73%; padding:0 8px; }
+  .board-table th:nth-child(5), .board-table td:nth-child(5) { width:14%; }
+  .board-write-button { width:76px; }
+}

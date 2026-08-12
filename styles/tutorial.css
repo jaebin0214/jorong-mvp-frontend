@@ -1,0 +1,119 @@
+/* [튜토리얼] 피그마의 밝은 배경, 우측 상단 점 패턴, 5단계 진행점을 재현합니다. */
+.tutorial-layer { display:none; place-items:center; position:fixed; z-index:100; inset:0; padding:0; background:#f9fbff; }
+.tutorial-layer.is-open { display:grid; }
+.tutorial { width:100%; height:100dvh; min-height:0; position:relative; display:grid; grid-template-rows:58% auto 1fr; overflow:hidden; }
+.tutorial:before { content:""; width:151px; height:74px; position:absolute; top:30px; right:36px; opacity:.65; background-image:radial-gradient(circle, #9ed5ff 1.8px, transparent 2px); background-size:18px 18px; mask-image:linear-gradient(135deg,#000 35%,transparent 95%); }
+.tutorial-skip { position:absolute; z-index:3; top:26px; right:35px; border:0; color:#9aaac0; background:transparent; font-size:11px; font-weight:750; }
+.tutorial-skip:hover { color:var(--blue); }
+.tutorial-art, 
+.tutorial-copy { position:relative; z-index:1; }
+.tutorial-art { display:grid; place-items:end center; min-height:0; padding:80px 35px 26px; }
+.tutorial-copy { display:grid; justify-items:center; text-align:center; }
+.tutorial-copy h1 { margin:0; color:var(--navy); font-size:24px; letter-spacing:-.07em; }
+.tutorial-copy p { margin:12px 0 0; color:#7488ab; font-size:13px; }
+.tutorial-next { min-width:128px; min-height:38px; margin-top:22px; border:1px solid var(--navy-deep); border-radius:5px; color:#fff; background:var(--navy); box-shadow:0 6px 14px rgba(11,42,95,.17); cursor:pointer; font-size:11px; font-weight:850; }
+.tutorial-next:hover { background:#174492; }
+.tutorial-next:focus-visible { outline:3px solid rgba(33,98,238,.25); outline-offset:3px; }
+.tutorial-art > * { position:relative; z-index:1; animation:tutorial-rise .36s ease-out both; } 
+@keyframes tutorial-rise { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+/* [튜토리얼 카드] 각 슬라이드에서 사용하는 미니 UI 카드의 공통 스타일입니다. */
+.tour-logo { display:grid; justify-items:center; gap:22px; }
+.tour-logo 
+.logo-loop { width:81px; height:81px; border-width:10px; filter:drop-shadow(0 5px 2px rgba(33,98,238,.28)); }
+.tour-logo 
+.logo-loop:before { width:31px; height:12px; top:-13px; border-width:8px; }
+.tour-logo 
+.logo-loop:after { width:32px; height:13px; }
+.tour-logo b { color:var(--navy); font-size:17px; }
+.tour-window, 
+.tour-order, 
+.tour-chart, 
+.tour-community, 
+.tour-result { border:1px solid #dfe7f2; border-radius:13px; background:#fff; box-shadow:0 18px 26px rgba(35,67,118,.15); }
+.tour-window { width:430px; padding:12px; }
+.tour-window-head { display:flex; align-items:center; justify-content:space-between; padding:0 0 11px; }
+.tour-window-head b { display:flex; align-items:center; gap:5px; color:var(--navy); font-size:16px; }
+.tour-window-head strong { min-width:150px; border-radius:5px; padding:10px; color:#fff; background:var(--navy-deep); text-align:center; font-size:15px; }
+.tour-window-body { display:grid; grid-template-columns:103px 1fr; gap:17px; }
+.tour-window-art { height:116px; border-radius:4px; background:linear-gradient(165deg,#447e4b 0 23%,#eca296 24% 70%,#842640 71%); }
+.tour-window-art:after { content:"😤"; display:block; padding-top:38px; font-size:48px; text-align:center; }
+.tour-window-chart small { color:#8090a8; font-size:7px; }
+.tour-window-chart b { display:block; margin:2px 0; font-size:12px; }
+.tour-window-chart em { color:var(--red); font-size:7px; font-style:normal; }
+.tour-window-chart svg { width:100%; height:57px; }
+.tour-window-chart polyline { fill:none; stroke:var(--blue); stroke-width:2.5; }
+.tour-window-chart path { stroke:#edf1f5; }
+.tour-window-chart .mini-bars { margin-top:2px; }
+.tour-permission { display:grid; grid-template-columns:380px 63px 135px; align-items:center; gap:37px; }
+.tour-comment { padding:21px 25px; border-radius:16px; background:#fff; box-shadow:0 17px 28px rgba(35,67,118,.18); }
+.tour-comment header { display:flex; align-items:center; gap:11px; font-size:12px; font-weight:850; }
+.tour-comment p { margin:12px 0; color:var(--navy); font-size:15px; font-weight:850; }
+.tour-comment span { display:inline-block; border-radius:15px; padding:7px 27px; color:var(--blue); background:#dfecff; font-size:9px; font-weight:800; }
+.tour-arrow { color:var(--blue); font-size:47px; font-weight:700; text-align:center; }
+.permission-badge { display:grid; justify-items:center; gap:11px; padding:17px 12px; border:1px solid #dce5f1; border-radius:17px; background:#fff; box-shadow:0 13px 23px rgba(35,67,118,.13); font-size:10px; font-weight:850; }
+.permission-badge b { width:43px; height:43px; display:grid; place-items:center; border-radius:50%; color:#fff; background:var(--blue); font-size:28px; }
+.tour-order { width:490px; padding:25px 30px 13px; }
+.tour-order > span { color:#64748d; font-size:11px; }
+.tour-order-tabs { display:grid; grid-template-columns:1fr 1fr; gap:30px; margin-top:13px; }
+.tour-order-tabs b { border-radius:30px; padding:14px; color:#fff; background:var(--blue); text-align:center; }
+.tour-order-tabs b:last-child { color:var(--red); background:#ffe4e9; }
+.tour-field { display:flex; justify-content:space-between; align-items:center; margin-top:14px; border:1px solid #d8e2ef; border-radius:10px; padding:11px 14px; color:var(--navy); font-size:13px; font-weight:850; }
+.tour-field span { color:#71819a; }
+.tour-order-footer { height:27px; margin-top:11px; display:grid; place-items:center; border-radius:14px; color:#fff; background:var(--navy-deep); font-size:11px; font-weight:800; }
+.tour-chart { width:486px; padding:14px 17px 10px; }
+.tour-chart small { color:#7e8da4; font-size:9px; }
+.tour-chart h3 { margin:3px 0 12px; font-size:17px; }
+.tour-chart h3 em { color:var(--red); font-size:9px; font-style:normal; }
+.tour-chart svg { width:100%; height:116px; display:block; }
+.tour-chart .chart-grid { stroke:#e9eef4; }
+.tour-chart .chart-blue { fill:none; stroke:var(--blue); stroke-width:2.5; }
+.tour-chart .chart-yellow { fill:none; stroke:#ffa623; stroke-width:2; }
+.tour-chart .candles path { stroke:#f85c6d; stroke-width:3.5; stroke-dasharray:8 5; }
+.tour-community { width:640px; padding:17px 24px; }
+.tour-community-head { display:flex; align-items:center; justify-content:space-between; }
+.tour-community-head h3 { margin:0; font-size:16px; }
+.tour-community-head span { border-radius:15px; padding:7px 23px; color:var(--blue); background:#deebff; font-size:9px; font-weight:800; }
+.tour-community-main { display:grid; grid-template-columns:40px 1fr; gap:12px; margin-top:16px; }
+.tour-community-main h4 { margin:0; font-size:11px; }
+.tour-community-main p { margin:8px 0; font-size:13px; font-weight:850; }
+.tour-community-main footer { display:flex; gap:10px; }
+.tour-community-main footer span { border-radius:15px; padding:7px 22px; color:#e59a20; background:#fff0d6; font-size:8px; font-weight:800; }
+.tour-community-main footer span:last-child { color:var(--blue); background:#e5efff; }
+.tour-reply { margin:13px 27px 0 55px; border-top:1px solid var(--line); padding:13px 15px; border-radius:9px; background:#f4f7fb; }
+.tour-reply b { font-size:9px; }
+.tour-reply p { margin:7px 0 0; font-size:10px; }
+/* [튜토리얼 7] 슬라이드 전체는 원래 크기로 두고, 댓글·HYPE 카드만 확대합니다. */
+.tour-hype { display:grid; justify-items:center; gap:9px; }
+.tour-hype .tour-community { width:376px; padding:10px 19px; box-shadow:0 7px 16px rgba(35,67,118,.08); transform:scale(1.35); transform-origin:center bottom; }
+.tour-hype .tour-community-main { margin-top:9px; }
+.tour-hype .tour-community-main p { margin:3px 0 7px; }
+.tour-hype .tour-arrow { margin-top:-28px; font-size:69px; transform:translateX(-120px) rotate(-17deg); }
+.tour-result { width:580px; padding:25px 33px; }
+.tour-result > span { border-radius:17px; padding:8px 20px; color:#e95767; background:#ffe7eb; font-size:9px; font-weight:800; }
+.tour-result-grid { display:grid; grid-template-columns:1.3fr .7fr .7fr; gap:28px; align-items:end; margin:19px 0 16px; padding-bottom:17px; border-bottom:1px solid #dfe7ef; }
+.tour-result-grid small { display:block; color:#7d8da5; font-size:10px; }
+.tour-result-grid b { display:block; margin-top:8px; font-size:25px; }
+.tour-result-grid .result-change { margin-left:14px; color:var(--blue); font-size:14px; font-style:normal; vertical-align:middle; }
+.tour-result-grid b.blue { color:var(--blue); }
+.tour-result-grid b.red { color:var(--red); }
+.tour-result p { margin:0; color:#74849d; font-size:10px; }
+.tour-result p b { display:block; margin-top:8px; color:var(--navy); font-size:16px; }
+@media (max-width:700px) { 
+    .tutorial:before { top:18px; right:18px; transform:scale(.7); transform-origin:top right; }
+    .tutorial-skip { top:18px; right:18px; }
+    .tutorial { grid-template-rows:56% auto 1fr; }
+    .tutorial-art { padding:50px 5px 10px; transform:scale(.78); transform-origin:center bottom; }
+    .tutorial-copy h1 { font-size:20px; }
+    .tutorial-copy p { padding-inline:10px; font-size:11px; }
+    .tutorial-next { min-width:116px; min-height:36px; margin-top:18px; }
+    .tour-permission { grid-template-columns:250px 35px 90px; gap:8px; }
+    .tour-comment { padding:16px; }
+    .tour-comment p { font-size:12px; }
+    .tour-community { width:510px; }
+    .tour-result { width:490px; } }
+
+/* [실제 로고 이미지] 튜토리얼 시작과 종료 화면에 전달받은 PNG를 표시합니다. */
+.tour-logo-image { width:180px; height:270px; display:block; object-fit:contain;}
+
+/* [튜토리얼 2] 전달받은 이미지의 원본 비율을 유지해 기존 CSS 카드 대신 표시합니다. */
+.tour-slide-image { width:min(560px, 100%); max-height:292px; display:block; border-radius:12px; object-fit:contain; box-shadow:0 18px 26px rgba(35,67,118,.15); }

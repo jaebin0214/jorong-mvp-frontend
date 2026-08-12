@@ -1,0 +1,183 @@
+/* [거래소 헤더] 랜딩과 다른 거래소 전용 탐색 메뉴를 active 화면에만 표시합니다. */
+.exchange-header-nav, .exchange-header-actions { display:none; }
+.app-shell.is-exchange .landing-header-actions { display:none; }
+.app-shell.is-exchange .exchange-header-nav { display:flex; align-items:center; gap:28px; margin-left:26px; }
+.exchange-header-nav button { border:0; padding:5px 0; color:#243b60; background:transparent; font-size:15px; font-weight:850; }
+.exchange-header-nav button.is-active { color:#2162ee; }
+.app-shell.is-exchange .exchange-header-actions { display:flex; align-items:center; gap:11px; }
+.exchange-header-actions b { margin-right:24px; color:#162d56; font-size:15px; }
+.exchange-header-actions button { min-width:66px; height:29px; border:1px solid #d2deed; border-radius:5px; color:#17335e; background:#fff; font-size:15px; font-weight:850; }
+.exchange-header-actions .exchange-signup { border-color:#2162ee; color:#fff; background:#2162ee; }
+.exchange-header-actions .header-member-name { min-height:29px; padding:0 11px; font-size:14px; }
+
+/* [거래소 본문] 제공된 종목 상세·댓글 통합 화면의 3단 상단 구조입니다. */
+.exchange-view { min-height:calc(100dvh - 51px); padding:0; background:#f6f8fc; }
+.legacy-exchange { display:none; }
+.exchange-rebuild { width:min(1120px, 100%); min-height:calc(100dvh - 51px); margin:0 auto; padding:39px 35px 34px; background:#f6f8fc; }
+.exchange-hero-bar { height:111px; position:relative; display:flex; align-items:flex-start; }
+.exchange-countdown { width:353px; height:70px; display:grid; place-items:center; position:absolute; top:2px; left:50%; transform:translateX(-50%); border-radius:9px; color:#fff; background:#0c2a5e; font-size:31px; font-weight:800; letter-spacing:.035em; }
+.exchange-focus-grid { display:grid; grid-template-columns:215px minmax(0, 1fr) 250px; gap:32px; position:relative; align-items:stretch; }
+.exchange-subject-card { display:grid; justify-items:center; align-content:start; gap:12px; }
+.exchange-subject-image { width:185px; height:208px; border:1px solid #d1dce8; border-radius:10px; object-fit:cover; object-position:15% 67%; }
+.exchange-subject-image[role="button"] { cursor:pointer; transition:transform .18s ease, box-shadow .18s ease; }
+.exchange-subject-image[role="button"]:hover { transform:translateY(-2px); box-shadow:0 8px 18px rgb(27 55 99 / 18%); }
+.exchange-subject-image[role="button"]:focus-visible { outline:3px solid rgb(33 98 238 / 42%); outline-offset:3px; }
+.exchange-subject-card > b { width:185px; height:22px; display:grid; place-items:center; border-radius:11px; color:#24364d; background:#d9d9d9; font-size:15px; }
+.exchange-chart-card, .exchange-roast-card { height:246px; border:1px solid #d8e2ee; border-radius:9px; background:#fff; }
+.exchange-chart-card { padding:15px 16px 10px; }
+.exchange-chart-title { display:grid; gap:3px; }
+.exchange-chart-title > span { color:#7d8ca2; font-size:10px; }
+.exchange-chart-title b { font-size:20px; }
+.exchange-chart-title strong { color:#162f5c; font-size:30px; }
+.exchange-chart-title strong em { margin-left:5px; color:#f04a62; font-size:20px; font-style:normal; }
+.exchange-chart-legend { display:flex; align-items:center; gap:5px; margin-top:16px; border-top:1px solid #eef2f6; padding-top:9px; color:#728299; font-size:8px; }
+.exchange-chart-legend i { width:5px; height:5px; display:inline-block; margin-left:18px; border-radius:50%; background:#2162ee; }
+.exchange-chart-legend .orange-dot { margin-left:7px; background:#ffae26; }
+.exchange-chart-legend small { margin-left:auto; color:#a4afbd; font-size:7px; }
+.exchange-chart { height:142px; position:relative; }
+.exchange-chart svg { width:100%; height:112px; display:block; overflow:visible; }
+.exchange-chart svg > path { fill:none; stroke:#ecf0f5; stroke-width:1; }
+.exchange-chart svg g path { stroke:#fa6a7b; stroke-width:3.5; stroke-dasharray:8 5; }
+.exchange-chart svg polyline { fill:none; stroke:#2162ee; stroke-width:2.4; }
+.exchange-chart svg .orange-line { stroke:#ffab20; stroke-width:1.8; }
+.exchange-price-pin { position:absolute; top:59px; right:-2px; border-radius:4px; padding:4px 8px; color:#fff; background:#2162ee; font-size:8px; font-weight:850; }
+.exchange-volume { height:16px; display:flex; align-items:end; gap:8px; }
+.exchange-volume i { width:8px; height:9px; background:#afcbfc; }
+.exchange-volume i:nth-child(even) { height:14px; background:#f7b9c2; }
+.exchange-roast-card { display:grid; align-content:center; justify-items:center; gap:31px; padding:20px; text-align:center; }
+.exchange-roast-card b { color:#142d59; font-size:14px; }
+.exchange-roast-card button { width:131px; height:59px; border:0; border-radius:5px; color:#fff; background:#0c2a5e; font-size:13px; font-weight:850; }
+
+/* [거래소 커뮤니티] 화면 하단의 댓글 작성 영역과, 스크립트가 추가하는 댓글 목록의 기본 모양입니다. */
+.exchange-community-card { height:445px; min-height:0; display:flex; flex-direction:column; overflow:hidden; margin-top:27px; border:1px solid #d8e2ee; border-radius:10px; padding:20px 22px; background:#fff; }.exchange-community-heading { display:flex; align-items:center; justify-content:space-between; flex:0 0 auto; }.exchange-community-heading > div { display:flex; align-items:baseline; gap:29px; }.exchange-community-heading h1 { margin:0; font-size:20px; }.exchange-community-heading span { color:#7b8ca4; font-size:10px; }.exchange-community-heading button { width:82px; height:34px; border:0; border-radius:5px; color:#fff; background:#0d2a5e; font-size:10px; font-weight:850; }.exchange-comment-input { height:55px; display:flex; align-items:center; margin:16px 8px 0; border:1px solid #dfe7f0; border-radius:7px; padding:0 15px; color:#9aa7b8; font-size:11px; }.exchange-comment { display:grid; grid-template-columns:31px minmax(0, 1fr); gap:12px; margin-top:15px; border-bottom:1px solid #edf1f6; padding-bottom:15px; }.exchange-comment > i { width:29px; height:29px; display:grid; place-items:center; border-radius:50%; color:#2162ee; background:#e4efff; font-size:10px; font-style:normal; font-weight:850; }.exchange-comment header { display:flex; align-items:center; gap:25px; }.exchange-comment header b { font-size:11px; }.exchange-comment header span { color:#8998aa; font-size:9px; }.exchange-comment > div > p { margin:7px 0 10px; color:#18315b; font-size:14px; font-weight:800; }.exchange-comment footer { display:flex; align-items:center; gap:34px; color:#5d6f8b; font-size:9px; }.exchange-comment footer button { min-width:97px; height:24px; border:0; border-radius:12px; color:#398fc0; background:#bfefff; font-size:8px; }.exchange-comment footer em { margin-left:auto; color:#8291a6; font-style:normal; }.exchange-comment section { display:grid; grid-template-columns:1.15fr 1fr; gap:12px; margin-top:13px; border-radius:7px; padding:13px 15px; color:#455a78; background:#f8fafc; font-size:9px; }.exchange-comment section b { grid-column:1 / -1; font-size:10px; }.exchange-comment section p, .exchange-comment section small { margin:0; font-size:9px; }.exchange-comment section small { color:#637590; }
+
+@media (max-width:900px) { 
+    .exchange-rebuild { padding:28px 24px; }
+    .exchange-focus-grid { grid-template-columns:185px minmax(0, 1fr); gap:18px; }
+    .exchange-roast-card { grid-column:1 / -1; height:105px; grid-template-columns:1fr auto; align-items:center; justify-items:start; gap:10px; }
+    .exchange-roast-card button { width:118px; height:44px; }
+    .exchange-countdown { width:290px; }
+    .exchange-subject-image, 
+    .exchange-subject-card > b { width:165px; }
+    .exchange-subject-image { height:190px; } }
+@media (max-width:650px) { 
+    .app-shell.is-exchange .exchange-header-nav { display:none; }
+    .exchange-header-actions b { display:none; }
+    .exchange-header-actions button { min-width:58px; }
+    .exchange-rebuild { padding:24px 14px; }
+    .exchange-hero-bar { height:auto; align-items:center; justify-content:center; margin-bottom:25px; }
+    .exchange-countdown { width:168px; height:47px; position:static; transform:none; margin:0; border-radius:7px; font-size:20px; }
+    .exchange-focus-grid { grid-template-columns:1fr; }
+    .exchange-subject-card { grid-template-columns:115px 1fr; align-items:end; justify-items:start; gap:10px; }
+    .exchange-subject-image { width:115px; height:125px; }
+    .exchange-subject-card > b { width:115px; }
+    .exchange-chart-card { height:230px; }
+    .exchange-roast-card { grid-column:auto; height:92px; }
+    .exchange-community-card { min-height:0; margin-top:15px; padding:16px 10px; }
+    .exchange-community-heading h1 { font-size:17px; }
+    .exchange-comment-input { font-size:10px; }
+    .exchange-comment > div > p { font-size:12px; }
+    .exchange-comment section { grid-template-columns:1fr; }
+    .exchange-comment footer { gap:14px; } }
+
+/* [댓글 프로토타입] 입력한 조롱을 전송하고, 새 댓글이 쌓이는 목록의 스타일입니다. */
+.exchange-comment-form { display:flex; gap:10px; margin:16px 8px 0; }
+.exchange-comment-form input { min-width:0; height:55px; flex:1; border:1px solid #dfe7f0; border-radius:7px; padding:0 15px; color:#18315b; background:#fff; font:inherit; font-size:13px; outline:none; }
+.exchange-comment-form input::placeholder { color:#9aa7b8; opacity:1; }
+.exchange-comment-form input:focus { border-color:#2162ee; box-shadow:0 0 0 3px rgb(33 98 238 / 10%); }
+.exchange-comment-form button { width:100px; flex:0 0 auto; border:0; border-radius:7px; color:#fff; background:#0d2a5e; font-size:15px; font-weight:850; cursor:pointer; }
+.exchange-comment-form.is-market-ended input { color:#8c9aac; background:#f4f7fb; cursor:not-allowed; }
+.exchange-comment-form.is-market-ended button { color:#9aa8ba; background:#e4eaf2; cursor:not-allowed; }
+.exchange-comment-empty { flex:1; display:grid; place-items:center; min-height:0; margin:0 8px; color:#8b9ab0; text-align:center; font-size:13px; }
+/* [빈 댓글 안내] 댓글이 하나라도 작성되면 안내문과 그 영역을 완전히 제거합니다. */
+.exchange-comment-empty[hidden] { display:none; }
+.exchange-comment-list { min-height:0; flex:1; margin:0 3px 0 8px; overflow-y:auto; overscroll-behavior:contain; padding-right:5px; scrollbar-color:#c9d6e8 transparent; scrollbar-width:thin; }
+.exchange-comment-list .exchange-comment { margin-top:15px; }
+.exchange-comment .exchange-hype-button { width:120px; min-width:120px; height:25px; border:0; border-radius:15px; padding:0; color:transparent; background:#aee7ff url('../assets/comment_hype.png') center / 100% 100% no-repeat; font-size:0; cursor:pointer; }
+.exchange-comment .exchange-hype-button:hover:not(:disabled) { filter:brightness(.82) saturate(1.28); }
+.exchange-comment .exchange-hype-button.is-selected { box-shadow:0 0 0 3px rgb(33 98 238 / 18%); }
+.exchange-comment .exchange-hype-button.is-locked { opacity:.38; cursor:not-allowed; filter:grayscale(.45); }
+.exchange-comment.is-hyped { margin-inline:-8px; border-radius:8px; padding:10px 8px 15px; background:#f3f8ff; }
+.exchange-comment header .exchange-hype-status { display:inline-grid; place-items:center; height:18px; border-radius:9px; padding:0 7px; color:#2162ee; background:#dceaff; font-size:8px; font-weight:850; }
+/* [HYPE 집계] 서버가 전달한 HYPE 수와 이번 시장의 베스트 댓글을 각 댓글·답글에서 확인할 수 있게 표시합니다. */
+.exchange-hype-count { color:#5b789e; font-size:10px; font-weight:800; white-space:nowrap; }
+.exchange-best-hype { display:inline-grid; place-items:center; height:18px; border-radius:9px; padding:0 7px; color:#1765df !important; background:#dceaff; font-size:8px !important; font-weight:850; }
+.exchange-comment .exchange-comment-delete { min-width:0; width:auto; height:auto; margin-left:auto; border:0; border-radius:0; padding:2px 0; color:#99a7b9; background:transparent; font-size:13px; font-weight:700; cursor:pointer; }
+.exchange-comment .exchange-comment-delete:hover:not(:disabled) { color:#f04a62; text-decoration:underline; }
+.exchange-comment .exchange-comment-delete:disabled { opacity:.5; cursor:wait; }
+.exchange-comment footer .exchange-reply-view { min-width:0; width:auto; height:auto; border:0; border-radius:0; padding:0; color:#2162ee; background:transparent; font-size:11px; font-weight:800; cursor:pointer; }
+.exchange-comment footer .exchange-reply-toggle { min-width:0; width:auto; height:auto; border:0; border-radius:0; padding:0; color:#5d6f8b; background:transparent; font-size:11px; font-weight:400; cursor:pointer; }
+.exchange-comment footer .exchange-reply-toggle:hover { color:#2162ee; text-decoration:underline; }
+.exchange-reply-area { margin-top:12px; padding:12px; border-radius:7px; background:#f8fafc; }
+.exchange-reply-form { display:flex; gap:7px; }
+.exchange-reply-form input { min-width:0; height:34px; flex:1; border:1px solid #d9e3ef; border-radius:5px; padding:0 10px; color:#18315b; background:#fff; font:inherit; font-size:10px; outline:none; }
+.exchange-reply-form input:focus { border-color:#2162ee; box-shadow:0 0 0 3px rgb(33 98 238 / 10%); }
+.exchange-reply-form button { width:52px; border:0; border-radius:5px; color:#fff; background:#2162ee; font-size:10px; font-weight:800; cursor:pointer; }
+.exchange-reply-list { display:grid; gap:8px; margin-top:10px; }
+.exchange-reply { display:grid; grid-template-columns:29px minmax(0, 1fr) auto; align-items:start; gap:10px; border-top:1px solid #e4eaf2; padding-top:9px; }
+/* [답글 접기] 4번째부터는 JavaScript가 hidden 속성을 제거할 때까지 화면에서 완전히 숨깁니다. */
+.exchange-reply[hidden] { display:none; }
+.exchange-reply-avatar { width:27px; height:27px; display:grid; place-items:center; border-radius:50%; color:#2162ee; background:#e4efff; font-size:9px; font-style:normal; font-weight:850; }
+.exchange-reply header { gap:12px; }
+.exchange-reply p { margin:4px 0 0; color:#38506f; font-size:11px; font-weight:600; }
+.exchange-reply-more { margin-top:10px; border:0; padding:0; color:#2162ee; background:transparent; font-size:10px; font-weight:800; cursor:pointer; }
+.exchange-reply-hype { display:grid; justify-items:end; gap:4px; }
+.exchange-reply .exchange-hype-button { width:92px; min-width:92px; height:20px; border:0; border-radius:12px; padding:0; color:transparent; background:#aee7ff url('../assets/comment_hype.png') center / 100% 100% no-repeat; cursor:pointer; }
+.exchange-reply .exchange-hype-button:hover:not(:disabled) { filter:brightness(.82) saturate(1.28); }
+.exchange-reply .exchange-hype-button.is-selected { box-shadow:0 0 0 3px rgb(33 98 238 / 18%); }
+.exchange-reply .exchange-hype-button.is-locked { opacity:.38; cursor:not-allowed; filter:grayscale(.45); }
+
+
+@media (max-width:650px) { 
+    .exchange-community-card { height:470px; }
+    .exchange-comment-form { gap:7px; margin:14px 0 0; }
+    .exchange-comment-form input { height:49px; padding:0 11px; font-size:10px; }
+    .exchange-comment-form button { width:80px; font-size:10px; }
+    .exchange-comment-empty, 
+    .exchange-comment-list { margin-left:0; margin-right:0; }
+    .exchange-comment 
+    .exchange-hype-button { width:120px; min-width:120px; height:25px; border-radius:13px; }
+    .exchange-reply { grid-template-columns:24px minmax(0, 1fr); gap:7px; }
+    .exchange-reply-avatar { width:23px; height:23px; font-size:8px; }
+    .exchange-reply .exchange-hype-button { grid-column:2; justify-self:end; } }
+
+/* [투자 가치 반영] 투자 결과의 현재 가치와 이번 변동값을 차트 제목에 표시합니다. */
+.exchange-current-value { display:flex; align-items:baseline; gap:5px; }
+.exchange-current-value #exchange-current-price { color:#162f5c; font-size:20px; }
+.exchange-current-value #exchange-price-change { font-size:20px; font-style:normal; }
+.exchange-current-value #exchange-price-change.is-up { color:#2162ee; }
+.exchange-current-value #exchange-price-change.is-down { color:#f04a62; }
+
+/* [실시간 캔들 차트] X축은 거래 회차 시간, Y축은 초기 가격 대비 변동률을 표시합니다. */
+.exchange-chart { height:142px; position:relative; }
+.exchange-chart .price-candle-chart { width:100%; height:132px; display:block; overflow:visible; }
+.price-candle-chart .price-chart-grid { stroke:#e7edf5; stroke-width:1; vector-effect:non-scaling-stroke; }
+.price-candle-chart .price-chart-y-label, .price-candle-chart .price-chart-x-label { fill:#8b99ac; font-size:8px; font-family:Inter, Pretendard, "Noto Sans KR", Arial, sans-serif; }
+.price-candle-chart .price-candle line { stroke-width:1.4; vector-effect:non-scaling-stroke; }
+.price-candle-chart .price-candle rect { stroke:none; }
+.price-candle-chart .price-candle.is-up line, .price-candle-chart .price-candle.is-up rect { stroke:#2162ee; fill:#2162ee; }
+.price-candle-chart .price-candle.is-down line, .price-candle-chart .price-candle.is-down rect { stroke:#f04a62; fill:#f04a62; }
+
+/* [거래 종료 상태] 세 거래 영역을 딤 처리하고 중앙에 종료 안내를 표시합니다. */
+.market-ended-overlay { position:absolute; z-index:5; inset:0; display:grid; place-items:center; border-radius:10px; color:#fff; background:rgb(13 33 69 / 56%); box-shadow:inset 0 0 0 1px rgb(255 255 255 / 14%); backdrop-filter:blur(1.5px); }
+.market-ended-overlay[hidden] { display:none; }
+.market-ended-overlay p { margin:0; padding:0; color:#fff; font-size:25px; font-weight:850; letter-spacing:-.045em; text-shadow:0 2px 12px rgb(6 20 48 / 35%); }
+.exchange-focus-grid.is-market-ended .exchange-subject-card, .exchange-focus-grid.is-market-ended .exchange-chart-card, .exchange-focus-grid.is-market-ended .exchange-roast-card { filter:brightness(.72) saturate(.7); }
+
+/* [종목 소개 모달] 거래소 첫 진입 시 배경을 흐리게 처리하고, 운영 설정의 종목 이미지·이름·소개문을 중앙 카드에 표시합니다. */
+.subject-intro-modal { position:fixed; z-index:100; inset:0; display:grid; place-items:center; padding:32px; background:rgb(15 31 58 / 46%); backdrop-filter:blur(8px); }
+.subject-intro-modal[hidden] { display:none; }
+.subject-intro-dialog { width:min(1000px, 100%); min-height:500px; display:grid; grid-template-columns:minmax(240px, 320px) minmax(0, 1fr); align-items:center; gap:56px; border:1px solid rgb(255 255 255 / 78%); border-radius:26px; padding:52px 60px; background:#fff; box-shadow:0 28px 70px rgb(3 16 43 / 28%); }
+.subject-intro-visual { width:100%; aspect-ratio:1; overflow:hidden; border:2px solid #8b99aa; border-radius:13px; background:#eef2f7; }
+.subject-intro-visual img { width:100%; height:100%; display:block; object-fit:cover; object-position:15% 67%; }
+.subject-intro-copy { max-width:540px; }
+.subject-intro-copy > p:first-child { margin:0 0 31px; color:#1765df; font-size:16px; font-weight:850; }
+.subject-intro-copy h1 { margin:0; color:#102b60; font-size:clamp(36px, 4vw, 58px); line-height:1.12; letter-spacing:-.075em; }
+.subject-intro-copy h1 span { white-space:nowrap; }
+.subject-intro-copy #subject-intro-description { margin:34px 0; color:#657899; font-size:18px; line-height:1.48; letter-spacing:-.035em; word-break:keep-all; }
+.subject-intro-copy button { width:min(280px, 100%); height:62px; border:0; border-radius:10px; color:#fff; background:#2162ee; font-size:18px; font-weight:850; cursor:pointer; }
+.subject-intro-copy button:hover { background:#1556e4; }
+body.is-subject-intro-open { overflow:hidden; }
+
+@media (max-width:760px) { .subject-intro-modal { padding:18px; }.subject-intro-dialog { min-height:0; grid-template-columns:1fr; gap:28px; padding:30px; }.subject-intro-visual { width:min(260px, 72vw); justify-self:center; }.subject-intro-copy { max-width:none; text-align:center; }.subject-intro-copy > p:first-child { margin-bottom:16px; font-size:13px; }.subject-intro-copy #subject-intro-description { margin:20px 0 24px; font-size:14px; text-align:left; }.subject-intro-copy button { height:54px; font-size:16px; } }
+@media (max-width:650px) { .market-ended-overlay p { font-size:20px; } }

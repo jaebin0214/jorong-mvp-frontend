@@ -1,0 +1,27 @@
+/* [투자 카드] 댓글 작성 뒤 기존 조롱 작성 카드 위치에서 보이는 투자 UI입니다. */
+.exchange-roast-card { padding:0; }
+.exchange-roast-cta { width:100%; height:100%; display:grid; align-content:center; justify-items:center; gap:31px; padding:20px; text-align:center; }
+.exchange-roast-cta[hidden], .investment-panel[hidden] { display:none; }
+.exchange-roast-card > .investment-panel { width:100%; height:100%; position:relative; align-self:stretch; justify-self:stretch; display:flex; flex-direction:column; padding:15px 13px 12px; text-align:left; }
+/* [초기 상태] 댓글 작성 전에는 안내 카드만 보이고 투자 패널은 반드시 숨깁니다. */
+.exchange-roast-card > .investment-panel[hidden] { display:none; }
+.exchange-roast-card .investment-panel h2 { margin:0; color:#102c5a; font-size:25px; line-height:1.15; letter-spacing:-.06em; }
+.exchange-roast-card .investment-panel .investment-balance { margin-top:6px; color:#18315b; font-size:20px; line-height:1.2; }
+.exchange-roast-card .investment-panel .investment-directions { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:13px; margin-top:35px; }
+.exchange-roast-card .investment-panel .investment-directions button { width:100%; min-width:0; height:23px; border:0; border-radius:13px; color:#ec4b63; background:#fde7eb; font-size:9px; font-weight:850; line-height:1; cursor:pointer; }
+.exchange-roast-card .investment-panel .investment-directions button[data-investment-direction="support"] { color:#2162ee; background:#e5eeff; }
+.exchange-roast-card .investment-panel .investment-directions button[data-investment-direction="roast"] { color:#ec4b63; background:#fde7eb; }
+.exchange-roast-card .investment-panel .investment-directions button.is-selected[data-investment-direction="support"] { color:#fff; background:#2162ee; }
+.exchange-roast-card .investment-panel .investment-directions button.is-selected[data-investment-direction="roast"] { color:#fff; background:#f04a62; }
+.exchange-roast-card .investment-panel .investment-amount-control { height:38px; display:flex; align-items:center; justify-content:space-between; margin-top:13px; border:1px solid #d9e3ef; border-radius:6px; padding:0 11px; }
+.exchange-roast-card .investment-panel .investment-amount-control:focus-within { border-color:#8db3fb; box-shadow:0 0 0 3px rgba(33, 98, 238, .09); }
+.exchange-roast-card .investment-panel .investment-amount-input { display:flex; align-items:center; min-width:0; gap:4px; color:#657894; }
+.exchange-roast-card .investment-panel .investment-amount-input input { width:96px; min-width:0; border:0; padding:0; color:#1a3159; background:transparent; font-size:15px; font-weight:800; line-height:1; outline:0; }
+.exchange-roast-card .investment-panel .investment-amount-input span { font-size:12px; font-weight:750; }
+.exchange-roast-card .investment-panel .investment-amount-control span { display:flex; align-items:center; gap:10px; }
+.exchange-roast-card .investment-panel .investment-amount-control button { width:auto; min-width:0; height:auto; border:0; padding:0; color:#657894; background:transparent; font-size:13px; font-weight:800; line-height:1; cursor:pointer; }
+.investment-panel .investment-submit { width:100%; height:33px; margin-top:10px; border:0; border-radius:5px; color:#fff; background:#0d2a5e; font-size:15px; font-weight:850; cursor:pointer; }
+.investment-panel .investment-submit:hover { background:#163d7e; }
+
+@media (max-width:900px) { .investment-directions { margin-top:15px; }.investment-submit { height:38px; } }
+@media (max-width:650px) { .investment-panel { padding:14px; }.investment-directions { margin-top:13px; }.investment-amount-control { margin-top:11px; } }
