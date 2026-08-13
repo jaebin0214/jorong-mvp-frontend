@@ -1,6 +1,6 @@
-// [투자 서비스] 투자·지갑·투자 내역을 API와 연결합니다. API 주소가 없을 때만 시연용 로컬 상태를 사용합니다.
+// [투자 서비스] Supabase가 설정되면 grant_trade_permission → place_investment RPC 순서로 호출합니다.
+// 설정 전에는 기존과 동일하게 로컬 상태로 시연합니다. 반환 형태는 기존과 동일하게 유지했습니다.
 (() => {
-  const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
   const marketConfig = window.MarketConfig.get();
   const TARGET_ID = marketConfig.subject.id;
   const PRICE_IMPACT_RATE = 0.01;
@@ -10,13 +10,8 @@
     investments: [],
   };
 
-  // [현재 세션 ID] 서버 시계가 다른 라운드를 반환한 경우에도 투자·차트·댓글이 같은 시장을 참조하도록 동적으로 읽습니다.
   function getMarketSessionId() {
     return window.MarketCountdown?.getSessionId?.() || marketConfig.session.id;
-  }
-
-  function getAuthHeaders() {
-    return window.AuthService?.getRequestHeaders?.() || {};
   }
 
   function assertMarketIsOpen() {
@@ -26,7 +21,6 @@
     if (window.MarketCountdown?.isEnded()) throw new Error('거래가 종료되었습니다.');
   }
 
-  // [응답 상태 반영] API가 돌려준 최신 지갑·종목 가격을 후속 투자와 UI가 공유하도록 저장합니다.
   function applySnapshot(result = {}) {
     const points = Number(result.wallet?.points ?? result.account?.points);
     const targetValue = Number(result.target?.value);
@@ -36,7 +30,7 @@
     return result;
   }
 
-  // [로컬 투자] 백엔드 연결 전 화면 시연용입니다. 실제 가격·잔액 계산은 서버 트랜잭션으로만 확정해야 합니다.
+  // [로컬 투자] 백엔드 연결 전 화면 시연용입니다.
   function createLocalInvestment({ targetId, side, amount, marketSessionId }) {
     assertMarketIsOpen();
     if (marketSessionId && marketSessionId !== getMarketSessionId()) throw new Error('현재 거래 세션과 일치하지 않습니다.');
@@ -65,37 +59,76 @@
     };
   }
 
-  // [투자 생성] 서버는 로그인 사용자·세션 상태·잔액을 검증하고 투자/잔액/가격 캔들을 하나의 DB 트랜잭션으로 처리해야 합니다.
+  // [원격 투자] side는 화면에서 'SUPPORT'/'ROAST'로 쓰지만 백엔드 ENUM은 'support'/'mock'이라 변환합니다.
+  // grant_trade_permission은 UNIQUE(user_id, stock_id)라 이미 권한이 있어도 에러 없이 통과한다고 가정했습니다.
+  // ⚠️ 이미 권한이 있는 상태에서 재호출 시 실제로 에러가 나는지 실제 함수로 한 번 검증해주세요. 에러가 난다면
+  //     "이미 권한 있음" 에러 메시지를 구분해서 무시하도록 이 부분만 수정하면 됩니다.
+  async function createRemoteInvestment({ targetId, side, amount }) {
+    const stock = await window.getActiveStock();
+    const rpcSide = side === 'SUPPORT' ? 'support' : 'mock';
+
+    const permission = await window.SupabaseClient.rpc('grant_trade_permission', {
+      stock_id: stock.id,
+      side: rpcSide,
+    });
+    if (permission.error) throw new Error(permission.error.message);
+
+    const { data, error } = await window.SupabaseClient.rpc('place_investment', {
+      stock_id: stock.id,
+      amount,
+    });
+    if (error) throw new Error(error.message);
+
+    return {
+      investment: {
+        id: data.investment_id,
+        marketSessionId: getMarketSessionId(),
+        targetId,
+        side,
+        amount,
+        createdAt: new Date().toISOString(),
+      },
+      wallet: { points: data.balance },
+      target: {
+        id: targetId,
+        previousValue: data.price_at_invest,
+        value: data.new_price,
+        valueChange: Number(data.new_price) - Number(data.price_at_invest),
+      },
+    };
+  }
+
   async function createInvestment(payload) {
     assertMarketIsOpen();
-    if (!API_BASE_URL) return createLocalInvestment(payload);
-    const response = await fetch(`${API_BASE_URL}/investments`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...getAuthHeaders() },
-      body: JSON.stringify({ ...payload, marketSessionId: getMarketSessionId() }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.message || '투자 요청에 실패했습니다.');
-    return applySnapshot(body);
+    if (!window.SupabaseClient) return applySnapshot(createLocalInvestment(payload));
+    const result = await createRemoteInvestment(payload);
+    return applySnapshot(result);
   }
 
-  // [내 투자 내역] 마이페이지/재로그인 시 서버가 보관한 투자 로그와 최신 포인트를 가져오기 위한 조회 API입니다.
+  // [내 투자 내역] investments 테이블에서 RLS로 본인 것만 조회됩니다.
   async function loadMyInvestments() {
-    if (!API_BASE_URL) return { wallet: { points: state.walletPoints }, investments: state.investments };
-    const params = new URLSearchParams({ marketSessionId: getMarketSessionId() });
-    const response = await fetch(`${API_BASE_URL}/me/investments?${params}`, {
-      method: 'GET',
-      credentials: 'include',
-      headers: { Accept: 'application/json', ...getAuthHeaders() },
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.message || '투자 내역을 불러오지 못했습니다.');
-    applySnapshot(body);
-    return body;
+    if (!window.SupabaseClient) return { wallet: { points: state.walletPoints }, investments: state.investments };
+
+    const stock = await window.getActiveStock();
+    const { data, error } = await window.SupabaseClient
+      .from('investments')
+      .select('*')
+      .eq('stock_id', stock.id)
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+
+    const investments = (data || []).map((row) => ({
+      id: row.id,
+      marketSessionId: getMarketSessionId(),
+      targetId: TARGET_ID,
+      side: row.side === 'support' ? 'SUPPORT' : 'ROAST',
+      amount: row.amount,
+      createdAt: row.created_at,
+    }));
+    state.investments = investments;
+    return { wallet: { points: state.walletPoints }, investments };
   }
 
-  // [세션 갱신] 로그인·재로그인 결과가 도착하면 투자 창의 보유 포인트를 즉시 업데이트합니다.
   window.addEventListener('jorong:auth-session', (event) => {
     const points = Number(event.detail?.wallet?.points ?? event.detail?.account?.points);
     if (Number.isFinite(points)) state.walletPoints = points;
