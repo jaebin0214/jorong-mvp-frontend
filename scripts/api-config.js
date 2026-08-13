@@ -1,7 +1,7 @@
 // [Supabase 연결 설정] 아래 두 값을 채우면 서비스 파일들이 로컬 모의 데이터 대신 실제 Supabase를 사용합니다.
 // 값은 Supabase 대시보드 → Settings → API에서 복사 (anon key는 노출돼도 안전 — RLS가 방어).
-window.JORONG_SUPABASE_URL = 'https://<프로젝트ID>.supabase.co';
-window.JORONG_SUPABASE_ANON_KEY = '<anon key>';
+window.JORONG_SUPABASE_URL = 'https://esjgfxswvtbdbtahlmov.supabase.co';
+window.JORONG_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzamdmeHN3dnRiZGJ0YWhsbW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzODkyMDAsImV4cCI6MjEwMTk2NTIwMH0.MXmsvdYNwMvO6tCRHsRSlckBJ-HwM6FXMc-Y1uJ4PjI';
 
 // index.html에 아래 스크립트가 이 파일보다 먼저 로드되어 있어야 합니다.
 // <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
