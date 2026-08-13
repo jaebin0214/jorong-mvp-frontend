@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="조롱 거래소 1차 MVP" />
     <title>조롱 거래소 | 1차 MVP</title>
-    <!-- 공통 토큰 → 페이지 구조 → 거래소·종목 상세 → 튜토리얼 순서로 스타일을 나눕니다. -->
+    <!-- 공통 토큰 → 페이지 구조 → 거래소·종목 상세 → 컨셉 소개 순서로 스타일을 나눕니다. -->
     <link rel="stylesheet" href="./styles/base.css" />
     <link rel="stylesheet" href="./styles/layout.css" />
     <link rel="stylesheet" href="./styles/market.css" />
@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="./styles/exchange.css" />
     <link rel="stylesheet" href="./styles/board.css" />
     <link rel="stylesheet" href="./styles/investment.css" />
-    <link rel="stylesheet" href="./styles/tutorial.css" />
+    <link rel="stylesheet" href="./styles/concept-introduction.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -48,8 +48,8 @@
             <section class="landing-product-preview" aria-label="조롱 거래소 서비스 미리보기">
               <img class="landing-preview-image" src="./assets/exchange-preview-window.png" alt="조롱 거래소 거래 및 커뮤니티 화면" />
             </section>
-            <!-- [튜토리얼 다시 보기] 완료 후에도 랜딩 화면 하단에서 안내 슬라이드를 다시 열 수 있습니다. -->
-            <button class="landing-tutorial-replay" id="landing-tutorial-replay" type="button">튜토리얼 다시 보기</button>
+            <!-- [컨셉 소개 다시 보기] 랜딩 화면 하단에서 서비스의 핵심 컨셉을 언제든 다시 열 수 있습니다. -->
+            <button class="landing-concept-replay" id="landing-concept-replay" type="button">컨셉 소개 다시 보기</button>
           </div>
 
           <div class="legacy-landing" aria-hidden="true">
@@ -224,13 +224,13 @@
     <!-- [맨 위로 이동] 댓글창의 왼쪽 바깥에서, 스크롤 중에도 화면 하단에 고정되는 공통 버튼입니다. -->
     <button class="scroll-top-button" id="scroll-top-button" type="button" hidden aria-label="페이지 맨 위로 이동"><span aria-hidden="true">↑</span><span>맨 위로</span></button>
 
-    <!-- [튜토리얼] 최초 접속 시 MVP 본문보다 먼저 표시되는 9장 안내 레이어입니다. -->
-    <div class="tutorial-layer" id="tutorial" aria-hidden="true"><section class="tutorial" role="dialog" aria-modal="true" aria-labelledby="tutorial-title"><button class="tutorial-skip" type="button" id="tutorial-skip">건너뛰기</button><div class="tutorial-art" id="tutorial-art" aria-hidden="true"></div><div class="tutorial-copy"><h1 id="tutorial-title"></h1><p id="tutorial-description"></p><button class="tutorial-next" id="tutorial-next" type="button">다음 <span>→</span></button></div></section></div>
+    <!-- [컨셉 소개] 최초 접속 시 MVP 본문보다 먼저 표시되는 4장 서비스 소개 레이어입니다. -->
+    <div class="concept-introduction-layer" id="concept-introduction" aria-hidden="true"><section class="concept-introduction" role="dialog" aria-modal="true" aria-labelledby="concept-introduction-title"><div class="concept-introduction-art" id="concept-introduction-art" aria-hidden="true"></div><div class="concept-introduction-copy"><h1 id="concept-introduction-title"></h1><p id="concept-introduction-description"></p><button class="concept-introduction-next" id="concept-introduction-next" type="button">다음</button><div class="concept-introduction-progress" id="concept-introduction-progress" aria-label="컨셉 소개 진행 상태"></div></div></section></div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-    <!-- 데이터 → 튜토리얼 → 화면 전환 → 거래 UI → 앱 초기화 순서로 기능을 불러옵니다. -->
+    <!-- 데이터 → 컨셉 소개 → 화면 전환 → 거래 UI → 앱 초기화 순서로 기능을 불러옵니다. -->
     <script src="./scripts/data.js"></script>
-    <script src="./scripts/tutorial.js"></script>
+    <script src="./scripts/concept-introduction.js"></script>
     <script src="./scripts/navigation.js"></script>
     <!-- [게시판 데이터] 카테고리별 제목·설명·목록 데이터를 분리해 관리합니다. -->
     <script src="./scripts/board-data.js"></script>

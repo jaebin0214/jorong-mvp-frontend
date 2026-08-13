@@ -1,17 +1,13 @@
-// [화면 데이터] 추후 API 연결 전까지 튜토리얼 문구와 정적 미니 UI를 한 파일에서 관리합니다.
+// [컨셉 소개 데이터] 최초 접속 시 노출할 서비스 컨셉의 문구와 시각 요소를 한 곳에서 관리합니다.
 window.MVP_DATA = {
-  tutorialSlides: [
-    { progress: 0, title: '조롱 거래소에 오신 것을 환영합니다', description: '', art: '<div class="tour-logo"><img class="tour-logo-image" src="./assets/jorong_logo.png" alt="조롱 거래소 로고" /></div>' },
-    { progress: 1, title: '매일 조롱 종목이 갱신 됩니다.', description: '하루에 하나의 종목이 열리고, 타이머가 끝나면 거래도 종료됩니다.', art: '<img class="tour-slide-image" src="./assets/tutorial2.png" alt="오늘의 조롱 종목 화면" />' },
-    { progress: 2, title: '먼저, 조롱을 남겨주세요', description: '종목에 대한 조롱을 작성하면 투자 권한이 열립니다.', art: '<div class="tour-permission"><div class="tour-comment"><header><span class="avatar">웃</span>웃긴개미_241</header><p>“맨날 사고 치지만 없으면 또 허전함”</p><span>댓글 작성 완료</span></div><div class="tour-arrow">→</div><div class="permission-badge"><b>✓</b>투자 권한 획득</div></div>' },
-    { progress: 2, title: '옹호 또는 조롱을 선택하세요.', description: '방향을 정하고, 보유 금액 안에서 원하는 만큼 투자합니다.', art: '<div class="tour-order"><span>투자 방향</span><div class="tour-order-tabs"><b>옹호 ↑</b><b>조롱 ↓</b></div><span>투자 금액</span><div class="tour-field">5,000 KRW <span>− &nbsp;+</span></div><div class="tour-order-footer">투자하기</div></div>' },
-    // [튜토리얼 5] 전달받은 차트 이미지를 다섯 번째 안내 화면에 표시합니다.
-    { progress: 2, title: '사람들의 선택이 가격을 움직입니다.', description: '옹호와 조롱의 흐름에 따라 가격이 계속 변합니다.', art: '<img class="tour-slide-image" src="./assets/tutorial5.png" alt="가격 변동 차트 화면" />' },
-    { progress: 2, title: '댓글과 답글이 시장의 재미를 만듭니다.', description: '옹호와 조롱의 흐름에 따라 가격이 계속 변합니다.', art: '<div class="tour-community"><div class="tour-community-head"><h3>조롱 커뮤니티</h3><span>인기순</span></div><div class="tour-community-main"><span class="avatar">웃</span><div><h4>웃긴개미_241</h4><p>맨날 사고 치지만 없으면 또 허전함</p><footer><span>HYPE 1,204</span><span>답글 48</span></footer></div></div><div class="tour-reply"><b>광고에진심</b><p>근데 5살부터 꼭 조용할 때 배신하는 거 보면 근본이 쎄은 게 보이는 캐릭터임</p></div></div>' },
-    { progress: 2, title: 'HYPE은 하루 3번 만 할 수 있습니다.', description: '신중한 사용으로 정말 유쾌한 댓글에만 사용해주세요.', art: '<div class="tour-hype"><div class="tour-community"><div class="tour-community-head"><h3>조롱 커뮤니티</h3></div><div class="tour-community-main"><span class="avatar">웃</span><div><h4>웃긴개미_241</h4><p>맨날 사고 치지만 없으면 또 허전함</p><footer><span>HYPE 1,204</span><span>답글 48</span></footer></div></div></div><div class="tour-arrow">↗</div></div>' },
-    { progress: 3, title: '타이머가 끝나면 오늘의 결과가 결정됩니다.', description: '결과를 확인하고, 투자 결과에 따른 보상을 수령하세요.', art: '<div class="tour-result"><span>거래 종료</span><div class="tour-result-grid"><div><small>최종 가격</small><b>1,310 KRW <em class="result-change">+31.0%</em></b></div><div><small>옹호</small><b class="blue">68%</b></div><div><small>조롱</small><b class="red">32%</b></div></div><p>오늘의 베스트 댓글<b>“없으면 허전한데 있으면 또 사고 침”</b></p></div>' },
-    // [튜토리얼 완료] 마지막 안내 화면에는 서비스 로고를 표시합니다.
-    { progress: 4, title: '이제 조롱해보시죠 잘 할 수 있다면 ㅋ', description: '', art: '<div class="tour-logo"><img class="tour-logo-image" src="./assets/jorong_logo.png" alt="조롱 거래소 로고" /></div>' },
+  conceptIntroductionSlides: [
+    // [컨셉 1] 조롱 거래소가 온라인 반응을 하나의 시장으로 바라보는 방식을 소개합니다.
+    { title: '조롱 거래소에 오신 것을 환영합니다.', description: '온라인의 반응은 늘 빠르게 흘러갑니다. 조롱 거래소는 그 순간의 화제를 하나의 종목으로 만들고, 사람들이 무엇을 느끼는지 함께 바라볼 수 있는 시장으로 바꿉니다.', art: '<div class="concept-logo"><img src="./assets/jorong_logo.png" alt="조롱 거래소 로고" /></div>' },
+    // [컨셉 2] 서로 다른 반응을 조롱과 옹호라는 두 가지 선택으로 표현합니다.
+    { title: '같은 대상이라도,\n사람들의 마음은 서로 다릅니다.', description: '누군가는 조롱하고, 누군가는 옹호합니다. 우리는 어느 쪽이 맞는지 정하지 않습니다. 서로 다른 선택이 모이는 모습 자체가 오늘의 분위기가 됩니다.', art: '<div class="concept-choice-pair"><span class="concept-choice-roast">조롱</span><span class="concept-choice-support">옹호</span></div>' },
+    // [컨셉 3] 의견과 선택이 쌓이면 집단 반응의 변화를 실시간으로 확인할 수 있습니다.
+    { title: '우리의 의견이 가져오는 변화를\n실시간으로 확인할 수 있다면?', description: '한마디를 남기고 내가 믿는 방향에 투자해보세요. 사람들의 선택이 쌓일수록 가격은 그 순간의 집단 반응을 보여주는 기록이 됩니다.', art: '<div class="concept-flow"><span>조롱 / 옹호</span><i>+</i><span>선택</span><i>=</i><b>실시간 확인</b></div>' },
+    // [컨셉 완료] 마지막 화면의 시작하기 버튼을 누르면 컨셉 소개를 닫고 랜딩 페이지를 보여줍니다.
+    { title: '', description: '', final: true, buttonLabel: '시작하기', art: '<div class="concept-logo concept-logo-final"><img src="./assets/jorong_logo.png" alt="조롱 거래소 로고" /></div>' },
   ],
-  progressTargets: [0, 1, 2, 7, 8],
 };

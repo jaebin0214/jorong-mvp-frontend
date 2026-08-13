@@ -1,4 +1,4 @@
-// [앱 초기화] 안내 메시지와 튜토리얼 진입만 담당하는 최상위 초기화 파일입니다.
+// [앱 초기화] 안내 메시지와 컨셉 소개 진입만 담당하는 최상위 초기화 파일입니다.
 (() => {
   const toast = document.querySelector('#toast');
   let toastTimer;
@@ -19,9 +19,9 @@
     showToast('주문 내용을 확인했습니다. 실제 포인트 거래 기능은 다음 단계에서 연결됩니다.');
   });
 
-  // localStorage에 완료 기록이 없을 때만 최초 진입 튜토리얼을 표시합니다.
+  // localStorage에 완료 기록이 없을 때만 최초 진입 컨셉 소개를 표시합니다.
   // [로그인 복원] 백엔드가 /auth/me를 제공하면 새로고침 후에도 닉네임·포인트·투자 내역을 복원합니다.
   window.AuthService?.restoreSession?.();
 
-  window.Tutorial.start();
+  window.ConceptIntroduction.start();
 })();
