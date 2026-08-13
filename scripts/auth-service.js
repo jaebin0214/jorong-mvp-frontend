@@ -1,17 +1,16 @@
-// [인증 서비스] API 주소를 설정하면 회원·로그인·세션 정보를 서버에서 받아오고, 설정 전에는 화면 확인용 로컬 데이터로 동작합니다.
+// [인증 서비스] Supabase 설정이 있으면 Edge Function(회원가입/로그인) + Supabase 세션으로 동작하고,
+// 없을 때만 화면 확인용 로컬 데이터로 동작합니다. 반환 형태(account/wallet/investmentLogs)는 기존과 동일하게 유지해
+// auth-ui.js, header-auth-ui.js 등 이 서비스를 쓰는 다른 파일들이 수정 없이 그대로 동작하도록 했습니다.
 window.AuthService = (() => {
-  const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
-  const TOKEN_STORAGE_KEY = 'jorong-mvp-access-token';
   const INITIAL_POINTS = 10000;
+  // ⚠️ 백엔드 app_settings.seed.signup 기본값은 100,000입니다. 화면 표시 단위(KRW)와 실제 시드 포인트 값을 어떻게
+  // 맞출지(그대로 100,000으로 바꿀지, 표시 스케일을 나눌지) 기획/백엔드와 확인 후 이 상수를 맞춰주세요.
   const localAccounts = new Map();
   let currentAccount = null;
-  let accessToken = sessionStorage.getItem(TOKEN_STORAGE_KEY) || '';
 
-  // [입력값 검사] 사용자 경험을 위한 사전 검사이며, 중복 닉네임과 비밀번호 보안 검사는 반드시 서버에서도 수행해야 합니다.
   function validateCredentials({ nickname, password }) {
     const normalizedNickname = String(nickname || '').trim();
     const normalizedPassword = String(password || '');
-
     if (normalizedNickname.length < 2 || normalizedNickname.length > 12) {
       throw new Error('닉네임은 2~12자로 입력해주세요.');
     }
@@ -21,21 +20,15 @@ window.AuthService = (() => {
     return { nickname: normalizedNickname, password: normalizedPassword };
   }
 
-  // [인증 헤더] 백엔드가 세션 쿠키를 쓸 때도, Bearer 토큰을 쓸 때도 함께 사용할 수 있도록 공통 헤더를 만듭니다.
+  // supabase-js가 rpc()/from() 호출에는 세션 토큰을 자동으로 실어주므로 더 이상 수동으로 만들 필요가 없습니다.
+  // 다른 서비스 파일이 이 함수를 참조하고 있어 시그니처만 유지합니다.
   function getRequestHeaders() {
-    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+    return {};
   }
 
-  // [세션 정규화] 로그인·회원가입·/auth/me 응답의 계정/지갑 형태를 하나의 화면용 구조로 통일합니다.
   function applySession(payload = {}) {
     const accountSource = payload.account || payload.user || null;
     const walletSource = payload.wallet || accountSource?.wallet || {};
-    const returnedToken = payload.accessToken || payload.token || payload.access_token;
-
-    if (returnedToken) {
-      accessToken = returnedToken;
-      sessionStorage.setItem(TOKEN_STORAGE_KEY, returnedToken);
-    }
 
     if (!accountSource) return null;
     currentAccount = {
@@ -45,7 +38,6 @@ window.AuthService = (() => {
       investmentLogs: payload.investmentLogs || payload.investments || accountSource.investmentLogs || [],
     };
 
-    // [화면 동기화 이벤트] 투자 금액·마이페이지 등 독립된 UI 파일이 로그인 정보를 직접 참조하지 않도록 이벤트로 전달합니다.
     window.dispatchEvent(new CustomEvent('jorong:auth-session', {
       detail: {
         account: currentAccount,
@@ -56,24 +48,30 @@ window.AuthService = (() => {
     return currentAccount;
   }
 
-  // [HTTP 요청] 인증 쿠키와 Bearer 토큰을 함께 전송하고, API의 message 오류를 화면에서 사용할 Error로 변환합니다.
-  async function request(path, options = {}) {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      credentials: 'include',
-      ...options,
-      headers: {
-        Accept: 'application/json',
-        ...getRequestHeaders(),
-        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(options.headers || {}),
-      },
+  async function callEdgeFunction(name, body) {
+    const res = await fetch(`${window.JORONG_SUPABASE_URL}/functions/v1/${name}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: window.JORONG_SUPABASE_ANON_KEY },
+      body: JSON.stringify(body),
     });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.message || '인증 요청을 처리하지 못했습니다.');
-    return body;
+    const data = await res.json().catch(() => ({}));
+    if (!data.ok) {
+      const err = new Error(data.message || '요청을 처리하지 못했습니다.');
+      err.code = data.code;
+      err.remainingAttempts = data.remaining_attempts;
+      throw err;
+    }
+    return data;
   }
 
-  // [로컬 계정] API 주소가 없을 때만 쓰는 시연용 계정입니다. 실제 서비스의 비밀번호와 포인트는 서버 DB가 보관합니다.
+  async function fetchWalletAndProfile() {
+    const [{ data: wallet }, { data: profile }] = await Promise.all([
+      window.SupabaseClient.from('wallets').select('balance').single(),
+      window.SupabaseClient.from('profiles').select('nickname, is_admin').single(),
+    ]);
+    return { wallet, profile };
+  }
+
   function createLocalAccount(credentials) {
     if (localAccounts.has(credentials.nickname)) throw new Error('이미 사용 중인 닉네임입니다.');
     const account = {
@@ -92,41 +90,77 @@ window.AuthService = (() => {
     if (normalizedNickname.length < 2 || normalizedNickname.length > 12) {
       throw new Error('닉네임은 2~12자로 입력해주세요.');
     }
-    return API_BASE_URL
-      ? request(`/auth/nickname-availability?nickname=${encodeURIComponent(normalizedNickname)}`, { method: 'GET' })
-      : { available: !localAccounts.has(normalizedNickname) };
+    if (!window.SupabaseClient) return { available: !localAccounts.has(normalizedNickname) };
+
+    // ⚠️ check-nickname 응답의 정확한 필드명(ok/available/message)을 실제로 한 번 호출해서 콘솔로 확인하고 맞춰주세요.
+    const data = await callEdgeFunction('check-nickname', { nickname: normalizedNickname });
+    return { available: data.ok !== false, message: data.message };
   }
 
-  // [회원가입] points는 클라이언트가 보내지 않습니다. 서버가 트랜잭션으로 신규 회원과 초기 10,000 포인트를 생성해야 합니다.
+  // [회원가입] 성공 시 즉시 세션을 설정해 자동로그인 상태로 만듭니다 (닉네임 로그인 구현 가이드 4-2절 기준).
   async function signup(payload) {
     const credentials = validateCredentials(payload);
-    const result = API_BASE_URL
-      ? await request('/auth/signup', { method: 'POST', body: JSON.stringify(credentials) })
-      : createLocalAccount(credentials);
-    return result;
-  }
-
-  // [로그인] 닉네임과 비밀번호를 서버로 전달하고, 반환된 포인트와 투자 내역을 현재 세션에 보관합니다.
-  async function login(payload) {
-    const credentials = validateCredentials(payload);
-    let result;
-    if (API_BASE_URL) {
-      result = await request('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
-    } else {
-      const local = localAccounts.get(credentials.nickname);
-      if (!local || local.password !== credentials.password) throw new Error('닉네임 또는 비밀번호가 일치하지 않습니다.');
-      const { password, ...account } = local;
-      result = { account, wallet: { points: account.points }, investmentLogs: account.investmentLogs };
+    if (!window.SupabaseClient) {
+      const result = createLocalAccount(credentials);
+      applySession(result);
+      return result;
     }
+
+    const data = await callEdgeFunction('signup-with-nickname', credentials);
+    await window.SupabaseClient.auth.setSession(data.session);
+    const { wallet } = await fetchWalletAndProfile();
+
+    const result = {
+      account: { id: data.session.user.id, nickname: data.nickname || credentials.nickname },
+      wallet: { points: wallet?.balance ?? INITIAL_POINTS },
+      investmentLogs: [],
+      recoveryCode: data.recovery_code,
+      // ⚠️ recoveryCode는 이 시점에 딱 한 번만 내려옵니다. auth-ui.js의 가입 완료 처리부에서
+      // signup() 반환값의 recoveryCode를 반드시 화면에 표시하도록 연결해주세요 (안 하면 영구 소실).
+    };
     applySession(result);
     return result;
   }
 
-  // [재접속 복원] 서버 인증이 설정되면 앱 시작 시 /auth/me를 불러와 새로고침 후에도 지갑·투자 내역을 복원합니다.
+  async function login(payload) {
+    const credentials = validateCredentials(payload);
+    if (!window.SupabaseClient) {
+      const local = localAccounts.get(credentials.nickname);
+      if (!local || local.password !== credentials.password) throw new Error('닉네임 또는 비밀번호가 일치하지 않습니다.');
+      const { password, ...account } = local;
+      const result = { account, wallet: { points: account.points }, investmentLogs: account.investmentLogs };
+      applySession(result);
+      return result;
+    }
+
+    const data = await callEdgeFunction('login-with-nickname', credentials);
+    await window.SupabaseClient.auth.setSession(data.session);
+    const { wallet, profile } = await fetchWalletAndProfile();
+
+    const result = {
+      account: { id: data.session.user.id, nickname: profile?.nickname || credentials.nickname },
+      wallet: { points: wallet?.balance ?? 0 },
+      investmentLogs: [],
+    };
+    applySession(result);
+    return result;
+  }
+
+  // [재접속 복원] Supabase 세션이 localStorage에 남아있으면(기본 동작) 새로고침 후에도 지갑/닉네임을 복원합니다.
   async function restoreSession() {
-    if (!API_BASE_URL) return currentAccount;
+    if (!window.SupabaseClient) return currentAccount;
+    const { data: { session } } = await window.SupabaseClient.auth.getSession();
+    if (!session) {
+      currentAccount = null;
+      return null;
+    }
     try {
-      const result = await request('/auth/me', { method: 'GET' });
+      const { wallet, profile } = await fetchWalletAndProfile();
+      const result = {
+        account: { id: session.user.id, nickname: profile?.nickname },
+        wallet: { points: wallet?.balance ?? 0 },
+        investmentLogs: [],
+      };
       applySession(result);
       return result;
     } catch (_) {
@@ -135,14 +169,11 @@ window.AuthService = (() => {
     }
   }
 
-  // [로그아웃] 서버 쿠키 삭제 API가 있으면 호출하고, 브라우저에 보관한 토큰과 화면 세션도 함께 비웁니다.
   async function logout() {
-    if (API_BASE_URL) {
-      try { await request('/auth/logout', { method: 'POST' }); } catch (_) { /* 서버 로그아웃 실패 시에도 로컬 세션은 제거합니다. */ }
+    if (window.SupabaseClient) {
+      try { await window.SupabaseClient.auth.signOut(); } catch (_) { /* 세션 정리는 계속 진행 */ }
     }
-    accessToken = '';
     currentAccount = null;
-    sessionStorage.removeItem(TOKEN_STORAGE_KEY);
     window.dispatchEvent(new CustomEvent('jorong:auth-session', { detail: { account: null, wallet: null, investmentLogs: [] } }));
   }
 
