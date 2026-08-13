@@ -71,6 +71,12 @@
 .header-member-name { display:inline-flex; align-items:center; min-height:35px; border-radius:5px; padding:0 13px; color:#163566; background:#eef4ff; font-size:15px; font-weight:850; white-space:nowrap; }
 /* [숨김 상태] 로그인 전 빈 닉네임 영역이 사각형으로 보이지 않도록 hidden 속성을 명시적으로 우선 적용합니다. */
 .header-member-name[hidden] { display:none; }
+/* [맨 위로 이동] 댓글창의 왼쪽 바깥에 두고, 문서가 길어져도 화면 하단에 고정합니다. */
+.scroll-top-button { position:fixed; z-index:90; bottom:28px; left:16px; margin:0; display:inline-flex; align-items:center; gap:8px; min-height:46px; border:1px solid #d5e1f0; border-radius:23px; padding:0 16px; color:#17335e; background:#f8fbff; box-shadow:0 5px 12px rgb(29 61 108 / 12%); font:inherit; font-size:14px; font-weight:850; cursor:pointer; transition:transform .18s ease, background .18s ease, box-shadow .18s ease; }
+.scroll-top-button[hidden] { display:none; }
+.scroll-top-button span:first-child { width:22px; height:22px; display:grid; place-items:center; border-radius:50%; color:#fff; background:#2162ee; font-size:17px; line-height:1; }
+.scroll-top-button:hover { transform:translateY(-2px); background:#fff; box-shadow:0 8px 16px rgb(29 61 108 / 18%); }
+.scroll-top-button:focus-visible { outline:3px solid rgb(33 98 238 / 42%); outline-offset:3px; }
 .landing-view { height:calc(100dvh - 51px); min-height:0; padding:0; background:#f7f9fe; overflow:hidden; }
 .legacy-landing { display:none; }
 .landing-rebuild { height:100%; min-height:0; position:relative; display:grid; grid-template-columns:43% 57%; align-items:center; gap:0; overflow:hidden; padding:clamp(52px, 11vh, 96px) clamp(54px, 8vw, 128px) 0; background:#f7f9fe; }
@@ -147,6 +153,7 @@
     .landing-rebuild:after { right:-100px; } }
 @media (max-width:520px) { 
     .app-header { padding:0 18px; }
+    .scroll-top-button { bottom:16px; min-height:42px; padding:0 13px; font-size:12px; }
     .account-prompt { display:none; }
     .landing-rebuild { padding:58px 24px; }
     .landing-rebuild-copy h1 { font-size:35px; }
