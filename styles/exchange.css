@@ -14,20 +14,24 @@
 .exchange-view { min-height:calc(100dvh - 51px); padding:0; background:#f6f8fc; }
 .legacy-exchange { display:none; }
 .exchange-rebuild { width:min(1120px, 100%); min-height:calc(100dvh - 51px); margin:0 auto; padding:39px 35px 34px; background:#f6f8fc; }
-.exchange-hero-bar { height:111px; position:relative; display:flex; align-items:flex-start; }
-.exchange-countdown { width:353px; height:70px; display:grid; place-items:center; position:absolute; top:2px; left:50%; transform:translateX(-50%); border-radius:9px; color:#fff; background:#0c2a5e; font-size:31px; font-weight:800; letter-spacing:.035em; }
+.exchange-hero-bar { height:111px; position:relative; display:grid; place-items:start center; }
+.exchange-countdown-block { display:grid; justify-items:center; gap:8px; }
+.exchange-countdown-block > span { color:#6e7d99; font-size:11px; font-weight:700; }
+.exchange-countdown { width:353px; height:70px; display:grid; place-items:center; border-radius:9px; color:#fff; background:#0c2a5e; font-size:31px; font-weight:800; letter-spacing:.035em; transition:background .2s ease; }
+.exchange-countdown.is-next-market { background:#1463f2; }
 .exchange-focus-grid { display:grid; grid-template-columns:215px minmax(0, 1fr) 250px; gap:32px; position:relative; align-items:stretch; }
 .exchange-subject-card { display:grid; justify-items:center; align-content:start; gap:12px; }
-.exchange-subject-image { width:185px; height:208px; border:1px solid #d1dce8; border-radius:10px; object-fit:cover; object-position:15% 67%; }
+.exchange-subject-image { width:230px; height:305px; border:1px solid #d1dce8; border-radius:10px; object-fit:cover; object-position:15% 67%; }
 .exchange-subject-image[role="button"] { cursor:pointer; transition:transform .18s ease, box-shadow .18s ease; }
 .exchange-subject-image[role="button"]:hover { transform:translateY(-2px); box-shadow:0 8px 18px rgb(27 55 99 / 18%); }
 .exchange-subject-image[role="button"]:focus-visible { outline:3px solid rgb(33 98 238 / 42%); outline-offset:3px; }
-.exchange-subject-card > b { width:185px; height:22px; display:grid; place-items:center; border-radius:11px; color:#24364d; background:#d9d9d9; font-size:15px; }
+/* [종목명 숨김] 운영 설정과 접근성용 텍스트는 유지하되, 거래소 본문에서는 이미지 아래 이름 칸을 표시하지 않습니다. */
+.exchange-subject-card > b { display:none; }
 .exchange-chart-card, .exchange-roast-card { height:246px; border:1px solid #d8e2ee; border-radius:9px; background:#fff; }
 .exchange-chart-card { padding:15px 16px 10px; }
-.exchange-chart-title { display:grid; gap:3px; }
+.exchange-chart-title { display:grid; gap:5px; }
 .exchange-chart-title > span { color:#7d8ca2; font-size:10px; }
-.exchange-chart-title b { font-size:20px; }
+.exchange-chart-title b { font-size:25px; }
 .exchange-chart-title strong { color:#162f5c; font-size:30px; }
 .exchange-chart-title strong em { margin-left:5px; color:#f04a62; font-size:20px; font-style:normal; }
 .exchange-chart-legend { display:flex; align-items:center; gap:5px; margin-top:16px; border-top:1px solid #eef2f6; padding-top:9px; color:#728299; font-size:8px; }
@@ -35,7 +39,7 @@
 .exchange-chart-legend .orange-dot { margin-left:7px; background:#ffae26; }
 .exchange-chart-legend small { margin-left:auto; color:#a4afbd; font-size:7px; }
 .exchange-chart { height:142px; position:relative; }
-.exchange-chart svg { width:100%; height:112px; display:block; overflow:visible; }
+.exchange-chart svg { width:100%; height:120px; display:block; overflow:visible; }
 .exchange-chart svg > path { fill:none; stroke:#ecf0f5; stroke-width:1; }
 .exchange-chart svg g path { stroke:#fa6a7b; stroke-width:3.5; stroke-dasharray:8 5; }
 .exchange-chart svg polyline { fill:none; stroke:#2162ee; stroke-width:2.4; }
@@ -65,8 +69,10 @@
     .exchange-header-actions b { display:none; }
     .exchange-header-actions button { min-width:58px; }
     .exchange-rebuild { padding:24px 14px; }
-    .exchange-hero-bar { height:auto; align-items:center; justify-content:center; margin-bottom:25px; }
-    .exchange-countdown { width:168px; height:47px; position:static; transform:none; margin:0; border-radius:7px; font-size:20px; }
+    .exchange-hero-bar { height:auto; place-items:center; margin-bottom:25px; }
+    .exchange-countdown-block { gap:6px; }
+    .exchange-countdown-block > span { font-size:10px; }
+    .exchange-countdown { width:168px; height:47px; margin:0; border-radius:7px; font-size:20px; }
     .exchange-focus-grid { grid-template-columns:1fr; }
     .exchange-subject-card { grid-template-columns:115px 1fr; align-items:end; justify-items:start; gap:10px; }
     .exchange-subject-image { width:115px; height:125px; }
@@ -144,20 +150,49 @@
 
 /* [투자 가치 반영] 투자 결과의 현재 가치와 이번 변동값을 차트 제목에 표시합니다. */
 .exchange-current-value { display:flex; align-items:baseline; gap:5px; }
-.exchange-current-value #exchange-current-price { color:#162f5c; font-size:20px; }
+.exchange-current-value #exchange-current-price { color:#162f5c; font-size:27px; }
 .exchange-current-value #exchange-price-change { font-size:20px; font-style:normal; }
 .exchange-current-value #exchange-price-change.is-up { color:#2162ee; }
 .exchange-current-value #exchange-price-change.is-down { color:#f04a62; }
 
-/* [실시간 캔들 차트] X축은 거래 회차 시간, Y축은 초기 가격 대비 변동률을 표시합니다. */
+/* [실시간 캔들 차트] X축은 거래 시간, Y축은 실제 종목 가격(KRW)을 표시합니다. */
 .exchange-chart { height:142px; position:relative; }
 .exchange-chart .price-candle-chart { width:100%; height:132px; display:block; overflow:visible; }
-.price-candle-chart .price-chart-grid { stroke:#e7edf5; stroke-width:1; vector-effect:non-scaling-stroke; }
-.price-candle-chart .price-chart-y-label, .price-candle-chart .price-chart-x-label { fill:#8b99ac; font-size:8px; font-family:Inter, Pretendard, "Noto Sans KR", Arial, sans-serif; }
-.price-candle-chart .price-candle line { stroke-width:1.4; vector-effect:non-scaling-stroke; }
+.exchange-chart { overflow:hidden; border:1px solid #e2e8f1; border-radius:7px; background:#f8fafc; }
+.price-candle-chart { background:#f8fafc; }
+.price-candle-chart .price-chart-grid { stroke:#dfe6ef; stroke-width:1; vector-effect:non-scaling-stroke; }
+.price-candle-chart .price-chart-grid.is-baseline { stroke:#91a6c5; stroke-width:1.4; }
+.price-candle-chart .price-chart-axis-title { fill:#72839b; font-size:18px; font-family:Inter, Pretendard, "Noto Sans KR", Arial, sans-serif; font-weight:800; }
+.price-candle-chart .price-chart-y-label, .price-candle-chart .price-chart-x-label { fill:#718198; font-size:18px; font-family:Inter, Pretendard, "Noto Sans KR", Arial, sans-serif; font-weight:750; }
+.price-candle-chart .price-chart-y-label.is-baseline { fill:#35517e; font-weight:900; }
+.price-candle-chart .price-candle line { stroke-width:1.6; vector-effect:non-scaling-stroke; }
 .price-candle-chart .price-candle rect { stroke:none; }
-.price-candle-chart .price-candle.is-up line, .price-candle-chart .price-candle.is-up rect { stroke:#2162ee; fill:#2162ee; }
-.price-candle-chart .price-candle.is-down line, .price-candle-chart .price-candle.is-down rect { stroke:#f04a62; fill:#f04a62; }
+.price-candle-chart .price-candle.is-support line, .price-candle-chart .price-candle.is-support rect { stroke:#2f7cff; fill:#2f7cff; }
+.price-candle-chart .price-candle.is-mock line, .price-candle-chart .price-candle.is-mock rect { stroke:#f04462; fill:#f04462; }
+.price-candle-chart .price-volume-bar { fill:#aab6c7; opacity:.9; }
+
+/* [그래프 집중 모드] 가격 변동 범례를 숨기고, 제목 아래의 빈 영역을 모두 캔들 그래프에 사용합니다. */
+.exchange-chart-legend { display:none; }
+.exchange-chart-card { display:flex; flex-direction:column; overflow:hidden; padding:30px 16px 14px; }
+.exchange-chart { flex:1; min-height:0; height:auto; position:relative; margin-top:12px; }
+.exchange-chart svg, .exchange-chart .price-candle-chart { width:100%; height:100%; display:block; }
+@media (min-width:901px) {
+    /* [투자 전·후 고정 레이아웃] 세 영역의 높이를 동일하게 유지해 패널 교체 시 화면이 움직이지 않게 합니다. */
+    .exchange-focus-grid { grid-template-columns:230px minmax(0, 1fr) 290px; gap:26px; }
+    .exchange-focus-grid .exchange-subject-card { height:305px; }
+    .exchange-focus-grid .exchange-subject-image { width:230px; height:305px; }
+    .exchange-focus-grid .exchange-chart-card,
+    .exchange-focus-grid .exchange-roast-card { height:305px; }
+
+    .exchange-focus-grid .exchange-chart { height:auto; }
+    .exchange-focus-grid .exchange-chart .price-candle-chart { height:100%; }
+    .exchange-chart-title { gap:5px; }
+    .exchange-chart-title > span { font-size:11px; }
+    .exchange-chart-title b { font-size:22px; }
+    .exchange-chart-title strong { font-size:32px; }
+    .exchange-chart-title strong em { font-size:21px; }
+    .exchange-chart { margin-top:18px; }
+}
 
 /* [거래 종료 상태] 세 거래 영역을 딤 처리하고 중앙에 종료 안내를 표시합니다. */
 .market-ended-overlay { position:absolute; z-index:5; inset:0; display:grid; place-items:center; border-radius:10px; color:#fff; background:rgb(13 33 69 / 56%); box-shadow:inset 0 0 0 1px rgb(255 255 255 / 14%); backdrop-filter:blur(1.5px); }

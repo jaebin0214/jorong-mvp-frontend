@@ -4,10 +4,10 @@
 
 ## 투자 생성 차단
 
-종료된 회차에 대한 `POST /investments` 요청은 아래처럼 거절합니다.
+종료된 회차에 대한 `POST /markets/{marketId}/orders` 요청은 아래처럼 거절합니다.
 
 ```http
-POST /investments → 409 Conflict
+POST /markets/{marketId}/orders → 409 Conflict
 ```
 
 ```json

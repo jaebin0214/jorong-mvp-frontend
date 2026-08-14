@@ -26,7 +26,7 @@
 
   function createHistoryLine(investment) {
     const row = document.createElement('div');
-    const side = investment.side === 'ROAST' ? '조롱' : '옹호';
+    const side = investment.side === 'MOCK' || investment.side === 'ROAST' ? '조롱' : '옹호';
     row.className = 'history-line';
     row.append(
       Object.assign(document.createElement('span'), { textContent: formatDate(investment.createdAt) }),

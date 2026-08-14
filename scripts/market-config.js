@@ -6,7 +6,9 @@
       id: 'test1',
       // null이면 첫 접속 시점부터 시간이 흐릅니다. 실제 운영에서는 ISO 형식 시작 시각을 권장합니다.
       startsAt: null,
-      durationHours: 3,
+      durationHours: 0.1,
+      // 장 종료 후 다음 장을 열 절대 시각입니다. 실제 운영에서는 서버의 market.nextOpenAt이 이 값을 대신합니다.
+      nextOpenAt: null,
     },
     subject: {
       id: 'hoon',
@@ -30,6 +32,9 @@
   config.session.durationHours = Math.max(0.01, Number(config.session.durationHours) || DEFAULT_MARKET_CONFIG.session.durationHours);
   config.session.startsAt = config.session.startsAt && !Number.isNaN(Date.parse(config.session.startsAt))
     ? config.session.startsAt
+    : null;
+  config.session.nextOpenAt = config.session.nextOpenAt && !Number.isNaN(Date.parse(config.session.nextOpenAt))
+    ? config.session.nextOpenAt
     : null;
   config.subject.id = String(config.subject.id || DEFAULT_MARKET_CONFIG.subject.id);
   config.subject.name = String(config.subject.name || DEFAULT_MARKET_CONFIG.subject.name);

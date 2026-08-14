@@ -1,0 +1,26 @@
+/* [인게임 튜토리얼] 어두운 화면 위에서 한 영역만 비추고, 해당 기능의 설명 카드를 함께 표시합니다. */
+.ingame-tutorial-layer { position:fixed; z-index:130; inset:0; pointer-events:auto; }
+.ingame-tutorial-layer[hidden] { display:none; }
+
+/* [스포트라이트] 큰 그림자로 배경을 딤 처리해 타깃 영역은 원래 색상 그대로 보이게 합니다. */
+.ingame-tutorial-spotlight { position:fixed; z-index:1; border:2px solid #2162ee; border-radius:12px; box-shadow:0 0 0 100vmax rgb(7 20 45 / 62%), 0 0 0 7px rgb(33 98 238 / 18%), 0 12px 30px rgb(5 18 43 / 22%); pointer-events:none; transition:top .22s ease, left .22s ease, width .22s ease, height .22s ease; }
+
+/* [안내 카드] 현재 강조 중인 기능 아래 또는 위에 자동 배치되는 짧은 설명과 진행 버튼입니다. */
+.ingame-tutorial-callout { position:fixed; z-index:2; width:min(330px, calc(100vw - 32px)); border:1px solid #dce5f2; border-radius:14px; padding:20px; color:#102b60; background:#fff; box-shadow:0 18px 38px rgb(5 20 50 / 26%); transition:top .22s ease, left .22s ease; }
+.ingame-tutorial-step { margin:0 0 8px; color:#2162ee; font-size:12px; font-weight:850; letter-spacing:.02em; }
+.ingame-tutorial-callout h2 { margin:0; font-size:20px; line-height:1.32; letter-spacing:-.045em; word-break:keep-all; }
+.ingame-tutorial-callout > p:not(.ingame-tutorial-step) { margin:9px 0 18px; color:#667897; font-size:14px; line-height:1.55; letter-spacing:-.025em; word-break:keep-all; }
+.ingame-tutorial-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.ingame-tutorial-actions button { height:38px; border-radius:7px; padding:0 15px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; }
+.ingame-tutorial-skip { border:0; color:#7889a3; background:transparent; }
+.ingame-tutorial-skip:hover { color:#102b60; background:#f3f6fb; }
+.ingame-tutorial-next { min-width:84px; border:0; color:#fff; background:#2162ee; }
+.ingame-tutorial-next:hover { background:#1556e4; }
+body.is-ingame-tutorial-open { overflow:hidden; }
+
+@media (max-width:650px) {
+  .ingame-tutorial-spotlight { border-radius:9px; box-shadow:0 0 0 100vmax rgb(7 20 45 / 64%), 0 0 0 4px rgb(33 98 238 / 20%); }
+  .ingame-tutorial-callout { padding:17px; }
+  .ingame-tutorial-callout h2 { font-size:18px; }
+  .ingame-tutorial-callout > p:not(.ingame-tutorial-step) { margin-bottom:15px; font-size:13px; }
+}

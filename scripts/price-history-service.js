@@ -42,16 +42,36 @@ window.PriceHistoryService = (() => {
     const baseCandle = { startedAt: startAt, endedAt: Math.min(endAt, startAt + 60_000), open: subject.initialPrice, high: subject.initialPrice, low: subject.initialPrice, close: subject.initialPrice, volume: 0 };
     const priorEvents = [baseCandle];
 
-    localEvents.forEach((event) => {
+    // 새로고침 뒤에는 서비스가 localStorage에서 복원한 주문 이력으로 캔들을 다시 만듭니다.
+    const persistedEvents = (window.InvestmentService?.getSnapshot?.().orders || [])
+      .map((order) => ({
+        id: order.id,
+        timestamp: Date.parse(order.createdAt) || startAt,
+        price: Number(order.resultingPrice || order.executionPrice),
+        amount: Number(order.investmentAmount ?? order.amount) || 0,
+        side: order.side,
+      }))
+      .filter((event) => Number.isFinite(event.price) && event.price > 0);
+    const events = [...persistedEvents, ...localEvents]
+      .filter((event, index, all) => event.id ? all.findIndex((candidate) => candidate.id === event.id) === index : true)
+      .sort((left, right) => left.timestamp - right.timestamp);
+
+    events.forEach((event) => {
       const previousClose = priorEvents.at(-1).close;
-      const price = event.price;
+      const direction = String(event.side || '').toUpperCase() === 'SUPPORT' ? 1 : -1;
+      const priceDistance = Math.max(1, Math.abs(event.price - previousClose));
+      // 첫 투자와 추가 투자 모두 선택한 의견의 방향으로 종가를 확정합니다.
+      const close = direction > 0
+        ? Math.max(event.price, previousClose + priceDistance)
+        : Math.max(1, Math.min(event.price, previousClose - priceDistance));
+      const wickSize = Math.max(1, priceDistance * 0.28);
       priorEvents.push({
         startedAt: Math.max(startAt, Math.min(endAt, event.timestamp)),
         endedAt: Math.max(startAt, Math.min(endAt, event.timestamp + 60_000)),
         open: previousClose,
-        high: Math.max(previousClose, price),
-        low: Math.min(previousClose, price),
-        close: price,
+        high: Math.max(previousClose, close) + wickSize,
+        low: Math.max(0.01, Math.min(previousClose, close) - wickSize),
+        close,
         volume: event.amount,
       });
     });
@@ -83,15 +103,26 @@ window.PriceHistoryService = (() => {
 
   // [투자 반영] API 미연결에서는 즉시 로컬 캔들을 추가하고, API 연결 시에는 서버 집계값을 다시 조회합니다.
   async function recordInvestment(result) {
-    if (API_BASE_URL) return loadCandles();
-
-    const price = Number(result.target?.value);
+    // [즉시 반영] 첫 투자와 추가 투자 모두 주문 응답의 최신 가격으로 임시 캔들을 만들고, 서버 응답 전에도 화면에 표시합니다.
+    const price = Number(
+      result.target?.value
+      ?? result.target?.currentPrice
+      ?? result.order?.resultingPrice
+      ?? result.investment?.resultingPrice
+      ?? result.order?.executionPrice,
+    );
+    const id = result.order?.id || result.investment?.id || `optimistic-order-${Date.now()}`;
     if (Number.isFinite(price) && price > 0) {
-      localEvents.push({
-        timestamp: Date.parse(result.investment?.createdAt) || Date.now(),
+      const event = {
+        id,
+        timestamp: Date.parse(result.order?.createdAt || result.investment?.createdAt) || Date.now(),
         price,
-        amount: Number(result.investment?.amount) || 0,
-      });
+        amount: Number(result.order?.investmentAmount ?? result.investment?.investmentAmount ?? result.investment?.amount ?? result.order?.amount) || 0,
+        side: result.order?.side || result.investment?.side || result.position?.side,
+      };
+      const existingIndex = localEvents.findIndex((candidate) => candidate.id === id);
+      if (existingIndex >= 0) localEvents[existingIndex] = event;
+      else localEvents.push(event);
     }
     return buildLocalCandles();
   }

@@ -1,135 +1,253 @@
-// [투자 UI] 투자 방향과 금액을 입력받아 투자 서비스에 요청하고, 결과를 화면에 반영합니다.
+// [투자 UI] 첫 투자, 고정 의견의 추가 투자, 내 투자 현황 카드를 InvestmentService 응답으로 렌더링합니다.
 (() => {
   const roastCta = document.querySelector('#exchange-roast-cta');
-  const panel = document.querySelector('#investment-panel');
+  const firstPanel = document.querySelector('#investment-panel');
+  const statusCard = document.querySelector('#investment-status-card');
+  const additionalPanel = document.querySelector('#additional-investment-panel');
   const directionButtons = document.querySelectorAll('[data-investment-direction]');
-  const amountButtons = document.querySelectorAll('[data-investment-amount]');
-  const amountInput = document.querySelector('#investment-amount');
+  const firstAmountInput = document.querySelector('#investment-amount');
+  const firstAmountButtons = document.querySelectorAll('[data-investment-amount]');
+  const firstSubmitButton = document.querySelector('#investment-submit');
+  const additionalAmountInput = document.querySelector('#additional-investment-amount');
+  const additionalAmountButtons = document.querySelectorAll('[data-additional-investment-amount]');
+  const additionalSubmitButton = document.querySelector('#additional-investment-submit');
+  const additionalCancelButton = document.querySelector('#additional-investment-cancel');
+  const addInvestmentButton = document.querySelector('#position-add-investment');
   const balanceLabel = document.querySelector('#investment-balance');
   const headerBalanceLabel = document.querySelector('#exchange-header-balance');
-  const submitButton = document.querySelector('#investment-submit');
   const toast = document.querySelector('#toast');
-  let amount = 5000;
-  let balance = window.InvestmentService.getSnapshot().wallet.points;
-  let selectedDirection = null;
+  const math = window.FinancialMath;
+  let firstAmount = 5000;
+  let additionalAmount = 5000;
+  let selectedSide = null;
+  let activeSnapshot = window.InvestmentService?.getSnapshot?.() || null;
   let isSubmitting = false;
   let toastTimer;
 
-  // [금액 표시] 직접 입력한 값과 ±10원 버튼으로 바뀐 값을 같은 형식으로 화면에 반영합니다.
-  function renderAmount() {
-    amountInput.value = amount.toLocaleString('ko-KR');
-  }
-
-  function renderBalance() {
-    balanceLabel.textContent = `${balance.toLocaleString('ko-KR')} KRW`;
-    if (headerBalanceLabel) headerBalanceLabel.textContent = `${balance.toLocaleString('ko-KR')} KRW`;
-  }
-
-  // [로그인 세션 반영] 재로그인 또는 새로고침 후 서버가 돌려준 포인트를 투자창과 상단 잔액에 동시에 표시합니다.
-  window.addEventListener('jorong:auth-session', (event) => {
-    const points = Number(event.detail?.wallet?.points ?? event.detail?.account?.points);
-    if (!Number.isFinite(points)) return;
-    balance = points;
-    renderBalance();
-  });
+  if (!roastCta || !firstPanel || !statusCard || !additionalPanel || !firstAmountInput || !additionalAmountInput || !math) return;
 
   function showToast(message) {
     toast.textContent = message;
     toast.classList.add('is-visible');
     window.clearTimeout(toastTimer);
-    toastTimer = window.setTimeout(() => toast.classList.remove('is-visible'), 2400);
+    toastTimer = window.setTimeout(() => toast.classList.remove('is-visible'), 2800);
   }
 
-  // 선택한 방향만 진한 색으로 표시하고, API 전송용 방향값을 보관합니다.
-  function selectDirection(selectedButton) {
-    directionButtons.forEach((button) => {
-      const isSelected = button === selectedButton;
-      button.classList.toggle('is-selected', isSelected);
-      button.setAttribute('aria-pressed', String(isSelected));
+  function sideLabel(side) {
+    return math.normalizeSide(side) === 'SUPPORT' ? '옹호' : '조롱';
+  }
+
+  function sideClass(side) {
+    return math.normalizeSide(side) === 'SUPPORT' ? 'is-support' : 'is-mock';
+  }
+
+  function formatBalance(value) {
+    return `${Math.max(0, Math.round(Number(value) || 0)).toLocaleString('ko-KR')} KRW`;
+  }
+
+  function formatInvestment(value) {
+    return math.formatKrwUnsigned(String(value || '0'), 0);
+  }
+
+  function formatProfit(value) {
+    return math.formatKrw(String(value || '0'));
+  }
+
+  function setVisiblePanel(panel) {
+    roastCta.hidden = panel !== roastCta;
+    firstPanel.hidden = panel !== firstPanel;
+    statusCard.hidden = panel !== statusCard;
+    additionalPanel.hidden = panel !== additionalPanel;
+    statusCard.parentElement.classList.toggle('has-open-position', panel === statusCard || panel === additionalPanel);
+  }
+
+  function renderFirstAmount() {
+    firstAmountInput.value = firstAmount > 0 ? firstAmount.toLocaleString('ko-KR') : '';
+  }
+
+  function renderAdditionalAmount() {
+    additionalAmountInput.value = additionalAmount > 0 ? additionalAmount.toLocaleString('ko-KR') : '';
+    renderAdditionalPreview();
+  }
+
+  function renderBalance(points) {
+    const display = formatBalance(points);
+    balanceLabel.textContent = display;
+    if (headerBalanceLabel) headerBalanceLabel.textContent = display;
+  }
+
+  // [첫 의견 선택] 첫 주문에서만 옹호/조롱을 바꿀 수 있으며, 추가 투자 화면에는 이 선택지가 없습니다.
+  function selectSide(button) {
+    directionButtons.forEach((candidate) => {
+      const isSelected = candidate === button;
+      candidate.classList.toggle('is-selected', isSelected);
+      candidate.setAttribute('aria-pressed', String(isSelected));
     });
-
-    selectedDirection = selectedButton.dataset.investmentDirection;
+    selectedSide = button.dataset.investmentDirection === 'support' ? 'SUPPORT' : 'MOCK';
   }
 
-  // 댓글 작성 뒤 안내 카드 대신 같은 위치의 투자 패널을 표시합니다.
-  function open() {
-    if (window.MarketCountdown?.isEnded()) {
+  function renderPosition(snapshot) {
+    const position = snapshot?.position;
+    const metrics = snapshot?.positionMetrics;
+    if (!position || position.status === 'SETTLED') return false;
+
+    const side = math.normalizeSide(position.side);
+    const sideBadge = document.querySelector('#position-side-badge');
+    const currentPrice = document.querySelector('#position-current-price');
+    const pnl = document.querySelector('#position-pnl');
+    const total = document.querySelector('#position-total-investment');
+    const average = document.querySelector('#position-average-price');
+    const quantity = document.querySelector('#position-quantity');
+    const estimated = document.querySelector('#position-estimated-value');
+    const lockNote = document.querySelector('#position-lock-note');
+
+    sideBadge.textContent = sideLabel(side);
+    sideBadge.className = `position-side-badge ${sideClass(side)}`;
+    currentPrice.textContent = math.formatPrice(metrics?.currentPrice ?? snapshot.target?.value ?? 0);
+    pnl.textContent = `${formatProfit(metrics?.unrealizedPnl)} (${math.formatRate(metrics?.pnlRate || '0')})`;
+    pnl.classList.toggle('is-profit', !String(metrics?.unrealizedPnl || '0').startsWith('-'));
+    pnl.classList.toggle('is-loss', String(metrics?.unrealizedPnl || '0').startsWith('-'));
+    total.textContent = formatInvestment(position.totalInvestment);
+    average.textContent = math.formatPrice(position.averagePrice);
+    quantity.textContent = math.formatQuantity(position.quantity);
+    estimated.textContent = math.formatKrwUnsigned(metrics?.estimatedSettlementAmount || '0');
+    lockNote.innerHTML = `한 번 선택한 의견은 장 종료까지 변경할 수 없어요.<br />추가 투자는 선택한 ‘${sideLabel(side)}’에만 가능해요.`;
+    addInvestmentButton.textContent = `${sideLabel(side)}에 추가 투자`;
+    setVisiblePanel(statusCard);
+    return true;
+  }
+
+  function renderAdditionalPreview() {
+    const position = activeSnapshot?.position;
+    if (!position) return;
+    const currentPrice = activeSnapshot?.positionMetrics?.currentPrice ?? activeSnapshot?.target?.value;
+    const priceLabel = document.querySelector('#additional-execution-price');
+    const quantityLabel = document.querySelector('#additional-estimated-quantity');
+    priceLabel.textContent = math.formatPrice(currentPrice);
+    try {
+      quantityLabel.textContent = math.formatQuantity(math.calculateAddedQuantity(Math.max(1, additionalAmount), currentPrice));
+    } catch (_) {
+      quantityLabel.textContent = '0.0000주';
+    }
+  }
+
+  function openFirstInvestment() {
+    if (window.MarketCountdown?.isEnded?.()) {
       showToast('거래가 종료되었습니다.');
       return;
     }
-    roastCta.hidden = true;
-    panel.hidden = false;
+    if (renderPosition(activeSnapshot)) return;
+    setVisiblePanel(firstPanel);
   }
 
-  directionButtons.forEach((button) => {
-    button.addEventListener('click', () => selectDirection(button));
-  });
-
-  amountButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      amount = Math.max(10, (amount || 0) + Number(button.dataset.investmentAmount));
-      renderAmount();
-    });
-  });
-
-  // [직접 입력] 입력 중에는 숫자만 허용하고, 붙여넣기한 문자·기호도 즉시 제거합니다.
-  amountInput.addEventListener('input', () => {
-    const numericValue = amountInput.value.replace(/[^0-9]/g, '');
-    if (amountInput.value !== numericValue) amountInput.value = numericValue;
-    amount = numericValue ? Number(numericValue) : 0;
-  });
-
-  // [입력 시작] 화면 표시용 쉼표를 제거해 사용자가 숫자만 직접 편집하게 합니다.
-  amountInput.addEventListener('focus', () => {
-    amountInput.value = amount ? String(amount) : '';
-  });
-
-  // [입력 완료] 빈 값·10 KRW 미만은 최소 투자 금액으로 보정하고 쉼표 형식으로 다시 보여줍니다.
-  amountInput.addEventListener('blur', () => {
-    if (amount < 10) amount = 10;
-    renderAmount();
-  });
-
-  // 요청 성공 시 서버가 돌려준 잔액과 항목 가치를 표시합니다.
-  submitButton.addEventListener('click', async () => {
-    if (window.MarketCountdown?.isEnded()) {
+  function openAdditionalInvestment() {
+    if (window.MarketCountdown?.isEnded?.()) {
       showToast('거래가 종료되었습니다.');
       return;
     }
-    if (!selectedDirection) {
-      showToast('옹호 또는 조롱을 선택해주세요.');
-      return;
-    }
+    const position = activeSnapshot?.position;
+    if (!position) return openFirstInvestment();
+    document.querySelector('#additional-investment-side').textContent = sideLabel(position.side);
+    renderAdditionalAmount();
+    setVisiblePanel(additionalPanel);
+    additionalAmountInput.focus({ preventScroll: true });
+  }
 
+  function parseInput(input) {
+    const cleaned = input.value.replace(/[^0-9]/g, '');
+    if (input.value !== cleaned) input.value = cleaned;
+    return cleaned ? Number(cleaned) : 0;
+  }
+
+  function attachAmountInput(input, readAmount, writeAmount, render) {
+    input.addEventListener('input', () => {
+      writeAmount(parseInput(input));
+      if (input === additionalAmountInput) renderAdditionalPreview();
+    });
+    input.addEventListener('focus', () => { input.value = readAmount() ? String(readAmount()) : ''; });
+    input.addEventListener('blur', () => render());
+  }
+
+  async function submitInvestment({ side, amount, button }) {
     if (isSubmitting) return;
-    isSubmitting = true;
-    submitButton.disabled = true;
+    if (window.MarketCountdown?.isEnded?.()) {
+      showToast('거래가 종료되었습니다.');
+      return;
+    }
+    if (!Number.isSafeInteger(amount) || amount <= 0) {
+      showToast('투자금은 1 KRW 이상의 정수로 입력해주세요.');
+      return;
+    }
 
+    isSubmitting = true;
+    button.disabled = true;
     try {
       const result = await window.InvestmentService.createInvestment({
         targetId: window.InvestmentService.TARGET_ID,
-        // [동적 세션] 서버 시계가 반환한 현재 시장 ID로 투자 로그를 저장합니다.
-        marketSessionId: window.InvestmentService.getMarketSessionId(),
-        side: selectedDirection === 'support' ? 'SUPPORT' : 'ROAST',
-        amount,
+        side,
+        investmentAmount: amount,
       });
-
-      balance = result.wallet.points;
-      renderBalance();
-      window.TargetValueUI.update(result.target);
-      window.PriceChartUI.recordInvestment(result);
-      // [투자 로그 이벤트] 마이페이지 등 다른 UI가 새 투자 내역을 다시 조회할 수 있도록 알립니다.
+      activeSnapshot = result;
+      renderBalance(result.wallet?.points);
+      if (result.target?.value != null) window.TargetValueUI?.update(result.target);
+      window.PriceChartUI?.recordInvestment(result);
+      renderPosition(result);
       window.dispatchEvent(new CustomEvent('jorong:investment-created', { detail: result }));
-      showToast(`${selectedDirection === 'support' ? '옹호' : '조롱'}에 ${amount.toLocaleString('ko-KR')} KRW를 투자했습니다.`);
+      showToast(`${sideLabel(side)}에 ${amount.toLocaleString('ko-KR')} KRW를 투자했습니다.`);
     } catch (error) {
-      showToast(error.message || '투자 요청에 실패했습니다.');
+      showToast(error.message || '투자 요청을 처리하지 못했습니다.');
     } finally {
       isSubmitting = false;
-      submitButton.disabled = false;
+      button.disabled = false;
     }
+  }
+
+  directionButtons.forEach((button) => button.addEventListener('click', () => selectSide(button)));
+  firstAmountButtons.forEach((button) => button.addEventListener('click', () => {
+    firstAmount = Math.max(1, firstAmount + Number(button.dataset.investmentAmount));
+    renderFirstAmount();
+  }));
+  additionalAmountButtons.forEach((button) => button.addEventListener('click', () => {
+    additionalAmount = Math.max(1, additionalAmount + Number(button.dataset.additionalInvestmentAmount));
+    renderAdditionalAmount();
+  }));
+  attachAmountInput(firstAmountInput, () => firstAmount, (value) => { firstAmount = value; }, renderFirstAmount);
+  attachAmountInput(additionalAmountInput, () => additionalAmount, (value) => { additionalAmount = value; }, renderAdditionalAmount);
+
+  firstSubmitButton.addEventListener('click', () => {
+    if (!selectedSide) return showToast('옹호 또는 조롱을 선택해주세요.');
+    submitInvestment({ side: selectedSide, amount: firstAmount, button: firstSubmitButton });
+  });
+  addInvestmentButton.addEventListener('click', openAdditionalInvestment);
+  additionalCancelButton.addEventListener('click', () => renderPosition(activeSnapshot));
+  additionalSubmitButton.addEventListener('click', () => {
+    const side = activeSnapshot?.position?.side;
+    if (side) submitInvestment({ side, amount: additionalAmount, button: additionalSubmitButton });
   });
 
-  renderAmount();
-  renderBalance();
-  window.InvestmentUI = Object.freeze({ open });
+  async function refresh() {
+    try {
+      const result = await window.InvestmentService.loadPortfolio();
+      activeSnapshot = result;
+      renderBalance(result.wallet?.points);
+      if (result.target?.value != null) window.TargetValueUI?.update(result.target);
+      renderPosition(result);
+    } catch (_) {
+      // 로그인 전 또는 서버 연결 전 오류는 기존 투자 시작 화면을 유지합니다.
+    }
+  }
+
+  window.addEventListener('jorong:auth-session', () => refresh());
+  window.addEventListener('jorong:market-settled', (event) => {
+    activeSnapshot = event.detail;
+    renderBalance(event.detail?.wallet?.points);
+  });
+
+  renderFirstAmount();
+  renderAdditionalAmount();
+  renderBalance(activeSnapshot?.wallet?.points);
+  refresh();
+  // [실시간 평가손익] 서버 연결 시 다른 사용자의 주문으로 바뀐 현재가와 평가손익을 주기적으로 다시 받습니다.
+  if ((window.JORONG_API_BASE_URL || '').trim()) window.setInterval(refresh, 10_000);
+  window.InvestmentUI = Object.freeze({ open: openFirstInvestment, refresh, renderPosition });
 })();

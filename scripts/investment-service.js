@@ -1,116 +1,399 @@
-// [투자 서비스] 투자·지갑·투자 내역을 API와 연결합니다. API 주소가 없을 때만 시연용 로컬 상태를 사용합니다.
+// [투자·포지션 서비스] 주문, 가중평균 포지션, 잔액, 장 종료 정산을 API 우선으로 다룹니다.
+// API 주소가 비어 있는 현재 정적 MVP에서는 동일한 계약의 로컬 영속 시뮬레이터를 사용합니다.
 (() => {
   const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
-  const marketConfig = window.MarketConfig.get();
-  const TARGET_ID = marketConfig.subject.id;
-  const PRICE_IMPACT_RATE = 0.01;
+  const config = window.MarketConfig.get();
+  const TARGET_ID = config.subject.id;
+  const PRICE_IMPACT_RATE = 0.01; // 기존 MVP의 가격 반영 규칙을 유지합니다. 실제 운영의 가격 산식은 서버에서 확정합니다.
+  const LOCAL_STORE_VERSION = 2;
+  const LOCAL_STORE_KEY = `jorong:investment-ledger:${config.session.id}`;
+  const INITIAL_POINTS = 10000;
   const state = {
-    walletPoints: 10000,
-    targetValue: marketConfig.subject.initialPrice,
-    investments: [],
+    walletPoints: INITIAL_POINTS,
+    targetValue: config.subject.initialPrice,
+    previousTargetValue: config.subject.initialPrice,
+    position: null,
+    orders: [],
+    market: null,
+    marketSummary: null,
+    settlement: null,
   };
 
-  // [현재 세션 ID] 서버 시계가 다른 라운드를 반환한 경우에도 투자·차트·댓글이 같은 시장을 참조하도록 동적으로 읽습니다.
+  function createError(code, message) {
+    const error = new Error(message);
+    error.code = code;
+    return error;
+  }
+
   function getMarketSessionId() {
-    return window.MarketCountdown?.getSessionId?.() || marketConfig.session.id;
+    return window.MarketCountdown?.getSessionId?.() || config.session.id;
   }
 
   function getAuthHeaders() {
     return window.AuthService?.getRequestHeaders?.() || {};
   }
 
-  function assertMarketIsOpen() {
-    if (window.MarketCountdown?.requiresServerClock?.() && !window.MarketCountdown.isReady()) {
-      throw new Error('거래 시간을 확인 중입니다. 잠시 후 다시 시도해주세요.');
+  function getCurrentUserKey() {
+    const account = window.AuthService?.getCurrentAccount?.();
+    return String(account?.id || account?.nickname || 'local-visitor');
+  }
+
+  function getInitialWalletPoints() {
+    const accountPoints = Number(window.AuthService?.getCurrentAccount?.()?.points);
+    return Number.isFinite(accountPoints) && accountPoints >= 0 ? Math.round(accountPoints) : INITIAL_POINTS;
+  }
+
+  function getLocalNextOpenAt(closeAt) {
+    const configured = Date.parse(config.session.nextOpenAt || '');
+    if (Number.isFinite(configured)) return new Date(configured).toISOString();
+    return new Date(closeAt + (24 * 60 * 60 * 1000)).toISOString();
+  }
+
+  // [로컬 원장 생성] 브라우저를 새로고침해도 같은 회차·사용자 조합의 주문과 포지션을 복원합니다.
+  function createLocalLedger() {
+    const closeAt = window.MarketCountdown?.getEndAt?.() || (Date.now() + (config.session.durationHours * 60 * 60 * 1000));
+    return {
+      version: LOCAL_STORE_VERSION,
+      market: {
+        id: getMarketSessionId(),
+        status: 'OPEN',
+        openAt: config.session.startsAt || new Date(closeAt - (config.session.durationHours * 60 * 60 * 1000)).toISOString(),
+        closeAt: new Date(closeAt).toISOString(),
+        nextOpenAt: getLocalNextOpenAt(closeAt),
+        currentPrice: String(config.subject.initialPrice),
+        previousPrice: String(config.subject.initialPrice),
+        closePrice: null,
+        sideTotals: { SUPPORT: '0', MOCK: '0' },
+      },
+      accounts: {},
+    };
+  }
+
+  function loadLocalLedger() {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(LOCAL_STORE_KEY) || 'null');
+      if (stored?.version === LOCAL_STORE_VERSION && stored?.market?.id === getMarketSessionId()) return stored;
+    } catch (_) {
+      // 손상된 시연 데이터는 새로운 회차 원장으로 교체합니다.
     }
-    if (window.MarketCountdown?.isEnded()) throw new Error('거래가 종료되었습니다.');
+    const ledger = createLocalLedger();
+    saveLocalLedger(ledger);
+    return ledger;
   }
 
-  // [응답 상태 반영] API가 돌려준 최신 지갑·종목 가격을 후속 투자와 UI가 공유하도록 저장합니다.
-  function applySnapshot(result = {}) {
-    const points = Number(result.wallet?.points ?? result.account?.points);
-    const targetValue = Number(result.target?.value);
-    if (Number.isFinite(points)) state.walletPoints = points;
-    if (Number.isFinite(targetValue)) state.targetValue = targetValue;
-    if (result.investment) state.investments.unshift(result.investment);
-    return result;
+  function saveLocalLedger(ledger) {
+    try { window.localStorage.setItem(LOCAL_STORE_KEY, JSON.stringify(ledger)); } catch (_) { /* 저장 공간 제한 시 현재 화면 상태만 유지합니다. */ }
   }
 
-  // [로컬 투자] 백엔드 연결 전 화면 시연용입니다. 실제 가격·잔액 계산은 서버 트랜잭션으로만 확정해야 합니다.
-  function createLocalInvestment({ targetId, side, amount, marketSessionId }) {
-    assertMarketIsOpen();
-    if (marketSessionId && marketSessionId !== getMarketSessionId()) throw new Error('현재 거래 세션과 일치하지 않습니다.');
-    if (targetId !== TARGET_ID) throw new Error('존재하지 않는 투자 항목입니다.');
-    if (!['SUPPORT', 'ROAST'].includes(side)) throw new Error('투자 방향이 올바르지 않습니다.');
-    if (!Number.isInteger(amount) || amount < 10) throw new Error('투자 금액이 올바르지 않습니다.');
-    if (amount > state.walletPoints) throw new Error('보유 포인트가 부족합니다.');
+  function ensureLocalAccount(ledger) {
+    const key = getCurrentUserKey();
+    if (!ledger.accounts[key]) {
+      ledger.accounts[key] = {
+        walletPoints: getInitialWalletPoints(),
+        position: null,
+        orders: [],
+        settlement: null,
+        processedIdempotencyKeys: [],
+      };
+    }
+    return ledger.accounts[key];
+  }
 
-    const previousValue = state.targetValue;
-    const valueChange = Math.max(1, Math.round(amount * PRICE_IMPACT_RATE)) * (side === 'SUPPORT' ? 1 : -1);
-    state.walletPoints -= amount;
-    state.targetValue = Math.max(1, state.targetValue + valueChange);
-    const investment = {
-      id: `local-investment-${Date.now()}`,
+  function readMarketStatus(ledger) {
+    if (window.MarketCountdown?.isEnded?.() && ledger.market.status === 'OPEN') ledger.market.status = 'CLOSED';
+    return ledger.market.status;
+  }
+
+  function buildLocalMarketSummary(ledger) {
+    const support = BigInt(ledger.market.sideTotals?.SUPPORT || '0');
+    const mock = BigInt(ledger.market.sideTotals?.MOCK || '0');
+    const total = support + mock;
+    const percentage = (part) => total > 0n ? Number((part * 10000n) / total) / 100 : 0;
+    const participants = Object.values(ledger.accounts).filter((account) => account.position).length;
+    return {
+      supportInvestment: support.toString(),
+      mockInvestment: mock.toString(),
+      totalVolume: total.toString(),
+      supportRatio: percentage(support),
+      mockRatio: percentage(mock),
+      participants,
+    };
+  }
+
+  function toTarget(market) {
+    const value = Number(market.currentPrice);
+    const previousValue = Number(market.previousPrice ?? market.currentPrice);
+    return {
+      id: TARGET_ID,
+      previousValue,
+      value,
+      valueChange: value - previousValue,
+    };
+  }
+
+  function calculatePositionMetrics(position, currentPrice) {
+    return position ? window.FinancialMath.calculateMetrics({ position, currentPrice }) : null;
+  }
+
+  function buildLocalSnapshot(ledger) {
+    const account = ensureLocalAccount(ledger);
+    const target = toTarget(ledger.market);
+    const summary = buildLocalMarketSummary(ledger);
+    const position = account.position;
+    const positionMetrics = calculatePositionMetrics(position, target.value);
+    return {
+      market: { ...ledger.market, summary },
+      wallet: { points: account.walletPoints },
+      target,
+      position,
+      positionMetrics,
+      settlement: account.settlement,
+      investments: account.orders,
+      orders: account.orders,
+      marketSummary: summary,
+    };
+  }
+
+  function applySnapshot(payload = {}) {
+    const walletPoints = Number(payload.wallet?.points ?? payload.account?.points);
+    const target = payload.target || {};
+    const market = payload.market || payload.session || {};
+    const position = payload.position ?? payload.openPosition ?? null;
+    const orders = payload.orders || payload.investments || payload.investmentLogs;
+
+    if (Number.isFinite(walletPoints)) state.walletPoints = Math.round(walletPoints);
+    if (Number.isFinite(Number(target.value ?? market.currentPrice))) {
+      state.targetValue = Number(target.value ?? market.currentPrice);
+      state.previousTargetValue = Number(target.previousValue ?? market.previousPrice ?? state.targetValue);
+    }
+    if (Object.keys(market).length) state.market = market;
+    if (position !== undefined) state.position = position;
+    if (Array.isArray(orders)) state.orders = orders;
+    if (payload.settlement !== undefined) state.settlement = payload.settlement;
+    state.marketSummary = payload.marketSummary || market.summary || state.marketSummary;
+    return buildStateSnapshot(payload);
+  }
+
+  function buildStateSnapshot(payload = {}) {
+    const target = payload.target || {
+      id: TARGET_ID,
+      previousValue: state.previousTargetValue,
+      value: state.targetValue,
+      valueChange: state.targetValue - state.previousTargetValue,
+    };
+    const position = payload.position ?? state.position;
+    const positionMetrics = payload.positionMetrics || payload.metrics || calculatePositionMetrics(position, target.value);
+    return {
+      ...payload,
+      wallet: { points: Number(payload.wallet?.points ?? state.walletPoints) },
+      target,
+      position,
+      positionMetrics,
+      settlement: payload.settlement ?? state.settlement,
+      investments: payload.investments || payload.orders || state.orders,
+      orders: payload.orders || payload.investments || state.orders,
+      market: payload.market || state.market,
+      marketSummary: payload.marketSummary || state.marketSummary,
+    };
+  }
+
+  function applyLocalSnapshot(snapshot) {
+    return applySnapshot(snapshot);
+  }
+
+  function makeIdempotencyKey() {
+    if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+    return `order-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function assertMarketOpen() {
+    if (window.MarketCountdown?.requiresServerClock?.() && !window.MarketCountdown.isReady()) {
+      throw createError('MARKET_CLOCK_UNAVAILABLE', '거래 시간을 확인 중입니다. 잠시 후 다시 시도해주세요.');
+    }
+    if (window.MarketCountdown?.isEnded?.()) throw createError('MARKET_CLOSED', '거래가 종료되었습니다.');
+  }
+
+  // [로컬 주문 체결] 지갑 차감·주문·포지션·가격을 하나의 원장 저장 단위로 함께 갱신합니다.
+  function createLocalInvestment({ targetId, side, investmentAmount, amount, marketId, marketSessionId, idempotencyKey }) {
+    assertMarketOpen();
+    const normalizedSide = window.FinancialMath.normalizeSide(side);
+    const requestedAmount = investmentAmount ?? amount;
+    const integerAmount = Number(requestedAmount);
+    if (!Number.isSafeInteger(integerAmount) || integerAmount <= 0) throw createError('INVALID_AMOUNT', '투자금은 1 KRW 이상의 정수여야 합니다.');
+    if ((marketId || marketSessionId) && String(marketId || marketSessionId) !== getMarketSessionId()) {
+      throw createError('MARKET_NOT_FOUND', '현재 거래 회차와 일치하지 않습니다.');
+    }
+    if (targetId !== TARGET_ID) throw createError('TARGET_NOT_FOUND', '존재하지 않는 투자 종목입니다.');
+
+    const ledger = loadLocalLedger();
+    const account = ensureLocalAccount(ledger);
+    if (readMarketStatus(ledger) !== 'OPEN') throw createError('MARKET_CLOSED', '거래가 종료되었습니다.');
+    if (account.position?.side && window.FinancialMath.normalizeSide(account.position.side) !== normalizedSide) {
+      throw createError('POSITION_LOCKED', '한 번 선택한 의견은 장 종료까지 변경할 수 없습니다.');
+    }
+    if (integerAmount > account.walletPoints) throw createError('INSUFFICIENT_BALANCE', '보유 포인트가 부족합니다.');
+
+    const safeIdempotencyKey = String(idempotencyKey || makeIdempotencyKey());
+    if (account.processedIdempotencyKeys.includes(safeIdempotencyKey)) {
+      throw createError('DUPLICATE_ORDER', '이미 처리된 투자 요청입니다.');
+    }
+
+    const executionPrice = ledger.market.currentPrice;
+    const nextPosition = window.FinancialMath.calculatePositionAfterOrder({
+      position: account.position,
+      side: normalizedSide,
+      investmentAmount: integerAmount,
+      executionPrice,
+    });
+    const previousValue = Number(ledger.market.currentPrice);
+    const direction = normalizedSide === 'SUPPORT' ? 1 : -1;
+    const priceImpact = Math.max(1, Math.round(integerAmount * PRICE_IMPACT_RATE)) * direction;
+    const nextValue = Math.max(1, previousValue + priceImpact);
+    const order = {
+      id: `local-order-${Date.now()}-${account.orders.length + 1}`,
+      marketId: getMarketSessionId(),
       marketSessionId: getMarketSessionId(),
-      targetId,
-      side,
-      amount,
+      targetId: TARGET_ID,
+      side: normalizedSide,
+      investmentAmount: String(integerAmount),
+      amount: integerAmount, // 기존 투자 내역 UI와의 호환성입니다.
+      executionPrice,
+      addedQuantity: nextPosition.addedQuantity,
+      resultingPrice: String(nextValue),
+      idempotencyKey: safeIdempotencyKey,
       createdAt: new Date().toISOString(),
     };
-    state.investments.unshift(investment);
-    return {
-      investment,
-      wallet: { points: state.walletPoints },
-      target: { id: targetId, previousValue, value: state.targetValue, valueChange: state.targetValue - previousValue },
-    };
+
+    account.walletPoints -= integerAmount;
+    account.position = { ...nextPosition, id: account.position?.id || `local-position-${getCurrentUserKey()}-${getMarketSessionId()}`, updatedAt: order.createdAt };
+    account.orders.unshift(order);
+    account.processedIdempotencyKeys.push(safeIdempotencyKey);
+    ledger.market.sideTotals[normalizedSide] = (BigInt(ledger.market.sideTotals[normalizedSide] || '0') + BigInt(integerAmount)).toString();
+    ledger.market.previousPrice = String(previousValue);
+    ledger.market.currentPrice = String(nextValue);
+    saveLocalLedger(ledger);
+
+    return applyLocalSnapshot({
+      ...buildLocalSnapshot(ledger),
+      order,
+      investment: order,
+    });
   }
 
-  // [투자 생성] 서버는 로그인 사용자·세션 상태·잔액을 검증하고 투자/잔액/가격 캔들을 하나의 DB 트랜잭션으로 처리해야 합니다.
-  async function createInvestment(payload) {
-    assertMarketIsOpen();
-    if (!API_BASE_URL) return createLocalInvestment(payload);
-    const response = await fetch(`${API_BASE_URL}/investments`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...getAuthHeaders() },
-      body: JSON.stringify({ ...payload, marketSessionId: getMarketSessionId() }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.message || '투자 요청에 실패했습니다.');
-    return applySnapshot(body);
+  // [로컬 정산] 같은 원장에 settlement가 이미 있으면 다시 지급하지 않아 브라우저 시연에서도 멱등성을 보장합니다.
+  function settleLocalMarket() {
+    const ledger = loadLocalLedger();
+    const account = ensureLocalAccount(ledger);
+    if (ledger.market.status === 'OPEN') ledger.market.status = 'CLOSED';
+    if (!ledger.market.closePrice) ledger.market.closePrice = ledger.market.currentPrice;
+
+    if (!account.settlement && account.position?.status !== 'SETTLED') {
+      const settlement = window.FinancialMath.calculateSettlement({
+        position: account.position,
+        closePrice: ledger.market.closePrice,
+        balanceBeforeSettlement: account.walletPoints,
+      });
+      if (settlement) {
+        account.walletPoints = Number(settlement.balanceAfterSettlement);
+        account.position = { ...account.position, status: 'SETTLED', updatedAt: new Date().toISOString() };
+        account.settlement = {
+          id: `local-settlement-${getCurrentUserKey()}-${getMarketSessionId()}`,
+          marketId: getMarketSessionId(),
+          positionId: account.position.id,
+          ...settlement,
+          settledAt: new Date().toISOString(),
+        };
+      }
+    }
+    ledger.market.status = 'SETTLED';
+    saveLocalLedger(ledger);
+    const snapshot = applyLocalSnapshot(buildLocalSnapshot(ledger));
+    window.dispatchEvent(new CustomEvent('jorong:market-settled', { detail: snapshot }));
+    return snapshot;
   }
 
-  // [내 투자 내역] 마이페이지/재로그인 시 서버가 보관한 투자 로그와 최신 포인트를 가져오기 위한 조회 API입니다.
-  async function loadMyInvestments() {
-    if (!API_BASE_URL) return { wallet: { points: state.walletPoints }, investments: state.investments };
-    const params = new URLSearchParams({ marketSessionId: getMarketSessionId() });
-    const response = await fetch(`${API_BASE_URL}/me/investments?${params}`, {
-      method: 'GET',
+  function backendError(payload, fallback) {
+    const error = createError(payload?.code || 'REQUEST_FAILED', payload?.message || fallback);
+    error.details = payload?.details;
+    return error;
+  }
+
+  async function request(path, options = {}) {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
       credentials: 'include',
-      headers: { Accept: 'application/json', ...getAuthHeaders() },
+      headers: { Accept: 'application/json', ...getAuthHeaders(), ...(options.headers || {}) },
+      ...options,
     });
     const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.message || '투자 내역을 불러오지 못했습니다.');
-    applySnapshot(body);
+    if (!response.ok) throw backendError(body, '요청을 처리하지 못했습니다.');
     return body;
   }
 
-  // [세션 갱신] 로그인·재로그인 결과가 도착하면 투자 창의 보유 포인트를 즉시 업데이트합니다.
-  window.addEventListener('jorong:auth-session', (event) => {
-    const points = Number(event.detail?.wallet?.points ?? event.detail?.account?.points);
-    if (Number.isFinite(points)) state.walletPoints = points;
-  });
+  // [주문 API] 서버는 잔액 차감·주문 생성·포지션 가중평균 갱신을 하나의 DB 트랜잭션으로 처리해야 합니다.
+  async function createInvestment(payload) {
+    assertMarketOpen();
+    const requestPayload = {
+      marketId: getMarketSessionId(),
+      targetId: TARGET_ID,
+      side: window.FinancialMath.normalizeSide(payload.side),
+      investmentAmount: Number(payload.investmentAmount ?? payload.amount),
+      idempotencyKey: payload.idempotencyKey || makeIdempotencyKey(),
+    };
+    if (!API_BASE_URL) return createLocalInvestment(requestPayload);
+
+    const body = await request(`/markets/${encodeURIComponent(requestPayload.marketId)}/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestPayload.idempotencyKey },
+      body: JSON.stringify(requestPayload),
+    });
+    return applySnapshot(body);
+  }
+
+  // [포지션 조회] 새로고침·재로그인 후에도 서버가 보관한 현재 포지션과 잔액을 그대로 복원합니다.
+  async function loadPortfolio() {
+    if (!API_BASE_URL) {
+      const ledger = loadLocalLedger();
+      if (readMarketStatus(ledger) !== 'OPEN') return settleLocalMarket();
+      return applyLocalSnapshot(buildLocalSnapshot(ledger));
+    }
+    const body = await request(`/markets/${encodeURIComponent(getMarketSessionId())}/me/position`);
+    return applySnapshot(body);
+  }
+
+  // [정산 조회] 서버 정산 작업이 완료한 결과만 읽습니다. 클라이언트는 API 연결 시 지갑에 직접 지급하지 않습니다.
+  async function loadSettlement() {
+    if (!API_BASE_URL) return settleLocalMarket();
+    const body = await request(`/markets/${encodeURIComponent(getMarketSessionId())}/me/settlement`);
+    return applySnapshot(body);
+  }
+
+  // [이전 화면 호환] 기존 마이페이지가 투자 로그를 요청할 때도 현재 포지션 응답을 사용합니다.
+  async function loadMyInvestments() {
+    return loadPortfolio();
+  }
 
   function getSnapshot() {
-    return { wallet: { points: state.walletPoints }, target: { id: TARGET_ID, value: state.targetValue }, investments: state.investments };
+    return buildStateSnapshot();
   }
+
+  window.addEventListener('jorong:auth-session', (event) => {
+    const points = Number(event.detail?.wallet?.points ?? event.detail?.account?.points);
+    if (Number.isFinite(points)) state.walletPoints = Math.round(points);
+  });
+
+  // 장 종료 이벤트는 로컬 시연 원장을 정산하고, API 연결 환경에서는 MarketSettlementUI가 서버 정산 결과를 조회하도록 둡니다.
+  window.addEventListener('jorong:market-ended', () => {
+    if (!API_BASE_URL) settleLocalMarket();
+  });
 
   window.InvestmentService = Object.freeze({
     TARGET_ID,
-    MARKET_SESSION_ID: marketConfig.session.id,
     getMarketSessionId,
     createInvestment,
+    loadPortfolio,
     loadMyInvestments,
+    loadSettlement,
     getSnapshot,
+    getMarketSummary: () => state.marketSummary,
   });
 })();

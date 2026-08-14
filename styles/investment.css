@@ -5,23 +5,76 @@
 .exchange-roast-card > .investment-panel { width:100%; height:100%; position:relative; align-self:stretch; justify-self:stretch; display:flex; flex-direction:column; padding:15px 13px 12px; text-align:left; }
 /* [초기 상태] 댓글 작성 전에는 안내 카드만 보이고 투자 패널은 반드시 숨깁니다. */
 .exchange-roast-card > .investment-panel[hidden] { display:none; }
-.exchange-roast-card .investment-panel h2 { margin:0; color:#102c5a; font-size:25px; line-height:1.15; letter-spacing:-.06em; }
-.exchange-roast-card .investment-panel .investment-balance { margin-top:6px; color:#18315b; font-size:20px; line-height:1.2; }
-.exchange-roast-card .investment-panel .investment-directions { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:13px; margin-top:35px; }
-.exchange-roast-card .investment-panel .investment-directions button { width:100%; min-width:0; height:23px; border:0; border-radius:13px; color:#ec4b63; background:#fde7eb; font-size:9px; font-weight:850; line-height:1; cursor:pointer; }
+.exchange-roast-card .investment-panel h2 { margin:0; color:#102c5a; font-size:27px; line-height:1.8; letter-spacing:-.06em; }
+.exchange-roast-card .investment-panel .investment-balance { margin-top:6px; color:#18315b; font-size:23px; line-height:1.1; }
+.exchange-roast-card .investment-panel .investment-directions { display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); gap:13px; margin-top:30px; }
+.exchange-roast-card .investment-panel .investment-directions button { width:100%; min-width:0; height:30px; border:0; border-radius:13px; font-size:15px; font-weight:850; line-height:1; cursor:pointer; }
 .exchange-roast-card .investment-panel .investment-directions button[data-investment-direction="support"] { color:#2162ee; background:#e5eeff; }
-.exchange-roast-card .investment-panel .investment-directions button[data-investment-direction="roast"] { color:#ec4b63; background:#fde7eb; }
+.exchange-roast-card .investment-panel .investment-directions button[data-investment-direction="mock"] { color:#ec4b63; background:#fde7eb; }
 .exchange-roast-card .investment-panel .investment-directions button.is-selected[data-investment-direction="support"] { color:#fff; background:#2162ee; }
-.exchange-roast-card .investment-panel .investment-directions button.is-selected[data-investment-direction="roast"] { color:#fff; background:#f04a62; }
-.exchange-roast-card .investment-panel .investment-amount-control { height:38px; display:flex; align-items:center; justify-content:space-between; margin-top:13px; border:1px solid #d9e3ef; border-radius:6px; padding:0 11px; }
+.exchange-roast-card .investment-panel .investment-directions button.is-selected[data-investment-direction="mock"] { color:#fff; background:#f04a62; }
+.exchange-roast-card .investment-panel .investment-amount-control { height:45px; display:flex; align-items:center; justify-content:space-between; margin-top:13px; border:1px solid #d9e3ef; border-radius:6px; padding:0 11px; }
 .exchange-roast-card .investment-panel .investment-amount-control:focus-within { border-color:#8db3fb; box-shadow:0 0 0 3px rgba(33, 98, 238, .09); }
 .exchange-roast-card .investment-panel .investment-amount-input { display:flex; align-items:center; min-width:0; gap:4px; color:#657894; }
-.exchange-roast-card .investment-panel .investment-amount-input input { width:96px; min-width:0; border:0; padding:0; color:#1a3159; background:transparent; font-size:15px; font-weight:800; line-height:1; outline:0; }
-.exchange-roast-card .investment-panel .investment-amount-input span { font-size:12px; font-weight:750; }
+.exchange-roast-card .investment-panel .investment-amount-input input { width:96px; min-width:0; border:0; padding:0; color:#1a3159; background:transparent; font-size:20px; font-weight:800; line-height:1; outline:0; }
+.exchange-roast-card .investment-panel .investment-amount-input span { font-size:15px; font-weight:750; }
 .exchange-roast-card .investment-panel .investment-amount-control span { display:flex; align-items:center; gap:10px; }
-.exchange-roast-card .investment-panel .investment-amount-control button { width:auto; min-width:0; height:auto; border:0; padding:0; color:#657894; background:transparent; font-size:13px; font-weight:800; line-height:1; cursor:pointer; }
-.investment-panel .investment-submit { width:100%; height:33px; margin-top:10px; border:0; border-radius:5px; color:#fff; background:#0d2a5e; font-size:15px; font-weight:850; cursor:pointer; }
+.exchange-roast-card .investment-panel .investment-amount-control button { width:auto; min-width:0; height:auto; border:0; padding:0; color:#657894; background:transparent; font-size:20px; font-weight:800; line-height:1; cursor:pointer; }
+.investment-panel .investment-submit { width:100%; height:37px; margin-top:20px; border:0; border-radius:5px; color:#fff; background:#0d2a5e; font-size:17px; font-weight:850; cursor:pointer; }
 .investment-panel .investment-submit:hover { background:#163d7e; }
 
 @media (max-width:900px) { .investment-directions { margin-top:15px; }.investment-submit { height:38px; } }
 @media (max-width:650px) { .investment-panel { padding:14px; }.investment-directions { margin-top:13px; }.investment-amount-control { margin-top:11px; } }
+
+/* [내 투자 현황] 첫 체결 뒤에는 방향 선택 대신 가중평균 포지션과 평가손익을 같은 카드에서 보여줍니다. */
+.exchange-roast-card.has-open-position { height:305px; align-content:stretch; justify-items:stretch; padding:0; }
+.investment-status-card, .additional-investment-panel { width:100%; height:100%; display:flex; flex-direction:column; gap:10px; padding:16px; text-align:left; }
+.investment-status-card[hidden], .additional-investment-panel[hidden] { display:none; }
+.investment-status-card > header { display:flex; align-items:center; gap:8px; }
+.investment-status-card h2, .additional-investment-panel h2 { margin:0; color:#092045; font-size:18px; line-height:1.25; letter-spacing:-.045em; }
+.position-side-badge { min-width:55px; height:25px; display:grid; place-items:center; margin-left:auto; border-radius:13px; font-size:11px; font-weight:850; }
+.position-side-badge.is-support { color:#1463f2; background:#e0f2ff; }
+.position-side-badge.is-mock { color:#f5425c; background:#ffedf2; }
+.position-pnl { display:grid; gap:2px; }
+.position-pnl > span { color:#6e7d99; font-size:11px; }
+.position-pnl > span b { color:inherit; font-weight:800; }
+.position-pnl strong { color:#1463f2; font-size:21px; letter-spacing:-.045em; }
+.position-pnl strong.is-loss { color:#f5425c; }
+.position-metrics { display:grid; grid-template-columns:1fr 1fr; gap:9px 14px; border-top:1px solid #dbe3f0; padding-top:10px; }
+.position-metrics div { display:grid; gap:3px; }
+.position-metrics span { color:#6e7d99; font-size:10px; }
+.position-metrics b { color:#092045; font-size:13px; letter-spacing:-.025em; white-space:nowrap; }
+.position-lock-note { margin:0; border-radius:7px; padding:8px 10px; color:#1463f2; background:#e0f2ff; font-size:10px; line-height:1.4; word-break:keep-all; }
+.position-add-button { width:100% !important; height:38px !important; margin-top:3px; border:0; border-radius:7px !important; color:#fff; background:#1463f2 !important; font:inherit; font-size:12px !important; font-weight:850; cursor:pointer; }
+.position-add-button:hover { background:#0d56dd !important; }
+
+/* [추가 투자] 기존 의견은 읽기 전용으로 두고, 현재 체결가와 예상 수량을 즉시 계산해 안내합니다. */
+.additional-investment-panel { gap:11px; }
+.additional-investment-panel h2 span { color:#f5425c; }
+.additional-side-lock { margin:0; color:#6e7d99; font-size:10px; }
+.additional-execution { display:grid; grid-template-columns:1fr auto; gap:4px 12px; border-radius:7px; padding:9px 10px; background:#f6f9ff; }
+.additional-execution span, .additional-execution small { color:#6e7d99; font-size:10px; }
+.additional-execution b { color:#092045; font-size:14px; }
+.additional-execution small { grid-column:1 / -1; }
+.additional-execution small strong { margin-left:4px; color:#1463f2; font-size:11px; }
+.additional-investment-panel .investment-amount-control { height:40px; display:flex; align-items:center; justify-content:space-between; border:1px solid #d9e3ef; border-radius:6px; padding:0 11px; }
+.additional-investment-panel .investment-amount-input { display:flex; align-items:center; gap:4px; color:#657894; }
+.additional-investment-panel .investment-amount-input input { width:105px; min-width:0; border:0; padding:0; color:#1a3159; background:transparent; font:inherit; font-size:14px; font-weight:800; outline:0; }
+.additional-investment-panel .investment-amount-control > span { display:flex; gap:10px; }
+.additional-investment-panel .investment-amount-control button { width:auto; min-width:0; height:auto; border:0; padding:0; color:#657894; background:transparent; font-size:13px; font-weight:850; cursor:pointer; }
+.additional-investment-actions { display:grid; grid-template-columns:78px 1fr; gap:8px; margin-top:auto; }
+.additional-investment-actions button { width:100% !important; height:38px !important; border:1px solid #dbe3f0; border-radius:7px !important; color:#526581; background:#fff; font:inherit; font-size:12px !important; font-weight:850; cursor:pointer; }
+.additional-investment-actions #additional-investment-submit { border-color:#1463f2; color:#fff; background:#1463f2; }
+
+@media (max-width:900px) { 
+    .exchange-roast-card.has-open-position { height:318px; }
+    .position-lock-note { font-size:9px; } }
+@media (max-width:650px) { 
+    .exchange-roast-card.has-open-position { height:304px; }
+    .investment-status-card, 
+    .additional-investment-panel { padding:13px; gap:8px; }
+    .position-pnl strong { font-size:18px; }
+    .position-metrics { gap:7px 10px; padding-top:8px; }
+    .position-lock-note { padding:7px 8px; font-size:9px; }
+    .position-add-button, 
+    .additional-investment-actions button { height:34px !important; } }

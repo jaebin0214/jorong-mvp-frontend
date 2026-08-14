@@ -19,7 +19,8 @@ window.JORONG_API_BASE_URL = 'https://api.example.com';
 | `users` | `id`, `nickname`, `password_hash`, `points`, `created_at` | `nickname`은 UNIQUE. 비밀번호 원문은 저장하지 않고 Argon2id 또는 bcrypt 해시만 저장합니다. `points`는 현재 잔액 캐시입니다. |
 | `point_ledger` | `id`, `user_id`, `market_session_id`, `type`, `amount`, `balance_after`, `investment_id`, `created_at` | 투자 차감·정산 보상 같은 포인트 변동을 불변 로그로 기록합니다. 잔액 검증/감사 기준입니다. |
 | `market_sessions` | `id`, `target_id`, `target_name`, `target_image_url`, `initial_price`, `starts_at`, `ends_at`, `status` | 운영자가 여는 시장 라운드. `status`: `SCHEDULED`, `OPEN`, `CLOSED`, `SETTLED`. |
-| `investments` | `id`, `user_id`, `market_session_id`, `target_id`, `side`, `amount`, `price_before`, `price_after`, `created_at` | 모든 사용자의 투자 로그. `side`: `SUPPORT` 또는 `ROAST`. |
+| `investment_orders` | `id`, `user_id`, `market_id`, `side`, `investment_amount`, `execution_price`, `added_quantity`, `idempotency_key`, `created_at` | 모든 주문 로그. `side`: `SUPPORT` 또는 `MOCK`. |
+| `positions` | `id`, `user_id`, `market_id`, `side`, `total_investment`, `quantity`, `average_price`, `status` | 한 사용자·시장당 하나의 가중평균 포지션. `UNIQUE(user_id, market_id)`. |
 | `price_candles` | `market_session_id`, `target_id`, `interval_seconds`, `started_at`, `open`, `high`, `low`, `close`, `volume` | 모든 투자를 집계한 OHLC 캔들. `(market_session_id, target_id, interval_seconds, started_at)` UNIQUE. |
 | `comments` | `id`, `market_session_id`, `target_id`, `parent_comment_id`, `user_id`, `content`, `created_at`, `deleted_at` | `parent_comment_id`가 `NULL`이면 댓글, 값이 있으면 답글. 삭제는 soft delete를 권장합니다. |
 | `comment_hypes` | `id`, `user_id`, `market_session_id`, `comment_id`, `created_at` | **`UNIQUE (user_id, market_session_id)`**로 한 사용자가 한 시장에서 오직 한 댓글/답글만 HYPE할 수 있게 합니다. |
@@ -77,18 +78,19 @@ window.JORONG_API_BASE_URL = 'https://api.example.com';
 }
 ```
 
-### `POST /investments` (인증 필요)
+### `POST /markets/{marketId}/orders` (인증 필요)
 
 ```json
 {
-  "marketSessionId": "round-001-hoon",
+  "marketId": "round-001-hoon",
   "targetId": "hoon",
   "side": "SUPPORT",
-  "amount": 5000
+  "investmentAmount": 5000,
+  "idempotencyKey": "client-generated-uuid"
 }
 ```
 
-서버 검증 순서: 로그인 사용자 확인 → 시장이 `OPEN`인지 확인 → `amount`가 10 단위 양의 정수인지 확인 → 잔액 확인 → 투자/포인트 원장/현재 가격/캔들 기록. `marketSessionId`와 `targetId`를 클라이언트가 보냈더라도 서버의 현재 시장 정보로 다시 검증합니다.
+서버 검증 순서: 로그인 사용자 확인 → 시장이 `OPEN`인지 확인 → `investmentAmount`가 양의 정수인지 확인 → 잔액 확인 → 기존 포지션 방향 확인 → 주문/포지션/포인트 원장/현재 가격/캔들 기록. 반대 방향이면 `POSITION_LOCKED`를 반환합니다.
 
 ```json
 {
@@ -218,4 +220,4 @@ window.JORONG_API_BASE_URL = 'https://api.example.com';
 | `scripts/comments-ui.js` | 서버 응답을 댓글 트리와 베스트 HYPE 표시로 렌더링 |
 | `scripts/account-history-ui.js` | 내 투자 화면에 잔액과 투자 로그 렌더링 |
 
-기존의 세부 계약 문서는 `docs/auth-api-contract.md`, `docs/investment-api-contract.md`, `docs/comment-api-contract.md`, `docs/price-candles-api-contract.md`, `docs/market-clock-api-contract.md`에도 남아 있습니다. 이 문서를 우선 기준으로 사용하면 됩니다.
+투자·정산 세부 계약과 PostgreSQL 마이그레이션은 [investment-settlement-api-contract.md](./investment-settlement-api-contract.md), [001_market_position_settlement.postgres.sql](./migrations/001_market_position_settlement.postgres.sql)를 우선 기준으로 사용합니다.

@@ -55,6 +55,8 @@
     try {
       setPending(submitButton, true, '가입 처리 중…');
       const result = await window.AuthService.signup({ nickname, password });
+      // [인게임 튜토리얼 예약] 이번 회원가입으로 만든 계정만 다음 거래소 입장에서 안내를 실행합니다.
+      window.IngameTutorial?.scheduleAfterSignup(result.account);
       signupForm.reset();
       document.querySelector('#signup-terms').checked = true;
       showToast(`${result.account.nickname}님, 회원가입이 완료되었습니다. 로그인해주세요.`);
@@ -80,6 +82,8 @@
       loginForm.reset();
       showToast(`${result.account.nickname}님, 로그인되었습니다.`);
       window.Navigation.show('exchange');
+      // [인게임 튜토리얼 시작] 종목 소개 모달이 있으면 해당 모달이 닫힌 뒤 자동으로 이어집니다.
+      window.IngameTutorial?.startAfterLogin(result.account);
     } catch (error) {
       showToast(error.message);
     } finally {

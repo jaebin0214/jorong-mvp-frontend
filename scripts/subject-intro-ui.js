@@ -36,6 +36,8 @@
     modal.setAttribute('aria-hidden', 'true');
     document.body.classList.remove('is-subject-intro-open');
     lastFocusedElement?.focus?.({ preventScroll: true });
+    // [다음 안내 연결] 회원가입 직후 대기 중인 인게임 튜토리얼이 있다면 종목 소개를 닫은 뒤 이어서 시작합니다.
+    window.dispatchEvent(new CustomEvent('jorong:subject-intro-closed'));
   }
 
   // [첫 거래소 진입] 새로고침 기준 한 번만 자동 안내를 띄우며, 이후에는 종목 이미지 클릭으로 다시 확인합니다.

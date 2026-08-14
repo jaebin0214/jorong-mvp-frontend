@@ -11,6 +11,7 @@ session: {
   id: 'round-002-new-subject',
   startsAt: '2026-08-12T09:00:00+09:00',
   durationHours: 6,
+  nextOpenAt: '2026-08-13T09:00:00+09:00',
 },
 subject: {
   id: 'new-subject',
@@ -23,6 +24,7 @@ subject: {
 - `session.id`: 새 회차마다 반드시 고유한 값으로 변경합니다. 이전 회차의 브라우저 타이머 저장값과 분리하는 기준입니다.
 - `session.startsAt`: 거래 시작 시각입니다. 한국 시간대라면 위 예시처럼 `+09:00`을 포함한 ISO 형식을 사용합니다.
 - `session.durationHours`: 거래 진행 시간입니다. `6`, `4.5`, `0.5`처럼 시간 단위를 사용할 수 있습니다.
+- `session.nextOpenAt`: 종료 화면에 표시할 다음 장 시작 시각입니다. 실제 운영에서는 서버의 `nextOpenAt` 응답이 우선합니다.
 - `subject.id`: 댓글·투자 API로 전송되는 종목 ID입니다. 데이터베이스의 종목 ID와 같아야 합니다.
 - `subject.name`: 거래소 화면에 표시되는 종목명입니다.
 - `subject.imagePath`: `assets` 폴더에 넣은 이미지의 상대 경로입니다.

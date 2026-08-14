@@ -18,14 +18,16 @@ Cache-Control: no-store
   "status": "OPEN",
   "startsAt": "2026-08-12T14:00:00+09:00",
   "endsAt": "2026-08-12T20:00:00+09:00",
+  "nextOpenAt": "2026-08-13T14:00:00+09:00",
   "serverNow": "2026-08-12T15:42:18+09:00"
 }
 ```
 
 - `marketSessionId`: 현재 거래 회차 ID입니다.
-- `status`: `OPEN` 또는 `CLOSED`입니다. `CLOSED`이면 종료 시각과 관계없이 즉시 종료 처리합니다.
+- `status`: `SCHEDULED`, `OPEN`, `CLOSED`, `SETTLED` 중 하나입니다. `CLOSED` 또는 `SETTLED`이면 종료 화면으로 전환합니다.
 - `endsAt`: 서버가 계산한 절대 종료 시각입니다. 반드시 시간대가 포함된 ISO 8601 문자열을 사용합니다.
 - `serverNow`: 응답을 생성한 서버의 현재 시각입니다. 프론트엔드는 이 값과 기기 시각의 차이를 계산합니다.
+- `nextOpenAt`: 종료 화면에서 다음 장까지 남은 시간을 표시하는 절대 시각입니다.
 
 `endsAt` 대신 `startsAt`과 `durationHours`를 함께 반환해도 프론트엔드가 종료 시각을 계산할 수 있지만, 서버가 직접 계산한 `endsAt` 반환을 권장합니다.
 

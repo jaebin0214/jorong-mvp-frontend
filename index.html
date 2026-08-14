@@ -13,7 +13,9 @@
     <link rel="stylesheet" href="./styles/exchange.css" />
     <link rel="stylesheet" href="./styles/board.css" />
     <link rel="stylesheet" href="./styles/investment.css" />
+    <link rel="stylesheet" href="./styles/settlement.css" />
     <link rel="stylesheet" href="./styles/concept-introduction.css" />
+    <link rel="stylesheet" href="./styles/ingame-tutorial.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -143,16 +145,44 @@
           <!-- [거래소 재구성] 전달받은 종목 상세·댓글 통합 와이어프레임을 기준으로 한 화면입니다. -->
           <div class="exchange-rebuild">
             <!-- [거래소 상단] 본문 브랜드 표기는 제거하고, 거래 종료 타이머만 중앙에 유지합니다. -->
-            <div class="exchange-hero-bar"><div class="exchange-countdown">02:59:56</div></div>
+            <div class="exchange-hero-bar"><div class="exchange-countdown-block"><span id="exchange-countdown-label">오늘의 장 마감까지</span><div class="exchange-countdown">02:59:56</div></div></div>
             <div class="exchange-focus-grid">
               <section class="exchange-subject-card"><img class="exchange-subject-image" src="./assets/hoon.png" alt="오늘의 종목 훈이" /><b>훈이</b></section>
               <section class="exchange-chart-card"><div class="exchange-chart-title"><span>오늘의 종목</span><b>훈이</b><div class="exchange-current-value"><strong id="exchange-current-price">1,000 KRW</strong><em id="exchange-price-change">0 KRW (0.00%)</em></div></div><div class="exchange-chart-legend"><span>가격 변동</span><i></i>5 <i class="orange-dot"></i>20 <small>1,300</small></div><div class="exchange-chart"><svg viewBox="0 0 540 170" preserveAspectRatio="none" aria-label="훈이 가격 차트"><path d="M0 20H540M0 62H540M0 104H540M0 146H540"/><g><path d="M18 141V116M42 135V104M66 130V111M90 119V89M114 125V98M138 110V78M162 113V85M186 98V65M210 103V70M234 88V53M258 94V60M282 76V43M306 82V50M330 65V32M354 70V40M378 53V22M402 59V30M426 45V17M450 50V26M474 39V13"/></g><polyline points="0,134 20,130 40,120 60,124 80,108 100,114 120,96 140,102 160,83 180,91 200,70 220,78 240,58 260,94 280,47 300,55 320,38 340,46 360,29 380,37 400,23 420,31 440,20 460,29 480,22 510,27 540,24"/><polyline class="orange-line" points="0,146 50,140 100,131 150,123 200,113 250,104 300,94 350,84 400,74 450,65 500,56 540,52"/></svg><span class="exchange-price-pin" id="exchange-price-pin">1,000</span><div class="exchange-volume"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></section>
-              <!-- [투자 영역] 댓글 전에는 작성 안내를, 댓글 후에는 같은 자리에서 투자 패널을 보여줍니다. -->
-              <aside class="exchange-roast-card"><div class="exchange-roast-cta" id="exchange-roast-cta"><b>투자를 위해 조롱해주세요</b><button type="button" id="exchange-comment-focus">조롱 작성</button></div><section class="investment-panel" id="investment-panel" hidden><h2>투자하기</h2><b class="investment-balance" id="investment-balance">10,000 KRW</b><div class="investment-directions" role="group" aria-label="투자 방향 선택"><button type="button" data-investment-direction="support" aria-pressed="false">옹호</button><button type="button" data-investment-direction="roast" aria-pressed="false">조롱</button></div><div class="investment-amount-control"><label class="investment-amount-input"><input id="investment-amount" type="text" inputmode="numeric" autocomplete="off" aria-label="투자 금액" value="5,000" /><span>KRW</span></label><span><button type="button" data-investment-amount="-10" aria-label="투자 금액 10 KRW 줄이기">−</button><button type="button" data-investment-amount="10" aria-label="투자 금액 10 KRW 늘리기">＋</button></span></div><button class="investment-submit" id="investment-submit" type="button">투자</button></section></aside>
+              <!-- [투자 영역] 투자 전 입력 패널, 투자 후 내 투자 현황, 추가 투자 입력 패널을 같은 자리에서 교체합니다. -->
+              <aside class="exchange-roast-card">
+                <div class="exchange-roast-cta" id="exchange-roast-cta"><b>투자를 위해 조롱해주세요</b><button type="button" id="exchange-comment-focus">조롱 작성</button></div>
+                <section class="investment-panel" id="investment-panel" hidden>
+                  <h2>투자하기</h2><b class="investment-balance" id="investment-balance">10,000 KRW</b>
+                  <div class="investment-directions" role="group" aria-label="투자 방향 선택"><button type="button" data-investment-direction="support" aria-pressed="false">옹호</button><button type="button" data-investment-direction="mock" aria-pressed="false">조롱</button></div>
+                  <div class="investment-amount-control"><label class="investment-amount-input"><input id="investment-amount" type="text" inputmode="numeric" autocomplete="off" aria-label="투자 금액" value="5,000" /><span>KRW</span></label><span><button type="button" data-investment-amount="-10" aria-label="투자 금액 10 KRW 줄이기">−</button><button type="button" data-investment-amount="10" aria-label="투자 금액 10 KRW 늘리기">＋</button></span></div>
+                  <button class="investment-submit" id="investment-submit" type="button">투자</button>
+                </section>
+                <section class="investment-status-card" id="investment-status-card" hidden aria-live="polite">
+                  <header><h2>내 투자 현황</h2><b id="position-side-badge" class="position-side-badge">조롱</b></header>
+                  <div class="position-pnl"><span>평가손익 · 현재가 <b id="position-current-price">0 KRW</b></span><strong id="position-pnl">0 KRW (0.00%)</strong></div>
+                  <div class="position-metrics"><div><span>총 투자금</span><b id="position-total-investment">0 KRW</b></div><div><span>평균 단가</span><b id="position-average-price">0 KRW</b></div><div><span>보유 수량</span><b id="position-quantity">0.0000주</b></div><div><span>평가금액</span><b id="position-estimated-value">0 KRW</b></div></div>
+                  <p class="position-lock-note" id="position-lock-note">한 번 선택한 의견은 장 종료까지 변경할 수 없어요.<br />추가 투자는 선택한 의견에만 가능해요.</p>
+                  <button class="position-add-button" id="position-add-investment" type="button">조롱에 추가 투자</button>
+                </section>
+                <section class="additional-investment-panel" id="additional-investment-panel" hidden aria-live="polite">
+                  <h2><span id="additional-investment-side">조롱</span>에 추가 투자</h2>
+                  <p class="additional-side-lock">의견은 장 종료까지 변경할 수 없습니다.</p>
+                  <div class="additional-execution"><span>현재 체결가</span><b id="additional-execution-price">0 KRW</b><small>예상 추가 수량 <strong id="additional-estimated-quantity">0.0000주</strong></small></div>
+                  <div class="investment-amount-control"><label class="investment-amount-input"><input id="additional-investment-amount" type="text" inputmode="numeric" autocomplete="off" aria-label="추가 투자 금액" value="5,000" /><span>KRW</span></label><span><button type="button" data-additional-investment-amount="-10" aria-label="추가 투자 금액 10 KRW 줄이기">−</button><button type="button" data-additional-investment-amount="10" aria-label="추가 투자 금액 10 KRW 늘리기">＋</button></span></div>
+                  <div class="additional-investment-actions"><button id="additional-investment-cancel" type="button">취소</button><button id="additional-investment-submit" type="button">추가 투자</button></div>
+                </section>
+              </aside>
             </div>
             <!-- [댓글 프로토타입] 서버 저장 없이 현재 브라우저 화면에서만 새 댓글을 추가합니다. -->
             <section class="exchange-community-card"><div class="exchange-community-heading"><div><h1>조롱 커뮤니티</h1><span id="exchange-comment-count">댓글 0</span></div></div><form class="exchange-comment-form" id="exchange-comment-form"><input id="exchange-comment-text" type="text" maxlength="160" placeholder="이 종목에 대한 조롱을 남겨보세요. 댓글은 투자와 별도로 작성할 수 있습니다." aria-label="조롱 댓글" /><button type="submit">조롱 작성</button></form><p class="exchange-comment-empty" id="exchange-comment-empty">첫 번째 조롱을 남겨보세요.</p><div class="exchange-comment-list" id="exchange-comment-list" aria-live="polite"></div></section>
           </div>
+          <!-- [장 종료 정산] 서버가 확정한 마감 가격·정산 결과를 거래 화면 대신 표시합니다. -->
+          <section class="market-settlement-view" id="market-settlement-view" hidden aria-live="polite">
+            <div class="market-settlement-hero"><span>MARKET CLOSED</span><h1>장 종료! 정산이 완료됐어요</h1><p>마감 가격을 기준으로 투자 결과를 계산했습니다.</p><div class="next-market-block"><b>다음 장 시작까지</b><strong id="next-market-countdown">--:--:--</strong><small id="next-market-open-label">다음 장 오픈 시간을 확인 중입니다.</small></div></div>
+            <div class="market-settlement-row"><article class="settlement-subject-card"><img id="settlement-subject-image" src="./assets/hoon.png" alt="오늘의 종목" /><b id="settlement-subject-name">오늘의 종목 · 훈이</b><span id="settlement-close-price">마감 가격 0 KRW</span></article><article class="settlement-result-card" id="settlement-result-card"><header><h2>내 정산 결과</h2><b id="settlement-outcome">변동 없음</b></header><div class="settlement-pnl"><span>최종 실현손익</span><strong id="settlement-realized-pnl">0 KRW (0.00%)</strong></div><div class="settlement-metrics"><div><span>총 투자금</span><b id="settlement-total-investment">0 KRW</b></div><div><span>평균 단가</span><b id="settlement-average-price">0 KRW</b></div><div><span>최종 가격</span><b id="settlement-final-price">0 KRW</b></div><div><span>보유 수량</span><b id="settlement-quantity">0.0000주</b></div></div><div class="settlement-payout"><div><b>정산 지급액</b><span id="settlement-balance-after">정산 후 보유 · 0 KRW</span></div><strong id="settlement-amount">0 KRW</strong></div><p class="settlement-empty" id="settlement-empty" hidden>이번 장에 투자한 내역이 없습니다.</p></article></div>
+            <article class="market-final-summary"><div><h2>최종 시장 결과</h2><p id="settlement-market-volume">총 거래량 0 KRW · 참여 0명</p></div><div class="market-ratio"><div><b id="settlement-support-ratio">옹호 0%</b><b id="settlement-mock-ratio">조롱 0%</b></div><span><i id="settlement-support-bar"></i><i id="settlement-mock-bar"></i></span></div></article>
+          </section>
           <div class="legacy-exchange" aria-hidden="true">
           <div class="page-intro exchange-intro"><div><p class="eyebrow">TODAY'S MARKET</p><h1 id="exchange-title">거래소</h1><p>지금 열려 있는 종목을 살펴보고, 원하는 흐름에 참여하세요.</p></div><label class="market-search"><span>⌕</span><input type="search" placeholder="종목 또는 키워드 검색" aria-label="종목 검색" /></label></div>
           <div class="category-tabs" role="tablist" aria-label="종목 분류"><button class="is-active" type="button">전체</button><button type="button">인기</button><button type="button">급상승</button><button type="button">신규</button><button type="button">마감 임박</button></div>
@@ -224,6 +254,20 @@
     <!-- [맨 위로 이동] 댓글창의 왼쪽 바깥에서, 스크롤 중에도 화면 하단에 고정되는 공통 버튼입니다. -->
     <button class="scroll-top-button" id="scroll-top-button" type="button" hidden aria-label="페이지 맨 위로 이동"><span aria-hidden="true">↑</span><span>맨 위로</span></button>
 
+    <!-- [인게임 튜토리얼] 회원가입 직후 첫 거래소 입장에서 주요 기능을 순서대로 안내합니다. -->
+    <div class="ingame-tutorial-layer" id="ingame-tutorial" hidden aria-hidden="true">
+      <div class="ingame-tutorial-spotlight" id="ingame-tutorial-spotlight" aria-hidden="true"></div>
+      <section class="ingame-tutorial-callout" id="ingame-tutorial-callout" role="dialog" aria-modal="true" aria-labelledby="ingame-tutorial-title" aria-describedby="ingame-tutorial-description">
+        <p class="ingame-tutorial-step" id="ingame-tutorial-step"></p>
+        <h2 id="ingame-tutorial-title"></h2>
+        <p id="ingame-tutorial-description"></p>
+        <div class="ingame-tutorial-actions">
+          <button class="ingame-tutorial-skip" id="ingame-tutorial-skip" type="button">건너뛰기</button>
+          <button class="ingame-tutorial-next" id="ingame-tutorial-next" type="button">다음</button>
+        </div>
+      </section>
+    </div>
+
     <!-- [컨셉 소개] 최초 접속 시 MVP 본문보다 먼저 표시되는 4장 서비스 소개 레이어입니다. -->
     <div class="concept-introduction-layer" id="concept-introduction" aria-hidden="true"><section class="concept-introduction" role="dialog" aria-modal="true" aria-labelledby="concept-introduction-title"><div class="concept-introduction-art" id="concept-introduction-art" aria-hidden="true"></div><div class="concept-introduction-copy"><h1 id="concept-introduction-title"></h1><p id="concept-introduction-description"></p><button class="concept-introduction-next" id="concept-introduction-next" type="button">다음</button><div class="concept-introduction-progress" id="concept-introduction-progress" aria-label="컨셉 소개 진행 상태"></div></div></section></div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -248,10 +292,14 @@
     <script src="./scripts/price-history-service.js"></script>
     <!-- [인증 데이터] 회원가입·로그인 API와 API 미연결 시의 화면 검증용 임시 저장소를 담당합니다. -->
     <script src="./scripts/auth-service.js"></script>
+    <!-- [인게임 튜토리얼] 회원가입 직후의 거래소 가이드 진행 상태와 강조 영역을 관리합니다. -->
+    <script src="./scripts/ingame-tutorial.js"></script>
     <!-- [인증 UI] 입력 검증, 중복 확인, 로그인 후 화면 전환을 담당합니다. -->
     <script src="./scripts/auth-ui.js"></script>
     <script src="./scripts/header-auth-ui.js"></script>
     <script src="./scripts/market-ui.js"></script>
+    <!-- [고정밀 계산] BigInt 기반의 수량·평균 단가·손익 계산을 투자 서비스보다 먼저 불러옵니다. -->
+    <script src="./scripts/financial-math.js"></script>
     <!-- [투자 데이터] API 연결 전에는 로컬 모의 응답을 사용하고, 연결 후에는 투자 API를 호출합니다. -->
     <script src="./scripts/investment-service.js"></script>
     <!-- [가치 UI] 투자 결과로 달라진 항목 가치를 차트 제목과 가격 표시에 반영합니다. -->
@@ -260,6 +308,8 @@
     <script src="./scripts/price-chart-ui.js"></script>
     <!-- [투자 UI] 투자 팝업, 방향 선택, 금액 증감을 담당합니다. -->
     <script src="./scripts/investment-ui.js"></script>
+    <!-- [정산 UI] 장 종료 뒤 서버 정산 결과와 다음 장 카운트다운을 표시합니다. -->
+    <script src="./scripts/market-settlement-ui.js"></script>
     <script src="./scripts/account-history-ui.js"></script>
     <!-- [거래 종료 UI] 카운트다운 종료 이벤트를 받아 거래 영역을 딤 처리하고 조작을 막습니다. -->
     <script src="./scripts/market-end-ui.js"></script>

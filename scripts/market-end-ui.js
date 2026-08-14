@@ -25,6 +25,11 @@
 
   // [종료 상태 반영] 화면 위 안내를 표시하고 거래에 쓰이는 입력 요소를 비활성화합니다.
   function showEndedState() {
+    // [정산 결과 우선] 새 정산 화면이 준비되어 있으면 기존 딤 오버레이 대신 해당 화면으로 전환합니다.
+    if (window.MarketSettlementUI) {
+      window.MarketSettlementUI.show();
+      return;
+    }
     const overlay = getOverlay();
     if (!focusGrid || !overlay || focusGrid.classList.contains('is-market-ended')) return;
 
