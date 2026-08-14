@@ -7,13 +7,13 @@ window.AuthService = (() => {
   let currentAccount = null;
   let accessToken = sessionStorage.getItem(TOKEN_STORAGE_KEY) || '';
 
-  // [입력값 검사] 사용자 경험을 위한 사전 검사이며, 중복 닉네임과 비밀번호 보안 검사는 반드시 서버에서도 수행해야 합니다.
+  // [입력값 검사] 화면에서는 아이디로 부르되, API 호환을 위해 내부 필드명 nickname을 유지합니다.
   function validateCredentials({ nickname, password }) {
     const normalizedNickname = String(nickname || '').trim();
     const normalizedPassword = String(password || '');
 
     if (normalizedNickname.length < 2 || normalizedNickname.length > 12) {
-      throw new Error('닉네임은 2~12자로 입력해주세요.');
+      throw new Error('아이디는 2~12자로 입력해주세요.');
     }
     if (normalizedPassword.length < 8) {
       throw new Error('비밀번호는 8자 이상 입력해주세요.');
@@ -75,7 +75,7 @@ window.AuthService = (() => {
 
   // [로컬 계정] API 주소가 없을 때만 쓰는 시연용 계정입니다. 실제 서비스의 비밀번호와 포인트는 서버 DB가 보관합니다.
   function createLocalAccount(credentials) {
-    if (localAccounts.has(credentials.nickname)) throw new Error('이미 사용 중인 닉네임입니다.');
+    if (localAccounts.has(credentials.nickname)) throw new Error('이미 사용 중인 아이디입니다.');
     const account = {
       id: `local-account-${Date.now()}`,
       nickname: credentials.nickname,
@@ -90,7 +90,7 @@ window.AuthService = (() => {
   async function checkNicknameAvailability(nickname) {
     const normalizedNickname = String(nickname || '').trim();
     if (normalizedNickname.length < 2 || normalizedNickname.length > 12) {
-      throw new Error('닉네임은 2~12자로 입력해주세요.');
+      throw new Error('아이디는 2~12자로 입력해주세요.');
     }
     return API_BASE_URL
       ? request(`/auth/nickname-availability?nickname=${encodeURIComponent(normalizedNickname)}`, { method: 'GET' })
@@ -106,7 +106,7 @@ window.AuthService = (() => {
     return result;
   }
 
-  // [로그인] 닉네임과 비밀번호를 서버로 전달하고, 반환된 포인트와 투자 내역을 현재 세션에 보관합니다.
+  // [로그인] 아이디와 비밀번호를 서버로 전달하고, 반환된 포인트와 투자 내역을 현재 세션에 보관합니다.
   async function login(payload) {
     const credentials = validateCredentials(payload);
     let result;
@@ -114,7 +114,7 @@ window.AuthService = (() => {
       result = await request('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
     } else {
       const local = localAccounts.get(credentials.nickname);
-      if (!local || local.password !== credentials.password) throw new Error('닉네임 또는 비밀번호가 일치하지 않습니다.');
+      if (!local || local.password !== credentials.password) throw new Error('아이디 또는 비밀번호가 일치하지 않습니다.');
       const { password, ...account } = local;
       result = { account, wallet: { points: account.points }, investmentLogs: account.investmentLogs };
     }

@@ -23,17 +23,17 @@
     button.textContent = isPending ? pendingLabel : button.dataset.defaultLabel;
   }
 
-  // [닉네임 중복 확인] 선택 API가 구현되면 같은 버튼이 실제 서버 중복 검사로 자동 전환됩니다.
+  // [아이디 중복 확인] 내부 API 필드명(nickname)은 유지하고, 화면 문구만 아이디로 표기합니다.
   nicknameCheckButton.addEventListener('click', async () => {
     try {
       const result = await window.AuthService.checkNicknameAvailability(nicknameInput.value);
-      showToast(result.available ? '사용 가능한 닉네임입니다.' : '이미 사용 중인 닉네임입니다.');
+      showToast(result.available ? '사용 가능한 아이디입니다.' : '이미 사용 중인 아이디입니다.');
     } catch (error) {
       showToast(error.message);
     }
   });
 
-  // [회원가입 제출] 닉네임·비밀번호를 API 계약과 같은 payload로 전달한 뒤 로그인 화면으로 이동합니다.
+  // [회원가입 제출] 아이디·비밀번호를 API 계약의 nickname 필드로 전달한 뒤 로그인 화면으로 이동합니다.
   signupForm.addEventListener('submit', async (event) => {
     event.preventDefault();
 

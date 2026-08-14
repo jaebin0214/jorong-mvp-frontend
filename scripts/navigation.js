@@ -19,8 +19,16 @@ window.Navigation = (() => {
   }
 
   // data-view 속성만 지정하면 어느 버튼에서든 같은 방식으로 화면을 이동할 수 있습니다.
+  // 단, 랜딩의 시작하기는 비로그인 사용자를 먼저 로그인 화면으로 안내합니다.
   document.querySelectorAll('[data-view]').forEach((button) => {
-    button.addEventListener('click', () => show(button.dataset.view));
+    button.addEventListener('click', () => {
+      if (button.id === 'landing-start') {
+        const isLoggedIn = Boolean(window.AuthService?.getCurrentAccount?.());
+        show(isLoggedIn ? 'exchange' : 'login');
+        return;
+      }
+      show(button.dataset.view);
+    });
   });
 
   return { show };
