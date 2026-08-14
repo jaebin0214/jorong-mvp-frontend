@@ -14,6 +14,7 @@
   const additionalCancelButton = document.querySelector('#additional-investment-cancel');
   const addInvestmentButton = document.querySelector('#position-add-investment');
   const balanceLabel = document.querySelector('#investment-balance');
+  const additionalBalanceLabel = document.querySelector('#additional-investment-balance');
   const headerBalanceLabel = document.querySelector('#exchange-header-balance');
   const toast = document.querySelector('#toast');
   const math = window.FinancialMath;
@@ -45,6 +46,20 @@
     return `${Math.max(0, Math.round(Number(value) || 0)).toLocaleString('ko-KR')} KRW`;
   }
 
+  // [사용 가능 잔액] 투자 직후의 응답을 우선 사용하고, 화면 초기화 중에는 서비스의 최신 스냅샷을 보조로 사용합니다.
+  function getAvailableBalance() {
+    const snapshotPoints = Number(activeSnapshot?.wallet?.points);
+    const servicePoints = Number(window.InvestmentService?.getSnapshot?.()?.wallet?.points);
+    const points = Number.isFinite(snapshotPoints) ? snapshotPoints : servicePoints;
+    return Number.isFinite(points) ? Math.max(0, Math.floor(points)) : 0;
+  }
+
+  // [프론트 잔액 한도] 버튼·직접 입력 모두 사용 가능 포인트를 넘지 않도록 같은 규칙으로 제한합니다.
+  function clampAmountToAvailableBalance(value) {
+    const amount = Math.max(0, Math.floor(Number(value) || 0));
+    return Math.min(amount, getAvailableBalance());
+  }
+
   function formatInvestment(value) {
     return math.formatKrwUnsigned(String(value || '0'), 0);
   }
@@ -62,18 +77,25 @@
   }
 
   function renderFirstAmount() {
+    firstAmount = clampAmountToAvailableBalance(firstAmount);
     firstAmountInput.value = firstAmount > 0 ? firstAmount.toLocaleString('ko-KR') : '';
   }
 
   function renderAdditionalAmount() {
+    additionalAmount = clampAmountToAvailableBalance(additionalAmount);
     additionalAmountInput.value = additionalAmount > 0 ? additionalAmount.toLocaleString('ko-KR') : '';
     renderAdditionalPreview();
   }
 
   function renderBalance(points) {
-    const display = formatBalance(points);
+    const availablePoints = Number.isFinite(Number(points)) ? Math.max(0, Math.floor(Number(points))) : getAvailableBalance();
+    const display = formatBalance(availablePoints);
     balanceLabel.textContent = display;
+    if (additionalBalanceLabel) additionalBalanceLabel.textContent = display;
     if (headerBalanceLabel) headerBalanceLabel.textContent = display;
+    // 주문 완료 또는 잔액 동기화 뒤, 입력된 금액도 새 잔액을 넘지 않게 즉시 보정합니다.
+    firstAmount = Math.min(firstAmount, availablePoints);
+    additionalAmount = Math.min(additionalAmount, availablePoints);
   }
 
   // [첫 의견 선택] 첫 주문에서만 옹호/조롱을 바꿀 수 있으며, 추가 투자 화면에는 이 선택지가 없습니다.
@@ -148,6 +170,8 @@
     const position = activeSnapshot?.position;
     if (!position) return openFirstInvestment();
     document.querySelector('#additional-investment-side').textContent = sideLabel(position.side);
+    // 첫 투자 후 남은 잔액보다 큰 기본 입력값은 남은 잔액으로 낮춥니다.
+    additionalAmount = clampAmountToAvailableBalance(additionalAmount);
     renderAdditionalAmount();
     setVisiblePanel(additionalPanel);
     additionalAmountInput.focus({ preventScroll: true });
@@ -161,7 +185,11 @@
 
   function attachAmountInput(input, readAmount, writeAmount, render) {
     input.addEventListener('input', () => {
-      writeAmount(parseInput(input));
+      const requestedAmount = parseInput(input);
+      const allowedAmount = clampAmountToAvailableBalance(requestedAmount);
+      // 숫자를 직접 입력해도 현재 보유 포인트보다 큰 값은 입력 즉시 한도로 제한합니다.
+      if (requestedAmount !== allowedAmount) input.value = String(allowedAmount);
+      writeAmount(allowedAmount);
       if (input === additionalAmountInput) renderAdditionalPreview();
     });
     input.addEventListener('focus', () => { input.value = readAmount() ? String(readAmount()) : ''; });
@@ -176,6 +204,11 @@
     }
     if (!Number.isSafeInteger(amount) || amount <= 0) {
       showToast('투자금은 1 KRW 이상의 정수로 입력해주세요.');
+      return;
+    }
+    const availableBalance = getAvailableBalance();
+    if (amount > availableBalance) {
+      showToast(`보유 포인트가 부족합니다. 현재 ${formatBalance(availableBalance)}까지 투자할 수 있어요.`);
       return;
     }
 
@@ -204,11 +237,11 @@
 
   directionButtons.forEach((button) => button.addEventListener('click', () => selectSide(button)));
   firstAmountButtons.forEach((button) => button.addEventListener('click', () => {
-    firstAmount = Math.max(1, firstAmount + Number(button.dataset.investmentAmount));
+    firstAmount = clampAmountToAvailableBalance(Math.max(1, firstAmount + Number(button.dataset.investmentAmount)));
     renderFirstAmount();
   }));
   additionalAmountButtons.forEach((button) => button.addEventListener('click', () => {
-    additionalAmount = Math.max(1, additionalAmount + Number(button.dataset.additionalInvestmentAmount));
+    additionalAmount = clampAmountToAvailableBalance(Math.max(1, additionalAmount + Number(button.dataset.additionalInvestmentAmount)));
     renderAdditionalAmount();
   }));
   attachAmountInput(firstAmountInput, () => firstAmount, (value) => { firstAmount = value; }, renderFirstAmount);

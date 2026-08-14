@@ -52,6 +52,8 @@
 .additional-investment-panel { gap:11px; }
 .additional-investment-panel h2 span { color:#f5425c; }
 .additional-side-lock { margin:0; color:#6e7d99; font-size:10px; }
+.additional-investment-balance { display:flex; align-items:center; justify-content:space-between; margin:0; color:#6e7d99; font-size:10px; }
+.additional-investment-balance strong { color:#092045; font-size:12px; }
 .additional-execution { display:grid; grid-template-columns:1fr auto; gap:4px 12px; border-radius:7px; padding:9px 10px; background:#f6f9ff; }
 .additional-execution span, .additional-execution small { color:#6e7d99; font-size:10px; }
 .additional-execution b { color:#092045; font-size:14px; }

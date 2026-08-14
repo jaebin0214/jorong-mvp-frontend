@@ -8,6 +8,9 @@
   const LOCAL_STORE_VERSION = 2;
   const LOCAL_STORE_KEY = `jorong:investment-ledger:${config.session.id}`;
   const INITIAL_POINTS = 10000;
+  // [저장소 예외 대비] file://, 시크릿 모드 등 localStorage를 쓸 수 없는 환경에서도
+  // 같은 접속 중에는 첫 주문 뒤의 잔액 원장을 잃지 않도록 메모리 사본을 유지합니다.
+  let memoryLocalLedger = null;
   const state = {
     walletPoints: INITIAL_POINTS,
     targetValue: config.subject.initialPrice,
@@ -70,9 +73,15 @@
   }
 
   function loadLocalLedger() {
+    const isCurrentLedger = (ledger) => ledger?.version === LOCAL_STORE_VERSION && ledger?.market?.id === getMarketSessionId();
+    // localStorage 접근이 막힌 경우에도 추가 투자 때 새 10,000 KRW 원장을 만들지 않게 합니다.
+    if (isCurrentLedger(memoryLocalLedger)) return memoryLocalLedger;
     try {
       const stored = JSON.parse(window.localStorage.getItem(LOCAL_STORE_KEY) || 'null');
-      if (stored?.version === LOCAL_STORE_VERSION && stored?.market?.id === getMarketSessionId()) return stored;
+      if (isCurrentLedger(stored)) {
+        memoryLocalLedger = stored;
+        return memoryLocalLedger;
+      }
     } catch (_) {
       // 손상된 시연 데이터는 새로운 회차 원장으로 교체합니다.
     }
@@ -82,6 +91,8 @@
   }
 
   function saveLocalLedger(ledger) {
+    // 화면에서 이어지는 모든 주문은 이 원장을 공통으로 사용합니다.
+    memoryLocalLedger = ledger;
     try { window.localStorage.setItem(LOCAL_STORE_KEY, JSON.stringify(ledger)); } catch (_) { /* 저장 공간 제한 시 현재 화면 상태만 유지합니다. */ }
   }
 
@@ -231,7 +242,12 @@
     if (account.position?.side && window.FinancialMath.normalizeSide(account.position.side) !== normalizedSide) {
       throw createError('POSITION_LOCKED', '한 번 선택한 의견은 장 종료까지 변경할 수 없습니다.');
     }
-    if (integerAmount > account.walletPoints) throw createError('INSUFFICIENT_BALANCE', '보유 포인트가 부족합니다.');
+    // [잔액 기준] 매 주문은 최초 지급액이 아니라, 같은 원장에 저장된 직전 주문 후 잔액을 기준으로 검사합니다.
+    const balanceBeforeOrder = Number(account.walletPoints);
+    if (!Number.isSafeInteger(balanceBeforeOrder) || balanceBeforeOrder < 0) {
+      throw createError('WALLET_STATE_INVALID', '보유 포인트 상태를 확인할 수 없습니다. 새로고침 후 다시 시도해주세요.');
+    }
+    if (integerAmount > balanceBeforeOrder) throw createError('INSUFFICIENT_BALANCE', '보유 포인트가 부족합니다.');
 
     const safeIdempotencyKey = String(idempotencyKey || makeIdempotencyKey());
     if (account.processedIdempotencyKeys.includes(safeIdempotencyKey)) {
@@ -264,7 +280,8 @@
       createdAt: new Date().toISOString(),
     };
 
-    account.walletPoints -= integerAmount;
+    // 추가 투자는 "초기 10,000 - 이번 투자금"이 아니라 "직전 잔액 - 이번 투자금"으로 계산합니다.
+    account.walletPoints = balanceBeforeOrder - integerAmount;
     account.position = { ...nextPosition, id: account.position?.id || `local-position-${getCurrentUserKey()}-${getMarketSessionId()}`, updatedAt: order.createdAt };
     account.orders.unshift(order);
     account.processedIdempotencyKeys.push(safeIdempotencyKey);
