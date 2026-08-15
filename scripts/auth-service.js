@@ -2,10 +2,50 @@
 window.AuthService = (() => {
   const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
   const TOKEN_STORAGE_KEY = 'jorong-mvp-access-token';
+  const LOCAL_SESSION_STORAGE_KEY = 'jorong-mvp-local-session';
   const INITIAL_POINTS = 10000;
   const localAccounts = new Map();
   let currentAccount = null;
-  let accessToken = sessionStorage.getItem(TOKEN_STORAGE_KEY) || '';
+  let accessToken = readSessionStorage(TOKEN_STORAGE_KEY);
+
+  // [안전한 탭 저장소] 브라우저 정책으로 sessionStorage가 막혀도 인증 화면 전체가 멈추지 않게 합니다.
+  function readSessionStorage(key) {
+    try { return window.sessionStorage.getItem(key) || ''; } catch (_) { return ''; }
+  }
+
+  function writeSessionStorage(key, value) {
+    try { window.sessionStorage.setItem(key, value); } catch (_) { /* no-op */ }
+  }
+
+  function removeSessionStorage(key) {
+    try { window.sessionStorage.removeItem(key); } catch (_) { /* no-op */ }
+  }
+
+  // [로컬 데모 세션] API 미연결 시에도 새로고침으로 로그인 화면이 초기화되지 않도록
+  // 비밀번호를 제외한 계정 정보만 현재 브라우저 탭의 sessionStorage에 보관합니다.
+  function persistLocalSession(account) {
+    if (API_BASE_URL || !account?.id || !account?.nickname) return;
+    const storedPoints = Number(account.points);
+    const safeAccount = {
+      id: account.id,
+      nickname: account.nickname,
+      points: Number.isFinite(storedPoints) && storedPoints >= 0 ? storedPoints : INITIAL_POINTS,
+      investmentLogs: Array.isArray(account.investmentLogs) ? account.investmentLogs : [],
+      createdAt: account.createdAt,
+    };
+    writeSessionStorage(LOCAL_SESSION_STORAGE_KEY, JSON.stringify(safeAccount));
+  }
+
+  function getPersistedLocalSession() {
+    if (API_BASE_URL) return null;
+    try {
+      const saved = JSON.parse(readSessionStorage(LOCAL_SESSION_STORAGE_KEY) || 'null');
+      return saved?.id && saved?.nickname ? saved : null;
+    } catch (_) {
+      removeSessionStorage(LOCAL_SESSION_STORAGE_KEY);
+      return null;
+    }
+  }
 
   // [입력값 검사] 화면에서는 아이디로 부르되, API 호환을 위해 내부 필드명 nickname을 유지합니다.
   function validateCredentials({ nickname, password }) {
@@ -34,7 +74,7 @@ window.AuthService = (() => {
 
     if (returnedToken) {
       accessToken = returnedToken;
-      sessionStorage.setItem(TOKEN_STORAGE_KEY, returnedToken);
+      writeSessionStorage(TOKEN_STORAGE_KEY, returnedToken);
     }
 
     if (!accountSource) return null;
@@ -44,6 +84,7 @@ window.AuthService = (() => {
       points: Number(walletSource.points ?? accountSource.points ?? INITIAL_POINTS),
       investmentLogs: payload.investmentLogs || payload.investments || accountSource.investmentLogs || [],
     };
+    persistLocalSession(currentAccount);
 
     // [화면 동기화 이벤트] 투자 금액·마이페이지 등 독립된 UI 파일이 로그인 정보를 직접 참조하지 않도록 이벤트로 전달합니다.
     window.dispatchEvent(new CustomEvent('jorong:auth-session', {
@@ -122,9 +163,13 @@ window.AuthService = (() => {
     return result;
   }
 
-  // [재접속 복원] 서버 인증이 설정되면 앱 시작 시 /auth/me를 불러와 새로고침 후에도 지갑·투자 내역을 복원합니다.
+  // [재접속 복원] 서버 연결 시 /auth/me, 로컬 시연에서는 비밀번호를 제외한 탭 세션으로 로그인 상태를 복원합니다.
   async function restoreSession() {
-    if (!API_BASE_URL) return currentAccount;
+    if (!API_BASE_URL) {
+      if (currentAccount) return currentAccount;
+      const savedAccount = getPersistedLocalSession();
+      return savedAccount ? applySession({ account: savedAccount, wallet: { points: savedAccount.points }, investmentLogs: savedAccount.investmentLogs }) : null;
+    }
     try {
       const result = await request('/auth/me', { method: 'GET' });
       applySession(result);
@@ -142,7 +187,8 @@ window.AuthService = (() => {
     }
     accessToken = '';
     currentAccount = null;
-    sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+    removeSessionStorage(TOKEN_STORAGE_KEY);
+    removeSessionStorage(LOCAL_SESSION_STORAGE_KEY);
     window.dispatchEvent(new CustomEvent('jorong:auth-session', { detail: { account: null, wallet: null, investmentLogs: [] } }));
   }
 

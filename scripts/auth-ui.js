@@ -57,8 +57,9 @@
       const result = await window.AuthService.signup({ nickname, password });
       // [인게임 튜토리얼 예약] 이번 회원가입으로 만든 계정만 다음 거래소 입장에서 안내를 실행합니다.
       window.IngameTutorial?.scheduleAfterSignup(result.account);
+      // 가입·로그인 흐름 중에는 컨셉 소개를 다시 열지 않고, 사용자가 원할 때만 랜딩에서 다시 볼 수 있게 합니다.
+      window.ConceptIntroduction?.complete?.();
       signupForm.reset();
-      document.querySelector('#signup-terms').checked = true;
       showToast(`${result.account.nickname}님, 회원가입이 완료되었습니다. 로그인해주세요.`);
       window.Navigation.show('login');
     } catch (error) {
@@ -81,6 +82,8 @@
       const result = await window.AuthService.login({ nickname, password });
       loginForm.reset();
       showToast(`${result.account.nickname}님, 로그인되었습니다.`);
+      // Edge 등에서 저장소 기록이 늦게 반영되어도 로그인 직후 소개 레이어가 거래소를 덮지 않게 즉시 닫습니다.
+      window.ConceptIntroduction?.complete?.();
       window.Navigation.show('exchange');
       // [인게임 튜토리얼 시작] 종목 소개 모달이 있으면 해당 모달이 닫힌 뒤 자동으로 이어집니다.
       window.IngameTutorial?.startAfterLogin(result.account);

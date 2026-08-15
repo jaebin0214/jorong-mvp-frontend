@@ -19,9 +19,12 @@
     showToast('주문 내용을 확인했습니다. 실제 포인트 거래 기능은 다음 단계에서 연결됩니다.');
   });
 
-  // localStorage에 완료 기록이 없을 때만 최초 진입 컨셉 소개를 표시합니다.
-  // [로그인 복원] 백엔드가 /auth/me를 제공하면 새로고침 후에도 닉네임·포인트·투자 내역을 복원합니다.
-  window.AuthService?.restoreSession?.();
-
-  window.ConceptIntroduction.start();
+  // [인증 우선 초기화] Edge처럼 저장소·복원 시점이 달라도 로그인 세션을 먼저 확인합니다.
+  // 인증된 사용자는 컨셉 소개를 자동으로 보지 않으며, 비로그인 첫 방문자에게만 소개를 엽니다.
+  (async () => {
+    await window.AuthService?.restoreSession?.();
+    const isLoggedIn = Boolean(window.AuthService?.getCurrentAccount?.());
+    if (isLoggedIn) window.ConceptIntroduction?.complete?.();
+    else window.ConceptIntroduction?.start?.();
+  })();
 })();

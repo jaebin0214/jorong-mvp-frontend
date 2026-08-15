@@ -1,6 +1,7 @@
 // [컨셉 소개 제어] 첫 방문 여부, 4장 슬라이드 렌더링, 다시 보기 동작을 담당합니다.
 window.ConceptIntroduction = (() => {
   const storageKey = 'jorong-mvp-concept-introduction-complete';
+  const sessionStorageKey = `${storageKey}:session`;
   const layer = document.querySelector('#concept-introduction');
   const art = document.querySelector('#concept-introduction-art');
   const title = document.querySelector('#concept-introduction-title');
@@ -15,7 +16,7 @@ window.ConceptIntroduction = (() => {
     return { start: () => false, replay: () => false, complete: () => {} };
   }
 
-  // [최초 방문 저장] localStorage를 우선 사용하고, 사용할 수 없는 환경에서는 쿠키를 보조 저장소로 사용합니다.
+  // [최초 방문 저장] Edge의 추적 방지·file:// 환경도 고려해 localStorage, sessionStorage, 쿠키를 함께 사용합니다.
   function getCookieValue(name) {
     const prefix = `${name}=`;
     const entry = document.cookie.split('; ').find((item) => item.startsWith(prefix));
@@ -27,11 +28,16 @@ window.ConceptIntroduction = (() => {
       if (window.localStorage.getItem(storageKey) === 'true') return true;
     } catch { /* 저장소가 차단된 환경에서는 쿠키를 확인합니다. */ }
 
+    try {
+      if (window.sessionStorage.getItem(sessionStorageKey) === 'true') return true;
+    } catch { /* 같은 탭의 sessionStorage도 사용할 수 없으면 쿠키를 확인합니다. */ }
+
     return getCookieValue(storageKey) === 'true';
   }
 
   function persistIntroductionCompletion() {
     try { window.localStorage.setItem(storageKey, 'true'); } catch { /* no-op */ }
+    try { window.sessionStorage.setItem(sessionStorageKey, 'true'); } catch { /* no-op */ }
     try { document.cookie = `${storageKey}=true; max-age=31536000; path=/; samesite=lax`; } catch { /* no-op */ }
   }
 
@@ -66,6 +72,8 @@ window.ConceptIntroduction = (() => {
 
   // [시작] 완료 기록이 없는 첫 방문에만 열고, 다시 보기 버튼은 force 옵션으로 항상 열 수 있습니다.
   function open({ force = false } = {}) {
+    // 로그인한 사용자는 자동으로 컨셉 소개를 다시 보지 않고, 랜딩의 다시 보기 버튼으로만 열 수 있습니다.
+    if (!force && window.AuthService?.getCurrentAccount?.()) return false;
     if (!force && hasCompletedIntroduction()) return false;
 
     step = 0;

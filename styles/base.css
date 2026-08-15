@@ -23,5 +23,8 @@ button, a { -webkit-tap-highlight-color:transparent; }
 .text-button:hover { color:#164ec5; }
 
 /* [알림] 아직 서버와 연결되지 않은 버튼의 정적 안내 메시지입니다. */
-.toast { position:fixed; z-index:200; right:28px; bottom:28px; max-width:min(440px, calc(100% - 40px)); padding:18px 22px; border-radius:10px; color:#fff; background:var(--navy-deep); box-shadow:var(--shadow); font-size:16px; font-weight:750; line-height:1.5; opacity:0; transform:translateY(10px); pointer-events:none; transition:.18s ease; }
-.toast.is-visible { opacity:1; transform:translateY(0); }
+/* [공통 토스트] 어떤 화면의 알림이든 하단 중앙에서 넉넉한 크기로 같은 방식으로 표시합니다. */
+.toast { position:fixed; z-index:200; left:50%; bottom:34px; width:max-content; min-width:300px; max-width:min(620px, calc(100% - 32px)); padding:21px 28px; border-radius:14px; color:#fff; background:var(--navy-deep); box-shadow:0 12px 30px rgba(12, 42, 94, .28); font-size:19px; font-weight:750; line-height:1.45; text-align:center; opacity:0; transform:translate(-50%, 18px); pointer-events:none; transition:.18s ease; }
+.toast.is-visible { opacity:1; transform:translate(-50%, 0); }
+
+@media (max-width:560px) { .toast { bottom:22px; min-width:0; padding:17px 20px; font-size:16px; } }

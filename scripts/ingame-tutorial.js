@@ -1,6 +1,8 @@
 // [인게임 튜토리얼] 회원가입 후 첫 로그인한 사용자에게 거래소의 핵심 기능을 단계별로 보여줍니다.
 (() => {
   const PENDING_SIGNUP_KEY = 'jorong:ingame-tutorial-pending-signup';
+  // [Edge 저장소 보완] 일부 Edge 환경에서 sessionStorage만 차단되는 경우를 대비한 영속 예약 키입니다.
+  const PENDING_SIGNUP_FALLBACK_KEY = 'jorong:ingame-tutorial-pending-signup:fallback';
   const layer = document.querySelector('#ingame-tutorial');
   const spotlight = document.querySelector('#ingame-tutorial-spotlight');
   const callout = document.querySelector('#ingame-tutorial-callout');
@@ -11,6 +13,9 @@
   const skipButton = document.querySelector('#ingame-tutorial-skip');
   let activeStepIndex = 0;
   let queuedAccount = null;
+  // [저장소 대체] Edge에서 sessionStorage가 차단되어도 같은 화면의 가입→로그인 흐름은 유지합니다.
+  let pendingSignupMemory = null;
+  let startAfterLoginTimer = null;
   let isOpen = false;
 
   // [튜토리얼 단계] selector를 바꾸면 각 단계가 강조할 거래소 요소를 쉽게 교체할 수 있습니다.
@@ -43,12 +48,28 @@
 
   function getPendingSignup() {
     try {
-      const saved = sessionStorage.getItem(PENDING_SIGNUP_KEY);
-      return saved ? JSON.parse(saved) : null;
+      const saved = window.sessionStorage.getItem(PENDING_SIGNUP_KEY);
+      if (saved) {
+        const pending = JSON.parse(saved);
+        pendingSignupMemory = pending;
+        return pending;
+      }
     } catch (_) {
-      sessionStorage.removeItem(PENDING_SIGNUP_KEY);
-      return null;
+      // Edge에서 sessionStorage 접근이 거절되면 아래 localStorage 및 메모리 예약을 계속 확인합니다.
     }
+
+    try {
+      const fallback = window.localStorage.getItem(PENDING_SIGNUP_FALLBACK_KEY);
+      if (fallback) {
+        const pending = JSON.parse(fallback);
+        pendingSignupMemory = pending;
+        return pending;
+      }
+    } catch (_) {
+      // localStorage도 차단된 환경은 같은 페이지의 메모리 예약으로 동작합니다.
+    }
+
+    return pendingSignupMemory;
   }
 
   function matchesPendingAccount(account, pending) {
@@ -60,11 +81,15 @@
   // [회원가입 예약] 가입 성공 시에만 저장합니다. 백엔드 연결 뒤에는 로그인 응답의 needsIngameTutorial 값으로 대체할 수 있습니다.
   function scheduleAfterSignup(account) {
     if (!account?.nickname) return;
-    sessionStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify({ id: account.id || '', nickname: account.nickname }));
+    pendingSignupMemory = { id: account.id || '', nickname: account.nickname };
+    try { window.sessionStorage.setItem(PENDING_SIGNUP_KEY, JSON.stringify(pendingSignupMemory)); } catch (_) { /* Edge 저장소 차단 시 메모리 예약을 사용합니다. */ }
+    try { window.localStorage.setItem(PENDING_SIGNUP_FALLBACK_KEY, JSON.stringify(pendingSignupMemory)); } catch (_) { /* no-op */ }
   }
 
   function clearPendingSignup() {
-    sessionStorage.removeItem(PENDING_SIGNUP_KEY);
+    pendingSignupMemory = null;
+    try { window.sessionStorage.removeItem(PENDING_SIGNUP_KEY); } catch (_) { /* no-op */ }
+    try { window.localStorage.removeItem(PENDING_SIGNUP_FALLBACK_KEY); } catch (_) { /* no-op */ }
     queuedAccount = null;
   }
 
@@ -151,15 +176,27 @@
     renderStep();
   }
 
-  // [회원가입 후 로그인] 종목 소개 모달이 먼저 열려 있으면, "거래 시작하기"를 누른 직후에 인게임 튜토리얼을 보여줍니다.
+  // [회원가입 후 로그인] 거래소 전환과 종목 소개 모달 렌더링이 끝난 뒤에 튜토리얼을 엽니다.
+  // Edge에서는 화면 전환 직후 모달의 hidden 상태가 아직 반영되지 않는 경우가 있어, 다음 이벤트 루프에서 한 번 더 확인합니다.
+  function startQueuedTutorial() {
+    if (!queuedAccount || !matchesPendingAccount(queuedAccount, getPendingSignup())) return false;
+
+    const subjectIntro = document.querySelector('#subject-intro-modal');
+    if (subjectIntro && !subjectIntro.hidden) return true;
+    open();
+    return true;
+  }
+
   function startAfterLogin(account) {
     const pending = getPendingSignup();
     if (!matchesPendingAccount(account, pending)) return false;
     queuedAccount = account;
 
-    const subjectIntro = document.querySelector('#subject-intro-modal');
-    if (subjectIntro && !subjectIntro.hidden) return true;
-    open();
+    window.clearTimeout(startAfterLoginTimer);
+    startAfterLoginTimer = window.setTimeout(() => {
+      startAfterLoginTimer = null;
+      startQueuedTutorial();
+    }, 0);
     return true;
   }
 
@@ -173,7 +210,7 @@
 
   // [종목 소개 종료 연결] 기존 종목 소개를 먼저 확인한 뒤 같은 거래소 화면에서 튜토리얼을 이어서 시작합니다.
   window.addEventListener('jorong:subject-intro-closed', () => {
-    if (queuedAccount && matchesPendingAccount(queuedAccount, getPendingSignup())) open();
+    startQueuedTutorial();
   });
 
   window.IngameTutorial = Object.freeze({ scheduleAfterSignup, startAfterLogin, open, finish });

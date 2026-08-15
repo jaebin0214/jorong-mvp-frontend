@@ -7,7 +7,6 @@
 .app-shell.is-exchange .exchange-header-actions { display:flex; align-items:center; gap:11px; }
 .exchange-header-actions b { margin-right:24px; color:#162d56; font-size:15px; }
 .exchange-header-actions button { min-width:66px; height:29px; border:1px solid #d2deed; border-radius:5px; color:#17335e; background:#fff; font-size:15px; font-weight:850; }
-.exchange-header-actions .exchange-signup { border-color:#2162ee; color:#fff; background:#2162ee; }
 .exchange-header-actions .header-member-name { min-height:29px; padding:0 11px; font-size:14px; }
 
 /* [거래소 본문] 제공된 종목 상세·댓글 통합 화면의 3단 상단 구조입니다. */
