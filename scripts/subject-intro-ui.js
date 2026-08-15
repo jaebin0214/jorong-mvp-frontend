@@ -13,6 +13,13 @@
 
   if (!modal || !dialog || !startButton || !subjectImage) return;
 
+  // [장 종료 예외] 정산 화면에서는 거래 전 안내가 필요 없으므로, 서버 기준 거래 종료 상태면 모달을 열지 않습니다.
+  function canShowSubjectIntro() {
+    const isMarketEnded = window.MarketCountdown?.isEnded?.() === true;
+    const settlementView = document.querySelector('#market-settlement-view');
+    return !isMarketEnded && Boolean(settlementView?.hidden ?? true);
+  }
+
   // [설정값 반영] 운영자가 market-config.js에서 바꾼 종목 이름·이미지·소개문을 모달에도 동일하게 표시합니다.
   function renderSubject() {
     const { subject } = config;
@@ -23,6 +30,7 @@
   }
 
   function open(opener = document.activeElement) {
+    if (!canShowSubjectIntro()) return;
     renderSubject();
     lastFocusedElement = opener instanceof HTMLElement ? opener : null;
     modal.hidden = false;
@@ -42,7 +50,7 @@
 
   // [첫 거래소 진입] 새로고침 기준 한 번만 자동 안내를 띄우며, 이후에는 종목 이미지 클릭으로 다시 확인합니다.
   window.addEventListener('jorong:view-changed', (event) => {
-    if (event.detail?.viewId !== 'exchange' || hasShownOnFirstExchangeEntry) return;
+    if (event.detail?.viewId !== 'exchange' || hasShownOnFirstExchangeEntry || !canShowSubjectIntro()) return;
     hasShownOnFirstExchangeEntry = true;
     open();
   });
@@ -64,5 +72,5 @@
     if (event.key === 'Escape' && !modal.hidden) close();
   });
 
-  window.SubjectIntroUI = Object.freeze({ open, close });
+  window.SubjectIntroUI = Object.freeze({ open, close, canShow: canShowSubjectIntro });
 })();
