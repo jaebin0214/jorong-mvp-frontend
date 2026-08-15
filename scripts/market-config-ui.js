@@ -6,7 +6,7 @@
   const subjectImage = document.querySelector('.exchange-subject-image');
 
   // 종목명은 거래소 본문에서 반복되는 두 위치를 함께 교체합니다.
-  document.querySelectorAll('.exchange-subject-card > b, .exchange-chart-title > b').forEach((element) => {
+  document.querySelectorAll('.exchange-subject-card > b, .exchange-chart-title > b, #mobile-subject-name, #mobile-comment-subject-name').forEach((element) => {
     element.textContent = subject.name;
   });
 
@@ -26,4 +26,12 @@
     priceChange.textContent = '0 KRW (0.00%)';
     priceChange.classList.remove('is-up', 'is-down');
   }
+  const mobilePrice = document.querySelector('#mobile-current-price');
+  const mobileChange = document.querySelector('#mobile-price-change');
+  if (mobilePrice) mobilePrice.textContent = `${formattedPrice} KRW`;
+  if (mobileChange) {
+    mobileChange.textContent = '0 KRW (0.00%)';
+    mobileChange.classList.remove('is-up', 'is-down');
+  }
+  window.dispatchEvent(new CustomEvent('jorong:market-config-updated', { detail: config }));
 })();

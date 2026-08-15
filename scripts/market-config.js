@@ -3,10 +3,10 @@
   const DEFAULT_MARKET_CONFIG = {
     // 회차 ID는 종목 또는 거래 시간을 변경할 때마다 반드시 새 값으로 바꿉니다.
     session: {
-      id: 'test2',
+      id: 'test1',
       // null이면 첫 접속 시점부터 시간이 흐릅니다. 실제 운영에서는 ISO 형식 시작 시각을 권장합니다.
       startsAt: null,
-      durationHours: 0.5,
+      durationHours: 0.1,
       // 장 종료 후 다음 장을 열 절대 시각입니다. 실제 운영에서는 서버의 market.nextOpenAt이 이 값을 대신합니다.
       nextOpenAt: null,
     },

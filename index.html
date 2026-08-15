@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="조롱 거래소 1차 MVP" />
     <title>조롱 거래소 | 1차 MVP</title>
     <!-- 공통 토큰 → 페이지 구조 → 거래소·종목 상세 → 컨셉 소개 순서로 스타일을 나눕니다. -->
@@ -16,6 +16,8 @@
     <link rel="stylesheet" href="./styles/settlement.css" />
     <link rel="stylesheet" href="./styles/concept-introduction.css" />
     <link rel="stylesheet" href="./styles/ingame-tutorial.css" />
+    <!-- [모바일 전용 UI] 767px 이하에서만 데스크톱 구조를 모바일 앱 화면으로 재배치합니다. -->
+    <link rel="stylesheet" href="./styles/mobile.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -43,6 +45,11 @@
               <p class="eyebrow">THE ROAST EXCHANGE</p>
               <h1 id="landing-title">오늘의 화제를<br />댓글과 포인트로 거래하다</h1>
               <p>한마디를 남기고, 옹호하거나 조롱하세요.<br />사람들의 선택이 오늘의 가격을 만듭니다.</p>
+              <!-- [모바일 랜딩 타이머] 작은 화면에서는 서비스 미리보기 대신 당일 장의 시간을 먼저 안내합니다. -->
+              <div class="mobile-landing-timer" aria-live="polite">
+                <span id="mobile-landing-countdown-label">오늘의 장 마감까지</span>
+                <strong id="mobile-landing-countdown">--:--:--</strong>
+              </div>
               <!-- [랜딩 시작] 로그인 여부에 따라 로그인 또는 거래소로 분기합니다. -->
               <button class="landing-start-button" id="landing-start" type="button" data-view="exchange">시작하기</button>
               <strong>가입 즉시 10,000 KRW 지급</strong>
@@ -149,7 +156,7 @@
             <!-- [거래소 상단] 본문 브랜드 표기는 제거하고, 거래 종료 타이머만 중앙에 유지합니다. -->
             <div class="exchange-hero-bar"><div class="exchange-countdown-block"><span id="exchange-countdown-label">오늘의 장 마감까지</span><div class="exchange-countdown">02:59:56</div></div></div>
             <div class="exchange-focus-grid">
-              <section class="exchange-subject-card"><img class="exchange-subject-image" src="./assets/hoon.png" alt="오늘의 종목 훈이" /><b>훈이</b></section>
+              <section class="exchange-subject-card"><img class="exchange-subject-image" src="./assets/hoon.png" alt="오늘의 종목 훈이" /><b>훈이</b><div class="mobile-subject-information"><span>오늘의 종목</span><b id="mobile-subject-name">훈이</b><strong id="mobile-current-price">1,000 KRW</strong><em id="mobile-price-change">0 KRW (0.00%)</em></div></section>
               <section class="exchange-chart-card"><div class="exchange-chart-title"><span>오늘의 종목</span><b>훈이</b><div class="exchange-current-value"><strong id="exchange-current-price">1,000 KRW</strong><em id="exchange-price-change">0 KRW (0.00%)</em></div></div><div class="exchange-chart-legend"><span>가격 변동</span><i></i>5 <i class="orange-dot"></i>20 <small>1,300</small></div><div class="exchange-chart"><svg viewBox="0 0 540 170" preserveAspectRatio="none" aria-label="훈이 가격 차트"><path d="M0 20H540M0 62H540M0 104H540M0 146H540"/><g><path d="M18 141V116M42 135V104M66 130V111M90 119V89M114 125V98M138 110V78M162 113V85M186 98V65M210 103V70M234 88V53M258 94V60M282 76V43M306 82V50M330 65V32M354 70V40M378 53V22M402 59V30M426 45V17M450 50V26M474 39V13"/></g><polyline points="0,134 20,130 40,120 60,124 80,108 100,114 120,96 140,102 160,83 180,91 200,70 220,78 240,58 260,94 280,47 300,55 320,38 340,46 360,29 380,37 400,23 420,31 440,20 460,29 480,22 510,27 540,24"/><polyline class="orange-line" points="0,146 50,140 100,131 150,123 200,113 250,104 300,94 350,84 400,74 450,65 500,56 540,52"/></svg><span class="exchange-price-pin" id="exchange-price-pin">1,000</span><div class="exchange-volume"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div></section>
               <!-- [투자 영역] 투자 전 입력 패널, 투자 후 내 투자 현황, 추가 투자 입력 패널을 같은 자리에서 교체합니다. -->
               <aside class="exchange-roast-card">
@@ -180,7 +187,7 @@
               </aside>
             </div>
             <!-- [댓글 프로토타입] 서버 저장 없이 현재 브라우저 화면에서만 새 댓글을 추가합니다. -->
-            <section class="exchange-community-card"><div class="exchange-community-heading"><div><h1>조롱 커뮤니티</h1><span id="exchange-comment-count">댓글 0</span></div></div><form class="exchange-comment-form" id="exchange-comment-form"><input id="exchange-comment-text" type="text" maxlength="160" placeholder="이 종목에 대한 조롱을 남겨보세요. 댓글은 투자와 별도로 작성할 수 있습니다." aria-label="조롱 댓글" /><button type="submit">조롱 작성</button></form><p class="exchange-comment-empty" id="exchange-comment-empty">첫 번째 조롱을 남겨보세요.</p><div class="exchange-comment-list" id="exchange-comment-list" aria-live="polite"></div></section>
+            <section class="exchange-community-card"><div class="exchange-community-heading"><div><h1>조롱 커뮤니티</h1><span id="exchange-comment-count">댓글 0</span></div><button class="mobile-community-compose" id="mobile-community-compose" type="button">조롱 남기기</button></div><form class="exchange-comment-form" id="exchange-comment-form"><input id="exchange-comment-text" type="text" maxlength="160" placeholder="이 종목에 대한 조롱을 남겨보세요. 댓글은 투자와 별도로 작성할 수 있습니다." aria-label="조롱 댓글" /><button type="submit">조롱 작성</button></form><p class="exchange-comment-empty" id="exchange-comment-empty">첫 번째 조롱을 남겨보세요.</p><div class="exchange-comment-list" id="exchange-comment-list" aria-live="polite"></div></section>
           </div>
           <!-- [장 종료 정산] 서버가 확정한 마감 가격·정산 결과를 거래 화면 대신 표시합니다. -->
           <section class="market-settlement-view" id="market-settlement-view" hidden aria-live="polite">
@@ -256,6 +263,19 @@
       </main>
     </div>
 
+    <!-- [모바일 하단 탭] 데스크톱 상단 메뉴와 같은 화면 전환 기능을 엄지손가락 위치에 제공합니다. -->
+    <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="모바일 하단 메뉴">
+      <button class="is-active" type="button" data-view="exchange"><span aria-hidden="true">◉</span>거래소</button>
+      <button type="button" data-view="board"><span aria-hidden="true">▤</span>게시판</button>
+      <button type="button" data-toast="사이클 리포트 기능은 다음 단계에서 연결됩니다."><span aria-hidden="true">◴</span>리포트</button>
+    </nav>
+
+    <!-- [모바일 댓글 작성] 기존 댓글 form에 내용을 전달해 같은 CommentService를 재사용합니다. -->
+    <section class="mobile-comment-composer" id="mobile-comment-composer" hidden aria-modal="true" role="dialog" aria-labelledby="mobile-comment-composer-title">
+      <header><button id="mobile-comment-composer-close" type="button" aria-label="댓글 작성 닫기">‹</button><b>조롱 작성</b><span aria-hidden="true"></span></header>
+      <div class="mobile-comment-composer-body"><p class="eyebrow">TODAY'S ROAST</p><h1 id="mobile-comment-composer-title"><span id="mobile-comment-subject-name">훈이</span>에게<br />한마디 남겨주세요.</h1><p>댓글을 남기면 투자 권한이 열립니다.</p><form id="mobile-comment-form"><label for="mobile-comment-text">댓글 내용</label><textarea id="mobile-comment-text" maxlength="160" placeholder="종목에 대한 조롱을 남겨보세요."></textarea><small><span id="mobile-comment-length">0</span> / 160</small><button type="submit">댓글 등록하고 투자하기</button></form></div>
+    </section>
+
     <!-- [맨 위로 이동] 댓글창의 왼쪽 바깥에서, 스크롤 중에도 화면 하단에 고정되는 공통 버튼입니다. -->
     <button class="scroll-top-button" id="scroll-top-button" type="button" hidden aria-label="페이지 맨 위로 이동"><span aria-hidden="true">↑</span><span>맨 위로</span></button>
 
@@ -328,6 +348,8 @@
     <!-- [댓글 종료 UI] 거래가 끝난 회차에서는 댓글·답글 작성만 막고 기존 목록은 열람하게 둡니다. -->
     <script src="./scripts/comment-close-ui.js"></script>
     <script src="./scripts/scroll-top-ui.js"></script>
+    <!-- [모바일 UI] 화면 너비에 따라 타이머·하단 탭·댓글 작성 레이어를 기존 기능에 연결합니다. -->
+    <script src="./scripts/mobile-ui.js"></script>
     <script src="./scripts/app.js"></script>
   </body>
 </html>

@@ -1,0 +1,199 @@
+/* [모바일 전용 앱 UI] 데스크톱 코드와 충돌하지 않도록 767px 이하에서만 재배치합니다. */
+@media (max-width: 767px) {
+  :root { --mobile-page: #f6f9ff; --mobile-line: #dbe4f0; --mobile-ink: #092045; }
+  html { background: var(--mobile-page); }
+  body { min-width: 0; overflow-x: hidden; background: var(--mobile-page); }
+  body.is-mobile-comment-composer-open { overflow: hidden; }
+  .app-shell { width: 100%; min-height: 100dvh; margin: 0; background: var(--mobile-page); box-shadow: none; }
+  main { padding-bottom: 0; }
+
+  /* [앱 바] 데스크톱 헤더를 56px 모바일 앱 바로 축소합니다. */
+  .app-header { height: 56px; position: sticky; z-index: 70; top: 0; display: flex; padding: 0 20px; border-bottom: 1px solid var(--mobile-line); background: rgb(255 255 255 / 94%); backdrop-filter: blur(12px); }
+  .wordmark { gap: 7px; min-width: 0; }
+  .wordmark .brand-logo { width: 25px; height: 25px; }
+  .wordmark span { font-size: 17px; }
+  .app-shell.is-exchange .exchange-header-nav { display: none; }
+  .header-actions { margin-left: auto; }
+  .landing-header-actions, .app-shell.is-exchange .exchange-header-actions { gap: 8px; }
+  .account-prompt { display: none; }
+  .header-login, .exchange-header-actions button { min-width: auto; height: 32px; padding: 0 11px; border-radius: 8px; font-size: 12px; }
+  .exchange-header-actions b { margin-right: 0; font-size: 12px; }
+  .exchange-header-actions .header-member-name, .landing-header-actions .header-member-name { min-height: 32px; padding: 0; color: #375172; background: transparent; font-size: 12px; }
+
+  /* [랜딩] 미리보기 이미지를 감추고 Figma의 타이머 중심 세로 히어로를 사용합니다. */
+  .landing-view { min-height: calc(100dvh - 56px); background: var(--mobile-page); }
+  .landing-rebuild { width: 100%; min-height: calc(100dvh - 56px); display: flex; flex-direction: column; justify-content: center; padding: 30px 20px calc(38px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
+  .landing-rebuild-copy { width: 100%; max-width: 353px; margin: 0 auto; text-align: center; }
+  .landing-rebuild-copy .eyebrow { margin: 0 0 14px; font-size: 12px; letter-spacing: -.03em; }
+  .landing-rebuild-copy h1 { margin: 0; font-size: clamp(30px, 8vw, 34px); line-height: 1.26; letter-spacing: -.075em; }
+  .landing-rebuild-copy > p:not(.eyebrow) { margin: 17px 0 0; font-size: 15px; line-height: 1.58; letter-spacing: -.045em; }
+  .mobile-landing-timer { width: 100%; height: 112px; display: grid; align-content: center; justify-items: center; gap: 8px; margin-top: 42px; border-radius: 20px; color: #fff; background: #092045; box-shadow: 0 14px 28px rgb(9 32 69 / 12%); }
+  .mobile-landing-timer span { color: #bac9e5; font-size: 12px; font-weight: 750; }
+  .mobile-landing-timer strong { font-size: 39px; line-height: 1; letter-spacing: .04em; }
+  .mobile-landing-timer.is-next-market { background: #2162ee; }
+  .landing-rebuild-copy .landing-start-button { width: 100%; height: 52px; margin-top: 24px; border-radius: 16px; font-size: 16px; }
+  .landing-rebuild-copy > strong { display: block; margin-top: 14px; color: #2162ee; font-size: 13px; }
+  .landing-product-preview { display: none; }
+  .landing-concept-replay { width: 100%; max-width: 353px; height: 44px; margin: 16px auto 0; border-radius: 12px; font-size: 13px; }
+
+  /* [인증] 큰 데스크톱 카드 대신 여백 20px의 단일 컬럼 폼으로 정리합니다. */
+  .signup-view { min-height: calc(100dvh - 56px); padding: 30px 20px calc(38px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
+  .signup-card, .signup-card.login-card { width: 100%; max-width: 440px; min-height: 0; margin: 0 auto; border: 1px solid var(--mobile-line); border-radius: 20px; padding: 28px 20px; box-shadow: 0 10px 25px rgb(21 54 105 / 5%); }
+  .signup-card h1 { font-size: 28px; }
+  .signup-intro { margin-top: 10px; font-size: 13px; line-height: 1.55; }
+  .signup-bonus { margin-top: 15px; }
+  .signup-field { margin-top: 22px; font-size: 14px; }
+  .signup-field input, .nickname-control { height: 52px; font-size: 14px; }
+  .signup-field small { font-size: 10px; line-height: 1.5; }
+  .terms-all { min-height: 52px; margin-top: 25px; font-size: 13px; }
+  .terms-list { gap: 10px; font-size: 11px; line-height: 1.3; }
+  .signup-submit { height: 52px; margin-top: 25px; border-radius: 13px; font-size: 15px; }
+
+  /* [거래소 모바일 카드] 세 영역을 Figma 기준 353px 폭의 세로 카드로 쌓습니다. */
+  .exchange-view { min-height: calc(100dvh - 56px); background: var(--mobile-page); }
+  .exchange-rebuild { width: 100%; min-height: calc(100dvh - 56px); padding: 16px 20px calc(98px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
+  .exchange-hero-bar { height: auto; display: block; }
+  .exchange-countdown-block { width: 100%; gap: 8px; }
+  .exchange-countdown-block > span { font-size: 12px; }
+  .exchange-countdown { width: 100%; height: 112px; border-radius: 20px; font-size: 39px; }
+  .exchange-focus-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 16px; }
+  .exchange-focus-grid .exchange-subject-card, .exchange-focus-grid .exchange-chart-card, .exchange-focus-grid .exchange-roast-card { width: 100%; height: auto; }
+  .exchange-subject-card { min-height: 120px; display: flex; align-items: center; justify-items: initial; gap: 14px; border: 1px solid var(--mobile-line); border-radius: 16px; padding: 13px; background: #fff; }
+  .exchange-subject-image { width: 92px !important; height: 92px !important; flex: 0 0 92px; border-radius: 12px; object-position: 15% 67%; }
+  .exchange-subject-card > b { display: none; }
+  .mobile-subject-information { min-width: 0; display: grid; gap: 2px; text-align: left; }
+  .mobile-subject-information > span { color: #71819a; font-size: 11px; font-weight: 700; }
+  .mobile-subject-information > b { color: var(--mobile-ink); font-size: 17px; line-height: 1.35; }
+  .mobile-subject-information > strong { color: #122f5c; font-size: 21px; line-height: 1.3; letter-spacing: -.045em; }
+  .mobile-subject-information > em { color: #557095; font-size: 12px; font-style: normal; font-weight: 750; }
+  .mobile-subject-information > em.is-up { color: #2162ee; }
+  .mobile-subject-information > em.is-down { color: #ef4d63; }
+  .exchange-chart-card { height: 164px !important; padding: 10px 8px 5px; border: 1px solid var(--mobile-line); border-radius: 16px; }
+  .exchange-chart-title { display: none; }
+  .exchange-chart { height: 100%; min-height: 0; margin: 0; }
+  .exchange-chart .price-candle-chart { min-height: 100%; }
+  .price-candle-chart .price-chart-y-label, .price-candle-chart .price-chart-x-label { font-size: 14px; }
+  .price-candle-chart .price-chart-axis-title { font-size: 14px; }
+
+  /* [잠긴 투자 카드] 댓글 작성 전에는 별도의 권유 카드로 명확하게 표시합니다. */
+  .exchange-roast-card { min-height: 64px; border: 0; border-radius: 16px; background: transparent; overflow: visible; }
+  .exchange-roast-cta { position: relative; min-height: 64px; display: flex; align-items: center; justify-content: space-between; inset: auto; padding: 0 17px; border: 1px solid #ffd7df; border-radius: 16px; color: #e5405b; background: #fff0f3; text-align: left; }
+  .exchange-roast-cta > b { color: inherit; font-size: 15px; letter-spacing: -.045em; text-shadow: none; }
+  .exchange-roast-cta > b::after { content: "  · 조롱 작성 →"; font-size: 12px; font-weight: 800; }
+  .exchange-roast-cta:hover { background: #ffe7ed; }
+
+  /* [모바일 투자 바텀시트] 기존 ID와 이벤트를 그대로 두고 표시 위치만 화면 하단으로 바꿉니다. */
+  .exchange-roast-card > .investment-panel:not([hidden]), .exchange-roast-card > .additional-investment-panel:not([hidden]), .exchange-roast-card > .investment-status-card:not([hidden]) { position: fixed; z-index: 130; left: 0; right: 0; bottom: 0; width: min(100%, 480px); height: auto; min-height: 0; max-height: min(80dvh, 650px); margin: 0 auto; overflow-y: auto; border: 1px solid #d8e2ee; border-bottom: 0; border-radius: 24px 24px 0 0; padding: 28px 20px calc(24px + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -100vmax rgb(4 15 34 / 36%), 0 -12px 35px rgb(3 25 65 / 15%); }
+  .exchange-roast-card > .investment-panel:not([hidden]) { display: flex; gap: 0; }
+  .exchange-roast-card > .investment-panel h2 { font-size: 25px; line-height: 1.2; }
+  .exchange-roast-card > .investment-panel .investment-balance { margin-top: 7px; font-size: 16px; }
+  .exchange-roast-card > .investment-panel .investment-directions { gap: 10px; margin-top: 27px; }
+  .exchange-roast-card > .investment-panel .investment-directions button { height: 46px; border-radius: 14px; font-size: 15px; }
+  .exchange-roast-card > .investment-panel .investment-amount-control { height: 54px; margin-top: 15px; border-radius: 12px; padding: 0 14px; }
+  .exchange-roast-card > .investment-panel .investment-amount-input input { width: 140px; font-size: 19px; }
+  .investment-panel .investment-submit { height: 52px; margin-top: 20px; border-radius: 13px; font-size: 16px; }
+  .investment-status-card, .additional-investment-panel { gap: 15px; }
+  .investment-status-card > header h2, .additional-investment-panel h2 { font-size: 23px; }
+  .position-side-badge { min-width: 64px; height: 28px; font-size: 12px; }
+  .position-pnl > span { font-size: 12px; }
+  .position-pnl strong { font-size: 24px; }
+  .position-metrics { gap: 15px 18px; padding-top: 14px; }
+  .position-metrics span { font-size: 11px; }
+  .position-metrics b { font-size: 14px; }
+  .position-lock-note { padding: 10px 12px; font-size: 11px; }
+  .position-add-button { height: 48px !important; border-radius: 12px; font-size: 15px; }
+  .additional-side-lock, .additional-investment-balance, .additional-execution { font-size: 13px; }
+  .additional-investment-actions button { height: 48px; border-radius: 12px; font-size: 14px; }
+
+  /* [커뮤니티] 리스트는 전체 페이지에서 자연스럽게 늘어나며, 작성은 전용 화면으로 전환합니다. */
+  .exchange-community-card { margin-top: 14px; border: 1px solid var(--mobile-line); border-radius: 16px; padding: 16px 14px; box-shadow: none; }
+  .exchange-community-heading { align-items: center; }
+  .exchange-community-heading h1 { font-size: 18px; }
+  .exchange-community-heading span { font-size: 11px; }
+  .mobile-community-compose { display: inline-flex; align-items: center; justify-content: center; min-width: 84px; height: 34px; border: 0; border-radius: 9px; color: #fff; background: #092045; font-size: 12px; font-weight: 850; }
+  .exchange-comment-form { display: none; }
+  .exchange-comment-empty { min-height: 68px; margin: 12px 0 0; border: 1px dashed #d9e4f1; border-radius: 12px; padding: 25px 12px; font-size: 13px; }
+  .exchange-comment-list { margin-top: 6px; }
+  .exchange-comment { grid-template-columns: 31px minmax(0, 1fr); gap: 9px; padding: 16px 0; }
+  .exchange-comment > i, .exchange-reply-avatar { width: 30px; height: 30px; font-size: 11px; }
+  .exchange-comment header, .exchange-reply header { gap: 6px; }
+  .exchange-comment header b, .exchange-reply header b { font-size: 12px; }
+  .exchange-comment header span, .exchange-reply header span { font-size: 10px; }
+  .exchange-comment p { margin: 7px 0 11px; font-size: 14px; line-height: 1.5; }
+  .exchange-comment footer { gap: 8px; }
+  .exchange-hype-button { min-width: 95px; height: 27px; font-size: 11px; }
+  .exchange-reply { grid-template-columns: 25px minmax(0, 1fr) auto; gap: 7px; padding: 11px 0; }
+  .exchange-reply-avatar { width: 24px; height: 24px; }
+  .exchange-reply p { font-size: 12px; }
+  .exchange-reply-hype .exchange-hype-button { min-width: 76px; }
+
+  /* [댓글 작성 전체 화면] 제출은 보이지 않는 데스크톱 form으로 위임합니다. */
+  .mobile-comment-composer { position: fixed; z-index: 150; inset: 0; overflow-y: auto; background: var(--mobile-page); }
+  .mobile-comment-composer[hidden] { display: none; }
+  .mobile-comment-composer > header { height: 56px; display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: 0 14px; border-bottom: 1px solid var(--mobile-line); background: #fff; text-align: center; }
+  .mobile-comment-composer > header button { width: 38px; height: 38px; border: 0; color: #092045; background: transparent; font-size: 35px; line-height: 1; }
+  .mobile-comment-composer > header b { font-size: 16px; }
+  .mobile-comment-composer-body { padding: 45px 20px calc(32px + env(safe-area-inset-bottom)); }
+  .mobile-comment-composer-body .eyebrow { margin: 0; color: #2162ee; font-size: 12px; }
+  .mobile-comment-composer-body h1 { margin: 14px 0 12px; color: #092045; font-size: 29px; line-height: 1.3; letter-spacing: -.07em; }
+  .mobile-comment-composer-body > p:not(.eyebrow) { margin: 0; color: #71819a; font-size: 14px; }
+  #mobile-comment-form { margin-top: 37px; }
+  #mobile-comment-form label { display: block; margin-bottom: 10px; color: #365171; font-size: 13px; font-weight: 800; }
+  #mobile-comment-text { width: 100%; min-height: 150px; resize: none; border: 1px solid #cfdceb; border-radius: 15px; padding: 14px; color: #092045; background: #fff; font: inherit; font-size: 14px; line-height: 1.55; outline: 0; }
+  #mobile-comment-text:focus { border-color: #2162ee; box-shadow: 0 0 0 3px rgb(33 98 238 / 12%); }
+  #mobile-comment-form small { display: block; margin-top: 7px; color: #8492a8; font-size: 11px; text-align: right; }
+  #mobile-comment-form > button { width: 100%; height: 52px; margin-top: 24px; border: 0; border-radius: 14px; color: #fff; background: #2162ee; font-size: 15px; font-weight: 850; }
+
+  /* [게시판] 가로 표 대신 제목이 읽히는 카드형 행을 유지합니다. */
+  .board-view { min-height: calc(100dvh - 56px); padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
+  .board-category-nav { height: 48px; grid-template-columns: repeat(5, 96px); }
+  .board-category-nav button { font-size: 11px; }
+  .board-page { width: 100%; padding: 28px 20px 20px; }
+  .board-page-heading { padding-bottom: 20px; }
+  .board-page-heading h1 { font-size: 25px; }
+  .board-page-heading p { font-size: 12px; line-height: 1.5; }
+  .board-table-wrap { border-top-width: 1px; }
+  .board-table th { height: 35px; font-size: 10px; }
+  .board-table td { height: 58px; font-size: 12px; }
+  .board-table th:nth-child(1), .board-table td:nth-child(1) { width: 12%; }
+  .board-table th:nth-child(2), .board-table td:nth-child(2) { width: 70%; padding: 0 9px; }
+  .board-table th:nth-child(5), .board-table td:nth-child(5) { width: 18%; }
+  .board-table .board-empty-row td { height: 340px; font-size: 13px; }
+  .board-footer { min-height: 62px; }
+  .board-write-button { width: 86px; height: 40px; border-radius: 10px; font-size: 12px; }
+
+  /* [정산] 같은 정산 데이터와 타이머를 한 열 카드로 정리합니다. */
+  .market-settlement-view { width: 100%; min-height: calc(100dvh - 56px); padding: 20px 20px calc(98px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
+  .market-settlement-hero { min-height: 0; padding: 8px 0 22px; text-align: left; }
+  .market-settlement-hero > span { font-size: 11px; }
+  .market-settlement-hero h1 { margin-top: 9px; font-size: 25px; }
+  .market-settlement-hero > p { font-size: 13px; }
+  .next-market-block { width: 100%; margin-top: 17px; padding: 14px; border-radius: 16px; }
+  .next-market-block strong { font-size: 30px; }
+  .market-settlement-row { grid-template-columns: 1fr; gap: 12px; }
+  .settlement-subject-card { grid-template-columns: 96px 1fr; min-height: 122px; padding: 13px; border-radius: 16px; }
+  .settlement-subject-card img { width: 96px; height: 96px; }
+  .settlement-result-card, .market-final-summary { border-radius: 16px; padding: 18px 15px; }
+  .settlement-pnl > strong { font-size: 24px; }
+
+  /* [종목 소개] 화면을 가득 채우지 않고, 이미지와 설명을 세로로 읽을 수 있는 카드로 축소합니다. */
+  .subject-intro-modal { padding: 20px; }
+  .subject-intro-dialog { width: 100%; max-width: 390px; gap: 22px; border-radius: 23px; padding: 28px 20px 22px; }
+  .subject-intro-visual { width: min(178px, 52vw); }
+  .subject-intro-copy > p:first-child { font-size: 11px; }
+  .subject-intro-copy h1 { font-size: 30px; }
+  .subject-intro-copy #subject-intro-description { font-size: 13px; line-height: 1.55; }
+  .subject-intro-copy button { width: 100%; height: 52px; border-radius: 13px; font-size: 15px; }
+
+  /* [모바일 하단 탭] app-shell 밖에 둬 어떤 거래소 하위 화면에서도 고정됩니다. */
+  .mobile-bottom-nav { display: none; }
+  .app-shell.is-exchange + .mobile-bottom-nav { position: fixed; z-index: 90; left: 0; right: 0; bottom: 0; width: min(100%, 480px); height: calc(68px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 1fr); margin: 0 auto; padding: 7px 13px calc(7px + env(safe-area-inset-bottom)); border-top: 1px solid var(--mobile-line); background: rgb(255 255 255 / 96%); box-shadow: 0 -7px 18px rgb(8 31 71 / 6%); backdrop-filter: blur(12px); }
+  .mobile-bottom-nav button { display: grid; place-items: center; gap: 2px; border: 0; color: #8391a5; background: transparent; font-size: 11px; font-weight: 750; }
+  .mobile-bottom-nav button span { height: 22px; color: currentColor; font-size: 19px; line-height: 1; }
+  .mobile-bottom-nav button.is-active { color: #2162ee; font-weight: 850; }
+  .scroll-top-button { right: 17px; bottom: calc(85px + env(safe-area-inset-bottom)); }
+}
+
+@media (min-width: 768px) {
+  .mobile-landing-timer, .mobile-subject-information, .mobile-community-compose, .mobile-bottom-nav, .mobile-comment-composer { display: none !important; }
+}
