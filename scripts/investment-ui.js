@@ -69,8 +69,12 @@
   }
 
   function setVisiblePanel(panel) {
-    roastCta.hidden = panel !== roastCta;
-    firstPanel.hidden = panel !== firstPanel;
+    const isInvestmentLocked = panel === roastCta;
+    // [잠긴 투자 화면] 투자 입력 UI는 뒤에 그대로 보여주고, 댓글 작성 전에는 오버레이가 클릭을 받도록 합니다.
+    roastCta.hidden = !isInvestmentLocked;
+    firstPanel.hidden = panel !== firstPanel && !isInvestmentLocked;
+    firstPanel.inert = isInvestmentLocked;
+    firstPanel.setAttribute('aria-hidden', String(isInvestmentLocked));
     statusCard.hidden = panel !== statusCard;
     additionalPanel.hidden = panel !== additionalPanel;
     statusCard.parentElement.classList.toggle('has-open-position', panel === statusCard || panel === additionalPanel);
@@ -279,6 +283,8 @@
   renderFirstAmount();
   renderAdditionalAmount();
   renderBalance(activeSnapshot?.wallet?.points);
+  // [초기 잠금 화면] 댓글 작성 전에도 투자 패널의 형태를 보여주고, 오버레이만 위에 올립니다.
+  setVisiblePanel(roastCta);
   refresh();
   // [실시간 평가손익] 서버 연결 시 다른 사용자의 주문으로 바뀐 현재가와 평가손익을 주기적으로 다시 받습니다.
   if ((window.JORONG_API_BASE_URL || '').trim()) window.setInterval(refresh, 10_000);

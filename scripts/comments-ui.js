@@ -5,7 +5,8 @@
   const commentList = document.querySelector('#exchange-comment-list');
   const emptyMessage = document.querySelector('#exchange-comment-empty');
   const countLabel = document.querySelector('#exchange-comment-count');
-  const focusButton = document.querySelector('#exchange-comment-focus');
+  // [잠긴 투자 카드] 별도 조롱 작성 버튼 대신 카드 전체를 눌러 기존 동작을 실행합니다.
+  const roastCta = document.querySelector('#exchange-roast-cta');
   const toast = document.querySelector('#toast');
   const service = window.CommentService;
   let commentCount = 0;
@@ -310,9 +311,16 @@
     }
   });
 
-  focusButton.addEventListener('click', () => {
+  function activateRoastCta() {
     if (commentCount === 0) return focusCommentComposer();
-    window.InvestmentUI.open(focusButton);
+    window.InvestmentUI.open(roastCta);
+  }
+
+  roastCta.addEventListener('click', activateRoastCta);
+  roastCta.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    activateRoastCta();
   });
 
   refreshComments().catch((error) => {

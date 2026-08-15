@@ -21,7 +21,12 @@
   };
 
   // 배포 환경에서는 index.html보다 먼저 window.JORONG_MARKET_CONFIG를 주입해 같은 구조로 값을 덮어쓸 수 있습니다.
-  const runtimeConfig = window.JORONG_MARKET_CONFIG || {};
+  // API가 없을 때만 로컬 관리자 브리지가 LIVE 종목을 같은 구조로 제공합니다.
+  const serverRuntimeConfig = window.JORONG_MARKET_CONFIG || {};
+  const localAdminRuntimeConfig = window.LocalAdminMarketBridge?.getMarketConfigOverride?.(DEFAULT_MARKET_CONFIG) || null;
+  const hasServerRuntimeConfig = Boolean(Object.keys(serverRuntimeConfig).length);
+  const runtimeConfig = hasServerRuntimeConfig ? serverRuntimeConfig : (localAdminRuntimeConfig || {});
+  const configSource = hasServerRuntimeConfig ? 'SERVER_RUNTIME' : (localAdminRuntimeConfig ? 'LOCAL_ADMIN_DEMO' : 'DEFAULT_FILE');
   const config = {
     session: { ...DEFAULT_MARKET_CONFIG.session, ...(runtimeConfig.session || {}) },
     subject: { ...DEFAULT_MARKET_CONFIG.subject, ...(runtimeConfig.subject || {}) },
@@ -45,5 +50,8 @@
   window.MarketConfig = Object.freeze({
     // 다른 기능은 이 메서드로만 설정을 읽어, 운영 값을 한 곳에서 일관되게 사용합니다.
     get: () => config,
+    // [데이터 출처] 화면에 적용 중인 설정이 기본 파일·로컬 관리자 시연·서버 주입값 중 무엇인지 확인합니다.
+    getSource: () => configSource,
+    getLocalAdminMarket: () => localAdminRuntimeConfig?.localAdminMarket || null,
   });
 })();
