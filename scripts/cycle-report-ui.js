@@ -5,6 +5,9 @@
   const empty = document.querySelector('#cycle-report-empty');
   const errorBox = document.querySelector('#cycle-report-error');
   const math = window.FinancialMath;
+  // [중복 렌더 방지] 정산 보관 이벤트가 리포트 로드 중 발생해도 한 번만 추가로 렌더합니다.
+  let isRendering = false;
+  let renderQueued = false;
 
   if (!view || !list || !empty || !errorBox || !math || !window.CycleReportService) return;
 
@@ -54,6 +57,27 @@
     container.append(metric);
   }
 
+  // [내 댓글 아카이브] 시장 종료 뒤에도 내가 작성한 원댓글과 답글을 정산 카드 아래에서 확인합니다.
+  function createMyCommentArchive(report) {
+    const section = element('section', 'cycle-report-comments');
+    const comments = Array.isArray(report.myComments) ? report.myComments : [];
+    section.append(element('h3', '', '내가 남긴 댓글'));
+    if (!comments.length) {
+      section.append(element('p', 'cycle-report-comments-empty', '이 종목에 작성한 댓글이 없습니다.'));
+      return section;
+    }
+    const list = element('ul', 'cycle-report-comment-list');
+    comments.forEach((comment) => {
+      const item = element('li', String(comment.status || '').toUpperCase() === 'DELETED' ? 'is-deleted' : '');
+      const type = comment.parentCommentId ? '답글' : '댓글';
+      const content = String(comment.status || '').toUpperCase() === 'DELETED' ? '삭제된 댓글입니다.' : String(comment.content || '');
+      item.append(element('b', '', type), element('span', '', content));
+      list.append(item);
+    });
+    section.append(list);
+    return section;
+  }
+
   function createReportCard(report) {
     const position = report.position || {};
     const settlement = report.settlement || {};
@@ -74,7 +98,7 @@
     const row = element('div', 'cycle-report-settlement-row');
     const subjectCard = element('section', 'settlement-subject-card');
     const image = element('img');
-    image.src = report.subject?.imagePath || './assets/hoon.png';
+    image.src = report.subject?.imagePath || './assets/jorong_logo.png';
     image.alt = `${report.subject?.name || '종목'} 이미지`;
     subjectCard.append(image, element('b', '', `오늘의 종목 · ${report.subject?.name || '종목'}`), element('span', '', `마감 가격 ${formatPrice(market.closePrice ?? settlement.closePrice)}`));
 
@@ -111,11 +135,16 @@
     ratioBar.append(supportBar, mockBar);
     ratio.append(ratioLabels, ratioBar);
     finalSummary.append(summaryCopy, ratio);
-    card.append(heading, row, finalSummary);
+    card.append(heading, row, finalSummary, createMyCommentArchive(report));
     return card;
   }
 
   async function render() {
+    if (isRendering) {
+      renderQueued = true;
+      return;
+    }
+    isRendering = true;
     list.replaceChildren();
     empty.hidden = true;
     errorBox.hidden = true;
@@ -129,6 +158,12 @@
     } catch (error) {
       errorBox.textContent = error.message || '사이클 리포트를 불러오지 못했습니다.';
       errorBox.hidden = false;
+    } finally {
+      isRendering = false;
+      if (renderQueued) {
+        renderQueued = false;
+        render();
+      }
     }
   }
 

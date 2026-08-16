@@ -10,6 +10,8 @@
   const toast = document.querySelector('#toast');
   const service = window.CommentService;
   let commentCount = 0;
+  // [투자 잠금 판단] 전체 댓글 수와 별개로 현재 로그인 사용자가 작성한 원댓글이 있는지 보관합니다.
+  let hasCurrentUserRootComment = false;
   let selectedHypeCommentId = null;
   let bestCommentId = null;
   let toastTimer;
@@ -40,7 +42,7 @@
     let best = null;
     function inspect(items) {
       items.forEach((comment) => {
-        if (!best || Number(comment.hypeCount || 0) > Number(best.hypeCount || 0)) best = comment;
+        if (!isDeletedComment(comment) && (!best || Number(comment.hypeCount || 0) > Number(best.hypeCount || 0))) best = comment;
         inspect(comment.replies || []);
       });
     }
@@ -63,9 +65,24 @@
   }
 
   function isCurrentUsersComment(comment) {
-    if (comment.canDelete === true) return true;
     const account = window.AuthService?.getCurrentAccount?.();
-    return Boolean(account?.id && getAuthor(comment).id === account.id);
+    // 비로그인 시연 참여자는 CommentService가 만든 탭 단위 ID를 기준으로만 삭제 여부를 판별합니다.
+    const currentAuthorId = account?.id || service.getCurrentAuthorId?.() || '';
+    return String(comment.status || 'PUBLIC').toUpperCase() !== 'DELETED'
+      && String(getAuthor(comment).id || '') === String(currentAuthorId);
+  }
+
+  function isDeletedComment(comment) {
+    return String(comment?.status || 'PUBLIC').toUpperCase() === 'DELETED';
+  }
+
+  // 답글만 작성한 경우에는 첫 투자가 열리지 않으며, 삭제된 내 댓글도 투자 권한으로 계산하지 않습니다.
+  function findCurrentUsersRootComment(comments) {
+    const currentAuthorId = String(window.AuthService?.getCurrentAccount?.()?.id || service.getCurrentAuthorId?.() || '');
+    return (comments || []).some((comment) => (
+      !isDeletedComment(comment)
+      && String(getAuthor(comment).id || '') === currentAuthorId
+    ));
   }
 
   // [HYPE 버튼] 이미 HYPE를 보낸 사용자는 다른 모든 버튼을 잠그며, 최종 허용/집계는 API가 반환한 데이터로 다시 그립니다.
@@ -138,7 +155,7 @@
   }
 
   // [답글 영역] 최초에는 최대 3개만 표시하고, ‘답글 더보기’를 누를 때마다 3개씩 추가로 표시합니다.
-  function attachReplyArea(contentArea, parentComment, replyButton) {
+  function attachReplyArea(contentArea, parentComment, replyButton, { allowReply = true } = {}) {
     const replyArea = document.createElement('div');
     const replyForm = document.createElement('form');
     const replyInput = document.createElement('input');
@@ -162,6 +179,7 @@
     replyForm.append(replyInput, submitButton);
     replyArea.append(replyForm, replyList, moreButton);
     contentArea.append(replyArea);
+    replyForm.hidden = !allowReply;
 
     function updateReplyVisibility() {
       Array.from(replyList.children).forEach((reply, index) => { reply.hidden = index >= visibleReplyCount; });
@@ -182,16 +200,18 @@
       reply.className = 'exchange-reply';
       avatar.className = 'exchange-reply-avatar';
       avatar.textContent = getAvatarText(author.nickname);
-      nickname.textContent = author.nickname;
+      const isDeleted = isDeletedComment(replyData);
+      nickname.textContent = isDeleted ? '삭제된 사용자' : author.nickname;
       time.textContent = replyData.timeLabel || '방금 전';
-      message.textContent = replyData.content || '';
+      message.textContent = isDeleted ? '삭제된 댓글입니다.' : (replyData.content || '');
+      reply.classList.toggle('is-deleted', isDeleted);
       header.append(nickname, time);
       const bestBadge = createBestBadge(replyData);
       if (bestBadge) header.append(bestBadge);
       if (isCurrentUsersComment(replyData)) header.append(createDeleteButton(replyData.id));
       const hypeControl = document.createElement('div');
       hypeControl.className = 'exchange-reply-hype';
-      hypeControl.append(createHypeButton(replyData, reply), createHypeCount(replyData));
+      if (!isDeleted) hypeControl.append(createHypeButton(replyData, reply), createHypeCount(replyData));
       body.append(header, message);
       reply.append(avatar, body, hypeControl);
       replyList.append(reply);
@@ -205,15 +225,17 @@
       updateReplyVisibility();
     });
 
-    replyButton.addEventListener('click', () => {
-      replyArea.hidden = false;
-      replyButton.setAttribute('aria-expanded', 'true');
-      if (!window.MarketCountdown?.isEnded()) replyInput.focus();
-    });
+    if (replyButton) {
+      replyButton.addEventListener('click', () => {
+        replyArea.hidden = false;
+        replyButton.setAttribute('aria-expanded', 'true');
+        if (!window.MarketCountdown?.isEnded()) replyInput.focus();
+      });
+    }
 
     replyForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      if (window.MarketCountdown?.isEnded()) {
+      if (!allowReply || window.MarketCountdown?.isEnded()) {
         showToast('거래가 종료되어 새 답글을 작성할 수 없습니다.');
         return;
       }
@@ -252,9 +274,11 @@
 
     comment.className = 'exchange-comment';
     avatar.textContent = getAvatarText(author.nickname);
-    nickname.textContent = author.nickname;
+    const isDeleted = isDeletedComment(commentData);
+    nickname.textContent = isDeleted ? '삭제된 사용자' : author.nickname;
     time.textContent = commentData.timeLabel || '방금 전';
-    message.textContent = commentData.content || '';
+    message.textContent = isDeleted ? '삭제된 댓글입니다.' : (commentData.content || '');
+    comment.classList.toggle('is-deleted', isDeleted);
     replyButton.type = 'button';
     replyButton.className = 'exchange-reply-toggle';
     replyButton.textContent = '답글 달기';
@@ -265,9 +289,12 @@
     const bestBadge = createBestBadge(commentData);
     if (bestBadge) header.append(bestBadge);
     if (isCurrentUsersComment(commentData)) header.append(createDeleteButton(commentData.id));
-    footer.append(createHypeButton(commentData, comment), createHypeCount(commentData), replyButton, reportLabel);
-    contentArea.append(header, message, footer);
-    attachReplyArea(contentArea, commentData, replyButton);
+    if (!isDeleted) footer.append(createHypeButton(commentData, comment), createHypeCount(commentData), replyButton, reportLabel);
+    contentArea.append(header, message);
+    if (!isDeleted) contentArea.append(footer);
+    // 삭제된 원댓글의 기존 답글은 보존하되 새 답글 작성 제어는 노출하지 않습니다.
+    if (isDeleted && (commentData.replies || []).length) attachReplyArea(contentArea, commentData, null, { allowReply: false });
+    else if (!isDeleted) attachReplyArea(contentArea, commentData, replyButton);
     comment.append(avatar, contentArea);
     commentList.append(comment);
   }
@@ -278,9 +305,12 @@
     const comments = result.comments || [];
     selectedHypeCommentId = result.currentUserHypedCommentId || findCurrentUserHype(comments) || null;
     bestCommentId = result.bestCommentId || findBestCommentId(comments);
+    hasCurrentUserRootComment = findCurrentUsersRootComment(comments);
     commentList.replaceChildren();
     comments.forEach(appendComment);
     updateCommentCount();
+    // 계정별 댓글 작성 여부를 투자 UI에 전달해 다른 사용자의 댓글로 잠금이 풀리지 않게 합니다.
+    window.InvestmentUI?.setCommentUnlockState?.(hasCurrentUserRootComment);
     if (window.MarketCountdown?.isEnded()) window.CommentCloseUI?.closeCommenting?.();
   }
 
@@ -312,7 +342,8 @@
   });
 
   function activateRoastCta() {
-    if (commentCount === 0) return focusCommentComposer();
+    // 다른 사용자가 작성한 댓글이 있어도 현재 계정이 댓글을 쓰기 전에는 입력창으로 안내합니다.
+    if (!hasCurrentUserRootComment) return focusCommentComposer();
     window.InvestmentUI.open(roastCta);
   }
 
@@ -327,5 +358,7 @@
     updateCommentCount();
     showToast(error.message || '댓글을 불러오지 못했습니다.');
   });
+  // 계정을 바꾸면 다른 사용자의 삭제 버튼·HYPE 선택 상태를 즉시 다시 계산합니다.
+  window.addEventListener('jorong:auth-session', () => refreshComments().catch(() => {}));
   window.CommentUI = Object.freeze({ refreshComments });
 })();

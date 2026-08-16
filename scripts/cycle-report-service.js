@@ -3,6 +3,8 @@ window.CycleReportService = (() => {
   const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
   const STORAGE_PREFIX = 'jorong:cycle-report-history:v1';
   let memoryHistory = [];
+  // [중복 정산 보관 방지] 리포트 화면의 여러 렌더 요청이 동시에 들어와도 같은 정산을 한 번만 보관합니다.
+  let archiveCurrentSettlementTask = null;
 
   function getAccount() {
     return window.AuthService?.getCurrentAccount?.() || null;
@@ -40,8 +42,21 @@ window.CycleReportService = (() => {
     return {
       id: marketSubject.id || configSubject.id || '',
       name: marketSubject.name || marketSubject.subjectName || snapshot.targetName || configSubject.name || '오늘의 종목',
-      imagePath: marketSubject.imagePath || marketSubject.imageUrl || snapshot.imagePath || configSubject.imagePath || './assets/hoon.png',
+      imagePath: marketSubject.imagePath || marketSubject.imageUrl || snapshot.imagePath || configSubject.imagePath || './assets/jorong_logo.png',
     };
+  }
+
+  // [댓글 이력 결합] 로컬에서는 CommentService의 회차별 저장소를 읽고, API 모드에서는
+  // 서버가 cycle report 응답에 포함한 myComments를 그대로 사용합니다.
+  function getLocalMyComments(marketId) {
+    const comments = window.CommentService?.getMyCommentsForMarket?.(marketId);
+    return Array.isArray(comments) ? comments : null;
+  }
+
+  function enrichLocalReportWithComments(report) {
+    if (API_BASE_URL || !report?.market?.id) return report;
+    const comments = getLocalMyComments(report.market.id);
+    return comments ? { ...report, myComments: comments } : report;
   }
 
   // [정산 스냅샷 정규화] 로컬 InvestmentService 결과와 백엔드 응답의 필드 차이를 리포트용 구조로 통일합니다.
@@ -65,6 +80,7 @@ window.CycleReportService = (() => {
       settlement,
       wallet: snapshot.wallet || {},
       marketSummary: snapshot.marketSummary || market.summary || snapshot.summary || {},
+      myComments: Array.isArray(snapshot.myComments) ? snapshot.myComments : (Array.isArray(snapshot.comments) ? snapshot.comments : []),
       settledAt: settlement.settledAt || snapshot.settledAt || market.settledAt || market.closeAt || new Date().toISOString(),
     };
   }
@@ -75,10 +91,13 @@ window.CycleReportService = (() => {
 
   function archiveSnapshot(snapshot) {
     if (API_BASE_URL || !getStorageKey()) return null;
-    const report = normalizeReport(snapshot);
+    const report = enrichLocalReportWithComments(normalizeReport(snapshot));
     if (!report) return null;
     const history = readLocalHistory();
     const index = history.findIndex((item) => String(item.market?.id) === report.market.id);
+    // 같은 정산 스냅샷은 다시 저장하거나 갱신 이벤트를 발생시키지 않습니다.
+    // 그렇지 않으면 "리포트 로드 → 정산 보관 → 리포트 갱신"이 무한 반복될 수 있습니다.
+    if (index >= 0 && JSON.stringify(history[index]) === JSON.stringify(report)) return history[index];
     if (index >= 0) history[index] = report;
     else history.push(report);
     const sorted = sortByLatest(history);
@@ -90,8 +109,16 @@ window.CycleReportService = (() => {
   // [현재 장 반영] 로컬 시연에서는 장이 끝난 뒤 리포트를 열 때도 종료 정산을 한 번 저장해 누락을 막습니다.
   async function archiveCurrentSettlementWhenClosed() {
     if (API_BASE_URL || !window.MarketCountdown?.isEnded?.() || !window.InvestmentService?.loadSettlement) return;
-    const snapshot = await window.InvestmentService.loadSettlement();
-    archiveSnapshot(snapshot);
+    if (archiveCurrentSettlementTask) return archiveCurrentSettlementTask;
+    archiveCurrentSettlementTask = (async () => {
+      const snapshot = await window.InvestmentService.loadSettlement();
+      archiveSnapshot(snapshot);
+    })();
+    try {
+      await archiveCurrentSettlementTask;
+    } finally {
+      archiveCurrentSettlementTask = null;
+    }
   }
 
   async function requestReports() {
@@ -113,11 +140,23 @@ window.CycleReportService = (() => {
     if (!getAccount()) return [];
     if (API_BASE_URL) return requestReports();
     await archiveCurrentSettlementWhenClosed();
-    return sortByLatest(readLocalHistory());
+    const history = readLocalHistory();
+    const enriched = sortByLatest(history.map(enrichLocalReportWithComments));
+    // CommentService가 늦게 초기화된 뒤에도 기존 정산 카드에 내 댓글 이력을 보완해 저장합니다.
+    if (JSON.stringify(history) !== JSON.stringify(enriched)) writeLocalHistory(enriched);
+    return enriched;
   }
 
   window.addEventListener('jorong:market-settled', (event) => archiveSnapshot(event.detail));
-  window.addEventListener('jorong:auth-session', () => { memoryHistory = []; });
+  window.addEventListener('jorong:comments-changed', () => {
+    if (!API_BASE_URL && window.MarketCountdown?.isEnded?.()) archiveCurrentSettlementWhenClosed().catch(() => {});
+  });
+  // 새로고침 직후에는 정산 이벤트가 인증 복원보다 먼저 발생할 수 있습니다.
+  // 계정이 복원된 뒤 현재 종료 장을 다시 보관해 개인 리포트가 사라지지 않게 합니다.
+  window.addEventListener('jorong:auth-session', (event) => {
+    memoryHistory = [];
+    if (!API_BASE_URL && event.detail?.account) archiveCurrentSettlementWhenClosed().catch(() => {});
+  });
 
   return Object.freeze({ loadReports, archiveSnapshot, normalizeReport });
 })();

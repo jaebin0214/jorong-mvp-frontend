@@ -42,8 +42,12 @@ window.PriceHistoryService = (() => {
     const baseCandle = { startedAt: startAt, endedAt: Math.min(endAt, startAt + 60_000), open: subject.initialPrice, high: subject.initialPrice, low: subject.initialPrice, close: subject.initialPrice, volume: 0 };
     const priorEvents = [baseCandle];
 
-    // 새로고침 뒤에는 서비스가 localStorage에서 복원한 주문 이력으로 캔들을 다시 만듭니다.
-    const persistedEvents = (window.InvestmentService?.getSnapshot?.().orders || [])
+    // 새로고침 뒤에는 같은 회차 원장에 저장된 모든 사용자 주문으로 캔들을 다시 만듭니다.
+    // 서버 연결 시에는 아래 loadCandles()가 DB 집계 캔들을 반환하므로 이 로직을 사용하지 않습니다.
+    const persistedOrders = window.InvestmentService?.getMarketOrders?.()
+      || window.InvestmentService?.getSnapshot?.().orders
+      || [];
+    const persistedEvents = persistedOrders
       .map((order) => ({
         id: order.id,
         timestamp: Date.parse(order.createdAt) || startAt,
@@ -79,7 +83,7 @@ window.PriceHistoryService = (() => {
     return priorEvents;
   }
 
-  // [캔들 조회] API가 있으면 DB의 투자 기록으로 집계된 캔들을 받고, 없으면 로컬 이력을 사용합니다.
+  // [캔들 조회] API가 있으면 DB의 모든 사용자 투자 기록으로 집계된 캔들을 받고, 없으면 같은 브라우저의 공유 로컬 원장을 사용합니다.
   async function loadCandles() {
     if (!API_BASE_URL) return buildLocalCandles();
 

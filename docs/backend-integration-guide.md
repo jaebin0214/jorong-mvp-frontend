@@ -78,6 +78,33 @@ window.JORONG_API_BASE_URL = 'https://api.example.com';
 }
 ```
 
+### `GET /markets/current`
+
+정적 프론트엔드가 새로고침 뒤에도 현재 종목·이미지·기준 가격과 다음 예약 시간을 구성하기 위한 공개 시장 런타임 API입니다. 거래 중이면 현재 `OPEN` 시장을, 장 종료 후 다음 장이 열리기 전이면 가장 최근 `CLOSED` 또는 `SETTLED` 시장을 `displayMarket`으로 반환해야 합니다.
+
+```json
+{
+  "marketAvailable": true,
+  "displayMarket": {
+    "id": "round-001-hoon",
+    "status": "SETTLED",
+    "openAt": "2026-08-12T13:00:00+09:00",
+    "closeAt": "2026-08-12T19:00:00+09:00",
+    "nextOpenAt": "2026-08-13T13:00:00+09:00",
+    "subject": {
+      "id": "hoon",
+      "name": "훈이",
+      "imageUrl": "https://cdn.example.com/markets/hoon.png",
+      "description": "종목 설명",
+      "initialPrice": 1000
+    }
+  },
+  "nextMarket": { "id": "round-002", "openAt": "2026-08-13T13:00:00+09:00" }
+}
+```
+
+첫 장도 없을 때만 `{ "marketAvailable": false }`를 반환합니다. 프론트엔드는 `scripts/market-runtime-bootstrap.js`에서 이 값을 캐시한 뒤 시장 회차가 바뀌면 안전하게 다시 초기화합니다.
+
 ### `POST /markets/{marketId}/orders` (인증 필요)
 
 ```json
@@ -213,6 +240,7 @@ window.JORONG_API_BASE_URL = 'https://api.example.com';
 | 파일 | 백엔드 연결 역할 |
 | --- | --- |
 | `scripts/api-config.js` | API 기본 주소 설정 |
+| `scripts/market-runtime-bootstrap.js` | `/markets/current`으로 현재·종료 시장, 종목 정보, 다음 예약 시간 동기화 |
 | `scripts/auth-service.js` | 회원가입, 로그인, `/auth/me`, 세션/토큰 |
 | `scripts/investment-service.js` | 투자 생성, 포인트 잔액, 내 투자 로그 |
 | `scripts/price-history-service.js` | 서버 OHLC 캔들 조회 |

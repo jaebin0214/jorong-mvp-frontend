@@ -18,6 +18,14 @@
 .cycle-report-market-summary { min-height:0; margin-top:18px; }
 .cycle-report-support-bar { background:#1463f2; }
 .cycle-report-mock-bar { background:#f5425c; }
+.cycle-report-comments { margin-top:18px; border-top:1px solid #e4eaf3; padding-top:16px; }
+.cycle-report-comments h3 { margin:0; color:#17335e; font-size:14px; letter-spacing:-.04em; }
+.cycle-report-comments-empty { margin:9px 0 0; color:#8391a5; font-size:12px; }
+.cycle-report-comment-list { display:grid; gap:7px; margin:11px 0 0; padding:0; list-style:none; }
+.cycle-report-comment-list li { display:flex; align-items:flex-start; gap:9px; border-radius:8px; padding:9px 11px; color:#3d5376; background:#f7f9fc; font-size:12px; line-height:1.5; }
+.cycle-report-comment-list li b { flex:0 0 auto; color:#2162ee; font-size:11px; }
+.cycle-report-comment-list li.is-deleted { color:#8a98ac; font-style:italic; }
+.cycle-report-comment-list li.is-deleted b { color:#8a98ac; }
 .cycle-report-empty, .cycle-report-error { max-width:1050px; margin:0 auto; border:1px dashed #cdd9e8; border-radius:15px; padding:60px 20px; color:#708199; background:#fff; font-size:14px; line-height:1.65; text-align:center; }
 .cycle-report-error { border-style:solid; border-color:#ffd7df; color:#d94259; background:#fff6f7; }
 

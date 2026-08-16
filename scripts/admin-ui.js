@@ -262,13 +262,33 @@
   // [이벤트] 버튼의 데이터 속성만으로 대상 ID와 처리 종류를 전달해 UI와 서비스 책임을 분리합니다.
   $$('[data-admin-view]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.adminView)));
   $('#admin-close-live').addEventListener('click', () => { const live = getLiveMarket(); if (live) openCloseMarketModal(live); });
-  $('#admin-reset-demo').addEventListener('click', () => openModal({ eyebrow: '로컬 관리자 데이터', title: '관리자 데이터를 초기화할까요?', content: '<p>훈이 LIVE 종목만 유지하고, 관리자 페이지에서 생성한 댓글·사용자·운영 기록을 비웁니다. 사용자용 투자·댓글 시연 데이터에는 영향을 주지 않습니다.</p>', confirmLabel: '초기화', danger: true, onConfirm: async () => { state = await service.resetDemo(); closeMarketEditor(); $('#admin-staff-composer').hidden = true; renderAll(); showToast('관리자 로컬 데이터를 초기화했습니다.'); } }));
+  $('#admin-reset-demo').addEventListener('click', () => openModal({ eyebrow: '로컬 관리자 데이터', title: '관리자 데이터를 초기화할까요?', content: '<p>운영자 페이지에서 등록한 종목, 운영진 댓글, 운영 기록을 비우고 빈 운영 상태로 되돌립니다. 사용자용 회원가입·투자·댓글 데이터에는 영향을 주지 않습니다.</p>', confirmLabel: '초기화', danger: true, onConfirm: async () => { state = await service.resetDemo(); closeMarketEditor(); $('#admin-staff-composer').hidden = true; renderAll(); showToast('관리자 로컬 데이터를 초기화했습니다.'); } }));
   $('#admin-market-status-filters').addEventListener('click', (event) => { const button = event.target.closest('[data-market-filter]'); if (!button) return; marketStatusFilter = button.dataset.marketFilter; renderMarkets(); });
   $('#admin-market-date-filter').addEventListener('change', renderMarkets);
   $('#admin-create-market').addEventListener('click', () => populateMarketEditor());
   $('#admin-close-market-editor').addEventListener('click', closeMarketEditor);
   $('#admin-open-user-preview').addEventListener('click', () => { window.open('./index.html', 'jorong-user-preview'); showToast('사용자 화면을 새 창에서 열었습니다.'); });
-  $('#admin-market-image-file').addEventListener('change', (event) => { const file = event.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.addEventListener('load', () => { $('#admin-market-image').value = String(reader.result || ''); setMarketImagePreview($('#admin-market-image').value, file.name); renderMarketFormPreview(); }); reader.readAsDataURL(file); });
+  $('#admin-market-image-file').addEventListener('change', async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const input = event.currentTarget;
+    input.disabled = true;
+    $('#admin-market-image-name').textContent = service.getMode() === 'API' ? '이미지를 업로드하고 있습니다.' : '이미지를 불러오고 있습니다.';
+    try {
+      // [이미지 저장] 로컬은 Data URL 미리보기, API 모드는 서버가 Storage에 저장한 URL을 받습니다.
+      const result = await service.uploadMarketImage(file);
+      const imagePath = String(result?.imagePath || '');
+      if (!imagePath) throw new Error('이미지 URL을 받지 못했습니다.');
+      $('#admin-market-image').value = imagePath;
+      setMarketImagePreview(imagePath, service.getMode() === 'API' ? `${file.name} · 업로드 완료` : file.name);
+      renderMarketFormPreview();
+    } catch (error) {
+      $('#admin-market-image-name').textContent = error.message || '이미지 업로드에 실패했습니다.';
+      showToast(error.message || '이미지 업로드에 실패했습니다.');
+    } finally {
+      input.disabled = false;
+    }
+  });
   $('#admin-market-form').addEventListener('input', renderMarketFormPreview);
   $('#admin-market-preview-button').addEventListener('click', () => { const pseudo = { id: 'preview', sequence: '미리보기', ...readMarketForm() }; openMarketPreview(pseudo); });
   $('#admin-market-draft-button').addEventListener('click', () => saveMarket('draft'));

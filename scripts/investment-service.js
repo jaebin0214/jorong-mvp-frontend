@@ -49,7 +49,10 @@
   function getLocalNextOpenAt(closeAt) {
     const configured = Date.parse(config.session.nextOpenAt || '');
     if (Number.isFinite(configured)) return new Date(configured).toISOString();
-    return new Date(closeAt + (24 * 60 * 60 * 1000)).toISOString();
+    // 운영자가 다음 종목을 예약하지 않았다면 임의의 24시간 뒤 시간을 만들지 않습니다.
+    return config.session.hasNextMarket === true
+      ? new Date(closeAt + (24 * 60 * 60 * 1000)).toISOString()
+      : null;
   }
 
   // [로컬 원장 생성] 브라우저를 새로고침해도 같은 회차·사용자 조합의 주문과 포지션을 복원합니다.
@@ -72,10 +75,10 @@
     };
   }
 
-  function loadLocalLedger() {
+  function loadLocalLedger({ refreshFromStorage = false } = {}) {
     const isCurrentLedger = (ledger) => ledger?.version === LOCAL_STORE_VERSION && ledger?.market?.id === getMarketSessionId();
     // localStorage 접근이 막힌 경우에도 추가 투자 때 새 10,000 KRW 원장을 만들지 않게 합니다.
-    if (isCurrentLedger(memoryLocalLedger)) return memoryLocalLedger;
+    if (!refreshFromStorage && isCurrentLedger(memoryLocalLedger)) return memoryLocalLedger;
     try {
       const stored = JSON.parse(window.localStorage.getItem(LOCAL_STORE_KEY) || 'null');
       if (isCurrentLedger(stored)) {
@@ -85,6 +88,7 @@
     } catch (_) {
       // 손상된 시연 데이터는 새로운 회차 원장으로 교체합니다.
     }
+    if (isCurrentLedger(memoryLocalLedger)) return memoryLocalLedger;
     const ledger = createLocalLedger();
     saveLocalLedger(ledger);
     return ledger;
@@ -240,7 +244,8 @@
     }
     if (targetId !== TARGET_ID) throw createError('TARGET_NOT_FOUND', '존재하지 않는 투자 종목입니다.');
 
-    const ledger = loadLocalLedger();
+    // 주문 직전에는 다른 탭의 같은 계정 주문도 반영한 최신 원장을 사용합니다.
+    const ledger = loadLocalLedger({ refreshFromStorage: true });
     const account = ensureLocalAccount(ledger);
     if (readMarketStatus(ledger) !== 'OPEN') throw createError('MARKET_CLOSED', '거래가 종료되었습니다.');
     if (account.position?.side && window.FinancialMath.normalizeSide(account.position.side) !== normalizedSide) {
@@ -303,7 +308,8 @@
 
   // [로컬 정산] 같은 원장에 settlement가 이미 있으면 다시 지급하지 않아 브라우저 시연에서도 멱등성을 보장합니다.
   function settleLocalMarket() {
-    const ledger = loadLocalLedger();
+    // 정산 시에는 모든 계정의 최신 주문·옹호/조롱 누적값을 읽어 최종 시장 비율을 계산합니다.
+    const ledger = loadLocalLedger({ refreshFromStorage: true });
     const account = ensureLocalAccount(ledger);
     if (ledger.market.status === 'OPEN') ledger.market.status = 'CLOSED';
     if (!ledger.market.closePrice) ledger.market.closePrice = ledger.market.currentPrice;
@@ -373,7 +379,7 @@
   // [포지션 조회] 새로고침·재로그인 후에도 서버가 보관한 현재 포지션과 잔액을 그대로 복원합니다.
   async function loadPortfolio() {
     if (!API_BASE_URL) {
-      const ledger = loadLocalLedger();
+      const ledger = loadLocalLedger({ refreshFromStorage: true });
       if (readMarketStatus(ledger) !== 'OPEN') return settleLocalMarket();
       return applyLocalSnapshot(buildLocalSnapshot(ledger));
     }
@@ -390,11 +396,31 @@
 
   // [이전 화면 호환] 기존 마이페이지가 투자 로그를 요청할 때도 현재 포지션 응답을 사용합니다.
   async function loadMyInvestments() {
-    return loadPortfolio();
+    // 로컬 시연에서는 현재 회차 원장이 투자 로그 역할을 합니다.
+    if (!API_BASE_URL) return loadPortfolio();
+    // API 환경에서는 종료된 장을 포함한 전체 개인 투자 이력을 별도 엔드포인트에서 받습니다.
+    const body = await request('/me/investments');
+    return {
+      ...body,
+      wallet: body.wallet || { points: state.walletPoints },
+      investments: Array.isArray(body.investments) ? body.investments : (Array.isArray(body.investmentLogs) ? body.investmentLogs : []),
+    };
   }
 
   function getSnapshot() {
     return buildStateSnapshot();
+  }
+
+  // [시장 전체 주문] 로컬 시연에서는 한 회차 원장 안의 모든 계정 주문을 반환합니다.
+  // 가격 차트는 내 주문만이 아니라 같은 시장에 참여한 모든 사용자의 시간순 주문을 그립니다.
+  // API 연결 시에는 PriceHistoryService가 서버의 /candles 집계 API를 사용합니다.
+  function getLocalMarketOrders() {
+    // 다른 브라우저 탭/로컬 계정이 남긴 주문까지 읽기 위해 차트 조회 시에는 저장소를 다시 확인합니다.
+    const ledger = loadLocalLedger({ refreshFromStorage: true });
+    return Object.values(ledger.accounts || {})
+      .flatMap((account) => Array.isArray(account.orders) ? account.orders : [])
+      .filter((order) => String(order.marketId || order.marketSessionId || '') === String(getMarketSessionId()))
+      .sort((left, right) => Date.parse(left.createdAt || 0) - Date.parse(right.createdAt || 0));
   }
 
   window.addEventListener('jorong:auth-session', (event) => {
@@ -407,6 +433,16 @@
     if (!API_BASE_URL) settleLocalMarket();
   });
 
+  // [관리자 자동 전환 보완] 관리자가 이전 장을 종료하면서 다음 예약 장을 바로 LIVE로 전환하면
+  // 거래소 페이지는 새 회차로 새로고침됩니다. 그 직전에 현재 회차가 관리자 저장소에서 종료 상태인지
+  // 확인해 정산·사이클 리포트 보관 이벤트를 먼저 발생시킵니다.
+  window.addEventListener('jorong:admin-market-updated', () => {
+    if (API_BASE_URL) return;
+    const terminalMarket = window.LocalAdminMarketBridge?.getLatestTerminalMarket?.();
+    if (!terminalMarket || String(terminalMarket.id) !== String(getMarketSessionId())) return;
+    settleLocalMarket();
+  });
+
   window.InvestmentService = Object.freeze({
     TARGET_ID,
     getMarketSessionId,
@@ -415,6 +451,8 @@
     loadMyInvestments,
     loadSettlement,
     getSnapshot,
+    getMarketOrders: () => API_BASE_URL ? [] : getLocalMarketOrders(),
+    getLocalStoreKey: () => LOCAL_STORE_KEY,
     getMarketSummary: () => state.marketSummary,
   });
 })();

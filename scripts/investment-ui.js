@@ -22,8 +22,13 @@
   let additionalAmount = 5000;
   let selectedSide = null;
   let activeSnapshot = window.InvestmentService?.getSnapshot?.() || null;
+  // [댓글 기반 투자 잠금] 투자 가능 여부는 화면에 남아 있는 전체 댓글 수가 아니라
+  // 현재 로그인한 사용자가 이 회차에 남긴 원댓글을 기준으로 CommentsUI가 전달합니다.
+  let hasCurrentUserRootComment = false;
   let isSubmitting = false;
   let toastTimer;
+  // 계정 전환 중 이전 계정의 비동기 포트폴리오 응답이 늦게 돌아와 화면을 덮지 않게 합니다.
+  let refreshSequence = 0;
 
   if (!roastCta || !firstPanel || !statusCard || !additionalPanel || !firstAmountInput || !additionalAmountInput || !math) return;
 
@@ -112,6 +117,15 @@
     selectedSide = button.dataset.investmentDirection === 'support' ? 'SUPPORT' : 'MOCK';
   }
 
+  // [계정 전환 초기화] 이전 사용자의 방향 선택과 입력 화면을 새 세션에 남기지 않습니다.
+  function resetFirstInvestmentForm() {
+    selectedSide = null;
+    directionButtons.forEach((button) => {
+      button.classList.remove('is-selected');
+      button.setAttribute('aria-pressed', 'false');
+    });
+  }
+
   function renderPosition(snapshot) {
     const position = snapshot?.position;
     const metrics = snapshot?.positionMetrics;
@@ -163,6 +177,11 @@
       return;
     }
     if (renderPosition(activeSnapshot)) return;
+    // 현재 계정이 직접 작성한 원댓글이 없으면 첫 주문을 열지 않습니다.
+    if (!hasCurrentUserRootComment) {
+      setVisiblePanel(roastCta);
+      return;
+    }
     setVisiblePanel(firstPanel);
   }
 
@@ -204,6 +223,12 @@
     if (isSubmitting) return;
     if (window.MarketCountdown?.isEnded?.()) {
       showToast('거래가 종료되었습니다.');
+      return;
+    }
+    // 잠금 카드가 일시적으로 가려진 상태여도 주문 자체는 현재 계정의 댓글 조건을 다시 확인합니다.
+    if (!activeSnapshot?.position && !hasCurrentUserRootComment) {
+      setVisiblePanel(roastCta);
+      showToast('먼저 조롱 댓글을 작성해주세요.');
       return;
     }
     if (!Number.isSafeInteger(amount) || amount <= 0) {
@@ -263,18 +288,31 @@
   });
 
   async function refresh() {
+    const sequence = ++refreshSequence;
     try {
       const result = await window.InvestmentService.loadPortfolio();
+      // 로그인 계정이 바뀐 뒤 이전 계정의 응답이 도착한 경우에는 무시합니다.
+      if (sequence !== refreshSequence) return;
       activeSnapshot = result;
       renderBalance(result.wallet?.points);
       if (result.target?.value != null) window.TargetValueUI?.update(result.target);
-      renderPosition(result);
+      // 포지션이 없는 새 계정은 이전 계정의 추가 투자 화면을 유지하지 않습니다.
+      if (!renderPosition(result)) setVisiblePanel(hasCurrentUserRootComment ? firstPanel : roastCta);
     } catch (_) {
       // 로그인 전 또는 서버 연결 전 오류는 기존 투자 시작 화면을 유지합니다.
     }
   }
 
-  window.addEventListener('jorong:auth-session', () => refresh());
+  // [인증 세션 변경] 같은 브라우저에서 다른 계정으로 전환해도 이전 계정의 포지션·추가 투자 UI가
+  // 보이지 않도록 즉시 잠근 뒤, 새 계정의 포트폴리오와 댓글 상태를 다시 불러옵니다.
+  window.addEventListener('jorong:auth-session', (event) => {
+    activeSnapshot = null;
+    hasCurrentUserRootComment = false;
+    resetFirstInvestmentForm();
+    renderBalance(event.detail?.wallet?.points);
+    setVisiblePanel(roastCta);
+    refresh();
+  });
   window.addEventListener('jorong:market-settled', (event) => {
     activeSnapshot = event.detail;
     renderBalance(event.detail?.wallet?.points);
@@ -288,5 +326,14 @@
   refresh();
   // [실시간 평가손익] 서버 연결 시 다른 사용자의 주문으로 바뀐 현재가와 평가손익을 주기적으로 다시 받습니다.
   if ((window.JORONG_API_BASE_URL || '').trim()) window.setInterval(refresh, 10_000);
-  window.InvestmentUI = Object.freeze({ open: openFirstInvestment, refresh, renderPosition });
+  window.InvestmentUI = Object.freeze({
+    open: openFirstInvestment,
+    refresh,
+    renderPosition,
+    // CommentsUI는 댓글 목록을 새 계정 기준으로 불러올 때마다 이 값을 갱신합니다.
+    setCommentUnlockState: (isUnlocked) => {
+      hasCurrentUserRootComment = Boolean(isUnlocked);
+      if (!hasCurrentUserRootComment && !activeSnapshot?.position) setVisiblePanel(roastCta);
+    },
+  });
 })();

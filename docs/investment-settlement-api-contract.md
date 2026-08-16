@@ -200,6 +200,15 @@ Idempotency-Key: 8d35d8c0-2e9e-4b5e-9277-1b5e1fd46679
         "mockRatio": 62,
         "totalVolume": "1248000",
         "participants": 312
+      },
+      "myComments": [
+        {
+          "id": "comment_001",
+          "parentCommentId": null,
+          "content": "오늘도 자신감은 상한가",
+          "status": "PUBLIC",
+          "createdAt": "2026-08-14T05:20:00.000Z"
+        }
       }
     }
   ]
@@ -209,6 +218,7 @@ Idempotency-Key: 8d35d8c0-2e9e-4b5e-9277-1b5e1fd46679
 - 인증 필요: 예
 - 서버는 `userId`를 세션에서 식별하고, 다른 사용자의 정산 결과를 포함하면 안 됩니다.
 - `subject.imageUrl`은 공개적으로 접근 가능한 Storage URL을 반환합니다. 로컬 시연 모드에서는 브라우저에 저장된 이미지 경로를 사용합니다.
+- `myComments`에는 해당 시장에서 로그인 사용자가 작성한 원댓글·답글만 포함합니다. 삭제된 댓글은 `status: "DELETED"`로 남겨 개인 이력과 운영 기록을 일관되게 유지합니다.
 - 현재 API 주소가 설정되지 않은 정적 시연에서는 장 종료 이벤트의 정산 스냅샷을 사용자별 `localStorage`에 보관해 리포트를 구성합니다.
 
 ## 계산과 반올림 기준

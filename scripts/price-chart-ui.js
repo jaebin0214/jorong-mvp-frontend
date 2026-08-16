@@ -5,8 +5,9 @@ window.PriceChartUI = (() => {
   const config = window.MarketConfig.get();
   const hasBackendApi = Boolean((window.JORONG_API_BASE_URL || '').trim());
   const initialPrice = Number(config.subject.initialPrice);
-  // [고정 기준선] 가격 변동의 기준은 항상 1,000 KRW이며, 세로축 라벨은 50 KRW의 배수만 사용합니다.
-  const priceBaseline = 1000;
+  // [운영 종목 기준선] 가격 변동의 중앙 기준선은 운영자가 개설 시 정한 최초 가격입니다.
+  // 종목마다 기준 가격이 달라도 같은 방식으로 5개 눈금과 50 KRW 단위를 유지합니다.
+  const priceBaseline = Math.max(1, Number(config.subject.initialPrice) || 1000);
   const priceGridUnit = 50;
   const gridLineCount = 5;
   // SVG의 가상 좌표계 크기는 고정합니다. 가격 범위만 매 렌더링마다 자동 보정합니다.
@@ -33,7 +34,7 @@ window.PriceChartUI = (() => {
     return Math.round(Number(value) || 0).toLocaleString('ko-KR');
   }
 
-  // [Y축 자동 보정] 1,000 KRW 기준선은 차트 중앙에 고정합니다.
+  // [Y축 자동 보정] 개설 시 설정한 최초 가격 기준선은 차트 중앙에 고정합니다.
   // 최고·최저가가 범위를 벗어날 때만 위·아래 범위를 같은 비율로 확장합니다.
   // 화면의 가로 기준선은 언제나 5개이며, 모든 라벨은 50 KRW의 배수입니다.
   function getPriceDomain(candles) {
@@ -98,7 +99,7 @@ window.PriceChartUI = (() => {
     const volumeBottom = height - padding.bottom;
     const candleWidth = Math.max(4, Math.min(12, plotWidth / Math.max(70, displayCandles.length * 2.8)));
 
-    // [가격 기준값] 1,000 KRW 기준선과 그 위·아래의 50 KRW 배수 가격만 5개 표시합니다.
+    // [가격 기준값] 최초 가격 기준선과 그 위·아래의 50 KRW 단위 가격만 5개 표시합니다.
     const grid = domain.gridValues.map((price) => {
       const y = yForPrice(price);
       const isBaseline = price === priceBaseline;
@@ -154,7 +155,12 @@ window.PriceChartUI = (() => {
   }
 
   refresh();
-  if (hasBackendApi) window.setInterval(refresh, 10_000);
+  // 서버 연결 시에는 DB 집계값을, 로컬 시연에서는 다른 계정/탭이 남긴 공유 원장 값을 주기적으로 읽습니다.
+  window.setInterval(refresh, hasBackendApi ? 10_000 : 1_500);
+  window.addEventListener('storage', (event) => {
+    const localOrderStoreKey = window.InvestmentService?.getLocalStoreKey?.();
+    if (!hasBackendApi && event.key === localOrderStoreKey) refresh();
+  });
   window.addEventListener('jorong:investment-created', (event) => {
     if (!event.detail?.order && !event.detail?.investment) refresh();
   });

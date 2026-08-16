@@ -20,6 +20,23 @@ function createService(storage = new Map()) {
   return sandbox.window.AdminService;
 }
 
+// 빈 관리자 상태에서 각 테스트가 필요한 종목을 직접 등록합니다.
+function marketInput(overrides = {}) {
+  const startAt = new Date(Date.now() + (60 * 60 * 1000)).toISOString();
+  const endAt = new Date(Date.parse(startAt) + (60 * 60 * 1000)).toISOString();
+  return {
+    subjectName: '테스트 종목', shortIntroduction: '관리자 상태 검증용 종목', description: '테스트에서 직접 생성한 종목입니다.', imagePath: './assets/hoon.png', startAt, endAt, basePrice: 1000, minTradeUnit: 10, settlementMethod: '자동 정산', autoStart: true, autoSettle: true, commentsPublic: true,
+    ...overrides,
+  };
+}
+
+async function createLiveMarket(service, overrides = {}) {
+  const created = await service.createMarket(marketInput(overrides));
+  const market = created.markets.at(-1);
+  await service.scheduleMarket(market.id);
+  return service.startMarket(market.id);
+}
+
 test('관리자 시장 상태 전환은 허용된 순서만 통과한다', () => {
   const service = createService();
   assert.equal(service.canTransitionMarket('DRAFT', 'SCHEDULED'), true);
@@ -28,23 +45,21 @@ test('관리자 시장 상태 전환은 허용된 순서만 통과한다', () =>
   assert.equal(service.canTransitionMarket('ARCHIVED', 'DRAFT'), false);
 });
 
-test('초기 관리자 로컬 상태는 훈이 LIVE 종목 하나와 빈 운영 데이터로 시작한다', async () => {
+test('초기 관리자 로컬 상태는 더미 종목·사용자가 없는 빈 운영 상태로 시작한다', async () => {
   const state = await createService().load();
-  assert.deepEqual(state.markets.map((market) => ({ id: market.id, subjectName: market.subjectName, status: market.status })), [
-    { id: 'market_001_hoon', subjectName: '훈이', status: 'LIVE' },
-  ]);
+  assert.deepEqual(state.markets, []);
   assert.deepEqual(state.comments, []);
   assert.deepEqual(state.users, []);
   assert.deepEqual(state.auditLogs, []);
   assert.deepEqual(state.participationTrend, []);
 });
 
-test('이전 버전의 관리자 더미 저장소는 깨끗한 훈이 초기 상태로 교체한다', async () => {
+test('이전 버전의 관리자 더미 저장소는 빈 운영 상태로 교체한다', async () => {
   const storage = new Map();
   storage.set('jorong_admin_demo_v1', JSON.stringify({ version: 1, markets: [{ id: 'old-demo', status: 'LIVE', subjectName: '이전 더미' }], comments: [{ id: 'old-comment' }], users: [{ id: 'old-user' }], auditLogs: [] }));
   const state = await createService(storage).load();
-  assert.equal(state.version, 2);
-  assert.deepEqual(state.markets.map((market) => market.id), ['market_001_hoon']);
+  assert.equal(state.version, 3);
+  assert.deepEqual(state.markets, []);
   assert.deepEqual(state.comments, []);
   assert.deepEqual(state.users, []);
 });
@@ -69,17 +84,47 @@ test('사용자 거래소의 로컬 가입자와 댓글·답글을 관리자 목
   assert.equal(state.users[0].commentCount, 2);
   assert.equal(state.comments.length, 2);
   assert.equal(state.comments[0].authorName, '로컬사용자');
-  assert.equal(state.markets[0].commentCount, 2);
+});
+
+test('사용자가 삭제한 로컬 댓글은 관리자 목록에서도 삭제 상태와 처리 주체로 표시된다', async () => {
+  const storage = new Map();
+  storage.set('jorong-mvp-local-accounts-v1', JSON.stringify({
+    version: 1,
+    accounts: [{ id: 'local-account-001', nickname: '로컬사용자', points: 10000, createdAt: '2026-08-16T00:00:00.000Z' }],
+  }));
+  storage.set('jorong-mvp-local-comments-v1', JSON.stringify({
+    version: 1,
+    markets: {
+      market_001_hoon: {
+        roots: [{ id: 'deleted-comment', marketSessionId: 'market_001_hoon', content: '삭제 전 본문', status: 'DELETED', deletedAt: '2026-08-16T01:00:00.000Z', author: { id: 'local-account-001', nickname: '로컬사용자' }, replies: [] }],
+      },
+    },
+  }));
+  const state = await createService(storage).load();
+  const comment = state.comments.find((item) => item.id === 'deleted-comment');
+  assert.equal(comment.status, 'DELETED');
+  assert.equal(comment.content, '작성자가 삭제한 댓글입니다.');
+  assert.equal(comment.moderatedBy, '로컬사용자');
 });
 
 test('예약 또는 거래 중인 종목과 시간이 겹치면 예약을 차단한다', async () => {
   const service = createService();
-  const state = await service.load();
+  const state = await createLiveMarket(service);
   const live = state.markets.find((market) => market.status === 'LIVE');
   assert.throws(
     () => service.validateMarketSchedule({ id: 'candidate', status: 'SCHEDULED', startAt: live.startAt, endAt: live.endAt }, state.markets),
     (error) => error.code === 'MARKET_SCHEDULE_CONFLICT',
   );
+});
+
+test('첫 종목을 현재 시각 이전으로 예약하고 자동 시작을 켜면 즉시 LIVE로 게시된다', async () => {
+  const service = createService();
+  const startAt = new Date(Date.now() - (60 * 1000)).toISOString();
+  const endAt = new Date(Date.now() + (60 * 60 * 1000)).toISOString();
+  const created = await service.createMarket(marketInput({ subjectName: '첫 게시 종목', startAt, endAt, autoStart: true }));
+  const market = created.markets.at(-1);
+  const published = await service.scheduleMarket(market.id);
+  assert.equal(published.markets.find((item) => item.id === market.id).status, 'LIVE');
 });
 
 test('종목 필수값과 시작·종료 시간 검증이 작동한다', () => {
@@ -96,14 +141,25 @@ test('종목 필수값과 시작·종료 시간 검증이 작동한다', () => {
 
 test('한 번에 두 종목을 LIVE 상태로 시작할 수 없다', async () => {
   const service = createService();
-  const initial = await service.load();
+  const initial = await createLiveMarket(service);
   const live = initial.markets.find((market) => market.status === 'LIVE');
   const startAt = new Date(Date.parse(live.endAt) + (60 * 60 * 1000)).toISOString();
   const endAt = new Date(Date.parse(startAt) + (60 * 60 * 1000)).toISOString();
   const created = await service.createMarket({ subjectName: '테스트 종목', shortIntroduction: '상태 전환 검증용 종목', description: 'LIVE 상태 중복 방지 검증입니다.', imagePath: './assets/hoon.png', startAt, endAt, basePrice: 1000, minTradeUnit: 10, settlementMethod: '자동 정산', autoStart: true, autoSettle: true, commentsPublic: true });
-  const candidate = created.markets.find((market) => market.subjectName === '테스트 종목');
+  const candidate = created.markets.at(-1);
   await service.scheduleMarket(candidate.id);
   await assert.rejects(service.startMarket(candidate.id), (error) => error.code === 'LIVE_MARKET_EXISTS');
+});
+
+test('운영자가 장을 수동 종료하면 종료·정산 시각을 함께 기록한다', async () => {
+  const service = createService();
+  const initial = await createLiveMarket(service);
+  const live = initial.markets.find((market) => market.status === 'LIVE');
+  const closed = await service.closeMarket(live.id);
+  const market = closed.markets.find((item) => item.id === live.id);
+  assert.equal(market.status, 'SETTLED');
+  assert.ok(Number.isFinite(Date.parse(market.closedAt)));
+  assert.ok(Number.isFinite(Date.parse(market.settledAt)));
 });
 
 test('이전 LIVE 장이 끝난 뒤에는 자동 시작 예약 종목을 다음 LIVE 장으로 전환한다', async () => {
@@ -124,7 +180,7 @@ test('이전 LIVE 장이 끝난 뒤에는 자동 시작 예약 종목을 다음 
 
 test('댓글 숨김과 숨김 해제는 감사 기록을 남긴다', async () => {
   const service = createService();
-  const initial = await service.load();
+  const initial = await createLiveMarket(service);
   let state = await service.createStaffComment({ marketId: initial.markets[0].id, content: '검토할 운영진 댓글', isNotice: false, pinned: false, immediatePublished: true });
   const commentId = state.comments[0].id;
   state = await service.moderateComment(commentId, { action: 'HIDE', reason: '검토 필요' });
@@ -137,11 +193,9 @@ test('댓글 숨김과 숨김 해제는 감사 기록을 남긴다', async () =>
 
 test('크레딧 조정에는 사유가 필요하고 변경 전후 값이 운영 기록에 남는다', async () => {
   const storage = new Map();
-  await createService(storage).load();
-  const seeded = JSON.parse(storage.get('jorong_admin_demo_v1'));
-  seeded.users.push({ id: 'test_user_001', nickname: '테스트 사용자', credits: 8400, tradeCount: 0, commentCount: 0, status: 'ACTIVE', commentRestricted: false, createdAt: new Date().toISOString() });
-  storage.set('jorong_admin_demo_v1', JSON.stringify(seeded));
+  storage.set('jorong-mvp-local-accounts-v1', JSON.stringify({ version: 1, accounts: [{ id: 'test_user_001', nickname: '테스트 사용자', points: 8400, createdAt: new Date().toISOString() }] }));
   const service = createService(storage);
+  await service.load();
   await assert.rejects(service.adjustCredits('test_user_001', { amount: 1000, reason: '' }), (error) => error.code === 'CREDIT_REASON_REQUIRED');
   const state = await service.adjustCredits('test_user_001', { amount: -400, reason: '운영 보정' });
   assert.equal(state.users.find((user) => user.id === 'test_user_001').credits, 8000);
@@ -151,7 +205,7 @@ test('크레딧 조정에는 사유가 필요하고 변경 전후 값이 운영 
 test('관리자 로컬 시연 데이터는 새 서비스 인스턴스에서도 복원된다', async () => {
   const sharedStorage = new Map();
   const firstService = createService(sharedStorage);
-  const initial = await firstService.load();
+  const initial = await createLiveMarket(firstService);
   const state = await firstService.createStaffComment({ marketId: initial.markets[0].id, content: '새로고침 복원 확인용 댓글', isNotice: false, pinned: false, immediatePublished: true });
   const commentId = state.comments[0].id;
   await firstService.moderateComment(commentId, { action: 'HIDE', reason: '새로고침 복원 확인' });

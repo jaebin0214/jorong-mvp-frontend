@@ -68,6 +68,7 @@ DRAFT → SCHEDULED → LIVE → CLOSED → SETTLED → ARCHIVED
 | `POST /admin/markets/{marketId}/close` | 거래 종료 | 종료 |
 | `POST /admin/markets/{marketId}/settle` | 정산 완료 | 정산 |
 | `POST /admin/markets/{marketId}/archive` | 소프트 보관 | 보관 |
+| `POST /admin/markets/{marketId}/duplicate` | 기존 종목을 새 `DRAFT`로 복제 | 생성 |
 
 생성·수정 본문:
 
@@ -89,7 +90,19 @@ DRAFT → SCHEDULED → LIVE → CLOSED → SETTLED → ARCHIVED
 }
 ```
 
-`subjectName`, `imagePath`, `startAt`, `endAt`는 필수입니다. 거래가 시작된 시장의 종목명·운영 시간·기준 가격 변경은 `MARKET_EDIT_LOCKED`로 거절합니다. 실제 이미지 파일 업로드와 CDN 저장은 후속 Storage API가 담당합니다.
+`subjectName`, `imagePath`, `startAt`, `endAt`는 필수입니다. 거래가 시작된 시장의 종목명·운영 시간·기준 가격 변경은 `MARKET_EDIT_LOCKED`로 거절합니다.
+
+### 종목 이미지 업로드
+
+`POST /admin/market-images` — 관리자 권한 필요
+
+`multipart/form-data`의 `file` 필드로 이미지를 받습니다. 서버는 파일 타입·용량을 검사한 뒤 Supabase Storage 등의 비공개 버킷에 저장하고, 사용자 화면에서 사용할 수 있는 공개 URL 또는 유효기간이 충분한 서명 URL을 반환합니다.
+
+```json
+{ "imageUrl": "https://<project>.supabase.co/storage/v1/object/public/market-images/market_001.png" }
+```
+
+프론트는 이 URL만 `imagePath` 필드에 보관합니다. Data URL과 Storage service-role 키를 브라우저에서 직접 저장·노출하면 안 됩니다.
 
 ## 댓글 관리
 

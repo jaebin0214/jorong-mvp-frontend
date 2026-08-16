@@ -6,19 +6,21 @@ const vm = require('node:vm');
 
 const serviceCode = fs.readFileSync('scripts/cycle-report-service.js', 'utf8');
 
-function createService() {
+function createService({ comments = [] } = {}) {
   const storage = new Map();
   const listeners = {};
+  const events = [];
   const window = {
     JORONG_API_BASE_URL: '',
     AuthService: { getCurrentAccount: () => ({ id: 'user-01', nickname: '테스트유저' }), getRequestHeaders: () => ({}) },
+    CommentService: { getMyCommentsForMarket: () => comments },
     MarketConfig: { get: () => ({ subject: { id: 'hoon', name: '훈이', imagePath: './assets/hoon.png' } }) },
     localStorage: { getItem: (key) => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
     addEventListener: (name, handler) => { listeners[name] = handler; },
-    dispatchEvent: () => true,
+    dispatchEvent: (event) => { events.push(event); return true; },
   };
   vm.runInNewContext(serviceCode, { window, Date, JSON, Math, String, Number, Array, Object, Promise, CustomEvent: class CustomEvent { constructor(name, init) { this.type = name; this.detail = init?.detail; } } });
-  return { service: window.CycleReportService, storage };
+  return { service: window.CycleReportService, storage, events };
 }
 
 function snapshot({ marketId = 'market-001', settledAt = '2026-08-15T10:00:00.000Z', settlementAmount = '3226' } = {}) {
@@ -51,4 +53,23 @@ test('같은 시장의 리포트는 중복 생성하지 않고 최신 정산 정
   assert.equal(reports.length, 2);
   assert.equal(reports[0].market.id, 'market-001');
   assert.equal(reports[0].settlement.settlementAmount, '3250');
+});
+
+test('같은 정산 스냅샷을 다시 보관해도 리포트 갱신 이벤트를 반복 발생시키지 않는다', () => {
+  const { service, events } = createService();
+  const result = snapshot();
+  service.archiveSnapshot(result);
+  service.archiveSnapshot(result);
+  assert.equal(events.filter((event) => event.type === 'jorong:cycle-report-updated').length, 1);
+});
+
+test('정산 리포트는 해당 시장에서 내가 남긴 댓글과 답글도 보관한다', async () => {
+  const comments = [
+    { id: 'comment-01', parentCommentId: null, content: '원댓글', status: 'PUBLIC', createdAt: '2026-08-15T08:00:00.000Z' },
+    { id: 'comment-02', parentCommentId: 'comment-01', content: '답글', status: 'DELETED', createdAt: '2026-08-15T08:01:00.000Z' },
+  ];
+  const { service } = createService({ comments });
+  service.archiveSnapshot(snapshot());
+  const [report] = await service.loadReports();
+  assert.deepEqual(report.myComments, comments);
 });

@@ -1,21 +1,22 @@
-// [운영 설정] 운영자는 이 파일만 수정해 다음 거래 회차의 종목·이미지·초기 가격·거래 시간을 교체합니다.
+// [운영 설정] 실제 종목·거래 시간은 관리자 페이지 또는 서버가 제공하며, 이 파일은 활성 시장이 없을 때의 안전한 대기 상태만 제공합니다.
 (() => {
   const DEFAULT_MARKET_CONFIG = {
-    // 회차 ID는 종목 또는 거래 시간을 변경할 때마다 반드시 새 값으로 바꿉니다.
+    // [빈 거래소] 운영자가 첫 종목을 LIVE로 전환하기 전에는 어떠한 더미 종목도 표시하지 않습니다.
+    marketAvailable: false,
     session: {
-      id: 'test1',
-      // null이면 첫 접속 시점부터 시간이 흐릅니다. 실제 운영에서는 ISO 형식 시작 시각을 권장합니다.
+      id: 'no-active-market',
       startsAt: null,
-      durationHours: 0.1,
-      // 장 종료 후 다음 장을 열 절대 시각입니다. 실제 운영에서는 서버의 market.nextOpenAt이 이 값을 대신합니다.
+      durationHours: 6,
       nextOpenAt: null,
+      hasNextMarket: false,
+      status: 'SCHEDULED',
     },
     subject: {
-      id: 'hoon',
-      name: '훈이',
-      imagePath: './assets/hoon.png',
-      // [종목 소개] 거래소 첫 진입 시 표시되는 안내 창의 설명입니다. 다음 종목으로 교체할 때 이름·이미지와 함께 수정합니다.
-      description: '훈이는 『짱구는 못말려』에 등장하는 짱구의 친구 중 한 명이다. 겁이 많고 소심한 면모를 보이지만, 기본적으로 착하고 친구들을 생각하는 마음을 가지고 있다. 위험하거나 당황스러운 상황에서는 쉽게 겁을 먹지만 친구들과 함께할 때는 용기를 내기도 한다.',
+      id: '',
+      name: '',
+      imagePath: '',
+      description: '',
+      // 투자·차트 모듈의 안전한 초기화용 값이며, 활성 종목이 없을 때 화면에는 표시하지 않습니다.
       initialPrice: 1000,
     },
   };
@@ -26,8 +27,9 @@
   const localAdminRuntimeConfig = window.LocalAdminMarketBridge?.getMarketConfigOverride?.(DEFAULT_MARKET_CONFIG) || null;
   const hasServerRuntimeConfig = Boolean(Object.keys(serverRuntimeConfig).length);
   const runtimeConfig = hasServerRuntimeConfig ? serverRuntimeConfig : (localAdminRuntimeConfig || {});
-  const configSource = hasServerRuntimeConfig ? 'SERVER_RUNTIME' : (localAdminRuntimeConfig ? 'LOCAL_ADMIN_DEMO' : 'DEFAULT_FILE');
+  const configSource = hasServerRuntimeConfig ? 'SERVER_RUNTIME' : (localAdminRuntimeConfig ? 'LOCAL_ADMIN_DEMO' : 'EMPTY_LOCAL');
   const config = {
+    marketAvailable: hasServerRuntimeConfig || Boolean(localAdminRuntimeConfig),
     session: { ...DEFAULT_MARKET_CONFIG.session, ...(runtimeConfig.session || {}) },
     subject: { ...DEFAULT_MARKET_CONFIG.subject, ...(runtimeConfig.subject || {}) },
   };
@@ -41,6 +43,17 @@
   config.session.nextOpenAt = config.session.nextOpenAt && !Number.isNaN(Date.parse(config.session.nextOpenAt))
     ? config.session.nextOpenAt
     : null;
+  // 로컬 운영자 브리지는 예약 종목이 있는 경우에만 true를 명시합니다.
+  // 서버 연결 뒤에는 유효한 nextOpenAt을 기준으로 같은 값을 계산할 수 있습니다.
+  const runtimeHasNextMarket = runtimeConfig.session?.hasNextMarket;
+  config.session.hasNextMarket = typeof runtimeHasNextMarket === 'boolean'
+    ? runtimeHasNextMarket
+    : Boolean(config.session.nextOpenAt);
+  config.session.status = String(config.session.status || 'OPEN').toUpperCase();
+  // 서버가 시장 미운영 상태를 명시한 경우도 존중합니다. 실제 활성 시장 판단은 서버가 최종 책임집니다.
+  if (typeof runtimeConfig.marketAvailable === 'boolean') config.marketAvailable = runtimeConfig.marketAvailable;
+  config.marketAvailable = Boolean(config.marketAvailable);
+  if (!config.marketAvailable) config.session.status = 'SCHEDULED';
   config.subject.id = String(config.subject.id || DEFAULT_MARKET_CONFIG.subject.id);
   config.subject.name = String(config.subject.name || DEFAULT_MARKET_CONFIG.subject.name);
   config.subject.imagePath = String(config.subject.imagePath || DEFAULT_MARKET_CONFIG.subject.imagePath);

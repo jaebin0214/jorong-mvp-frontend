@@ -2,6 +2,18 @@
 (() => {
   const config = window.MarketConfig.get();
   const { subject } = config;
+  const marketAvailable = config.marketAvailable === true;
+  // [종료 장 우선] LIVE 종목이 사라졌더라도 직전 장의 CLOSED/SETTLED/ARCHIVED 설정이 있으면
+  // 거래소 본문 대신 정산 화면으로 이어져야 합니다.
+  const isTerminalMarket = ['CLOSED', 'SETTLED', 'ARCHIVED'].includes(String(config.session?.status || '').toUpperCase());
+  const exchangeRebuild = document.querySelector('.exchange-rebuild');
+  // 활성 장이 없으면 거래소 본문을 비워 두며, 별도의 대기 안내 화면은 표시하지 않습니다.
+  // 종료 장은 아래 정산 UI가 즉시 표시합니다.
+  if (exchangeRebuild) exchangeRebuild.hidden = !marketAvailable || isTerminalMarket;
+  if (!marketAvailable) {
+    window.dispatchEvent(new CustomEvent('jorong:market-config-updated', { detail: config }));
+    return;
+  }
   const formattedPrice = subject.initialPrice.toLocaleString('ko-KR');
   const subjectImage = document.querySelector('.exchange-subject-image');
 

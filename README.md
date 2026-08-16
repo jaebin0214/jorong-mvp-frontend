@@ -58,6 +58,8 @@ API 주소가 비어 있을 때 `admin.html`에서 `LIVE` 상태인 종목은 `i
 
 현재 정적 MVP는 API 주소가 비어 있을 때 브라우저 저장소에 로컬 시연용 주문·포지션·정산 원장을 보관합니다. 실제 운영에서는 `window.JORONG_API_BASE_URL`을 설정해 서버 API를 사용해야 합니다. 백엔드 구현 기준은 [investment-settlement-api-contract.md](./docs/investment-settlement-api-contract.md), DB 초안은 [001_market_position_settlement.postgres.sql](./docs/migrations/001_market_position_settlement.postgres.sql)에 정리되어 있습니다.
 
+화면별로 프론트가 보내고 받는 데이터, 로컬 시연 여부, Supabase 구현 시 서버 책임은 [frontend-backend-data-map.md](./docs/frontend-backend-data-map.md)에 정리했습니다.
+
 계산 예시는 아래 기본 테스트로 검증할 수 있습니다.
 
 ```powershell

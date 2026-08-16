@@ -67,8 +67,15 @@
 .account-prompt { margin-right:15px; color:#8a99af; font-size:13px; }
 .header-login { min-width:90px; height:35px; border:1px solid #cdd9ea; border-radius:5px; color:var(--navy); background:#fff; font-size:15px; font-weight:850; }
 .header-login:hover { border-color:#96b8fa; background:#f5f8ff; }
-/* [로그인 회원명] 인증 이벤트가 오면 상단 로그인·회원가입 버튼 대신 표시되는 현재 회원의 닉네임입니다. */
-.header-member-name { display:inline-flex; align-items:center; min-height:35px; border-radius:5px; padding:0 13px; color:#163566; background:#eef4ff; font-size:15px; font-weight:850; white-space:nowrap; }
+/* [로그인 프로필] 아이디 버튼을 누르면 바로 아래에 로그아웃 메뉴가 열립니다. */
+.header-profile { position:relative; display:inline-flex; }
+.header-profile[hidden] { display:none; }
+.header-member-name { display:inline-flex; align-items:center; min-height:35px; border:0; border-radius:5px; padding:0 13px; color:#163566; background:#eef4ff; font:inherit; font-size:15px; font-weight:850; white-space:nowrap; cursor:pointer; }
+.header-member-name:hover, .header-member-name[aria-expanded="true"] { color:#0d55d7; background:#e1edff; }
+.header-member-name:focus-visible, .header-logout-button:focus-visible { outline:3px solid rgb(33 98 238 / 28%); outline-offset:2px; }
+.header-logout-button { position:absolute; z-index:110; top:calc(100% + 7px); right:0; min-width:100%; height:34px; border:1px solid #d6e1ef; border-radius:6px; padding:0 12px; color:#294365; background:#fff; box-shadow:0 8px 18px rgb(23 51 94 / 14%); font:inherit; font-size:13px; font-weight:800; white-space:nowrap; cursor:pointer; }
+.header-logout-button:hover { color:#d83d58; border-color:#ffcbd4; background:#fff6f8; }
+.header-logout-button[hidden] { display:none; }
 /* [숨김 상태] 로그인 전 빈 닉네임 영역이 사각형으로 보이지 않도록 hidden 속성을 명시적으로 우선 적용합니다. */
 .header-member-name[hidden] { display:none; }
 /* [맨 위로 이동] 댓글창의 왼쪽 바깥에 두고, 문서가 길어져도 화면 하단에 고정합니다. */

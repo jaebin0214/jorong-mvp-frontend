@@ -8,6 +8,7 @@
 .exchange-header-actions b { margin-right:24px; color:#162d56; font-size:15px; }
 .exchange-header-actions button { min-width:66px; height:29px; border:1px solid #d2deed; border-radius:5px; color:#17335e; background:#fff; font-size:15px; font-weight:850; }
 .exchange-header-actions .header-member-name { min-height:29px; padding:0 11px; font-size:14px; }
+.exchange-header-actions .header-logout-button { height:31px; font-size:12px; }
 
 /* [거래소 본문] 제공된 종목 상세·댓글 통합 화면의 3단 상단 구조입니다. */
 .exchange-view { min-height:calc(100dvh - 51px); padding:0; background:#f6f8fc; }
@@ -111,6 +112,8 @@
 .exchange-comment .exchange-comment-delete { min-width:0; width:auto; height:auto; margin-left:auto; border:0; border-radius:0; padding:2px 0; color:#99a7b9; background:transparent; font-size:13px; font-weight:700; cursor:pointer; }
 .exchange-comment .exchange-comment-delete:hover:not(:disabled) { color:#f04a62; text-decoration:underline; }
 .exchange-comment .exchange-comment-delete:disabled { opacity:.5; cursor:wait; }
+.exchange-comment.is-deleted, .exchange-reply.is-deleted { opacity:.62; }
+.exchange-comment.is-deleted > div > p, .exchange-reply.is-deleted p { color:#8693a7; font-style:italic; }
 .exchange-comment footer .exchange-reply-view { min-width:0; width:auto; height:auto; border:0; border-radius:0; padding:0; color:#2162ee; background:transparent; font-size:11px; font-weight:800; cursor:pointer; }
 .exchange-comment footer .exchange-reply-toggle { min-width:0; width:auto; height:auto; border:0; border-radius:0; padding:0; color:#5d6f8b; background:transparent; font-size:11px; font-weight:400; cursor:pointer; }
 .exchange-comment footer .exchange-reply-toggle:hover { color:#2162ee; text-decoration:underline; }

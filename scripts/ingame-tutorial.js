@@ -48,6 +48,7 @@
 
   // [장 종료 예외] 정산 화면에서는 거래 방법을 안내할 필요가 없으므로, 서버 기준으로 닫힌 시장의 튜토리얼을 차단합니다.
   function canStartTutorial() {
+    if (window.MarketConfig?.get?.().marketAvailable !== true) return false;
     const marketEnded = window.MarketCountdown?.isEnded?.() === true;
     const settlementView = document.querySelector('#market-settlement-view');
     const settlementVisible = Boolean(settlementView && !settlementView.hidden);

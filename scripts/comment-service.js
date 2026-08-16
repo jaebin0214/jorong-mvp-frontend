@@ -5,11 +5,13 @@
   const TARGET_ID = marketConfig.subject.id;
   // [로컬 댓글 저장소] 관리자 화면과 사용자 거래소가 같은 사이트 주소에서 댓글·답글·HYPE를 함께 읽습니다.
   const LOCAL_STORE_KEY = 'jorong-mvp-local-comments-v1';
+  const LOCAL_VISITOR_KEY = 'jorong-mvp-local-comment-visitor';
   let localRoots = [];
   let localCommentSequence = 0;
   let localHypedCommentId = null;
   let localStore = null;
   let activeLocalSessionId = '';
+  let localVisitorId = '';
 
   // [현재 세션 ID] 서버 시계의 현재 라운드 ID를 우선 사용해 투자·댓글·가격 차트가 한 시장을 가리키게 합니다.
   function getMarketSessionId() {
@@ -27,7 +29,7 @@
     if (window.MarketCountdown?.isEnded()) throw new Error('거래가 종료되어 새 댓글을 작성할 수 없습니다.');
   }
 
-  // [트리 탐색] 답글까지 포함한 ID 탐색/삭제/HYPE 집계를 하나의 재귀 함수로 처리합니다.
+  // [트리 탐색] 답글까지 포함한 ID 탐색/HYPE 집계를 하나의 재귀 함수로 처리합니다.
   function findComment(comments, id) {
     for (const comment of comments) {
       if (comment.id === id) return comment;
@@ -37,19 +39,27 @@
     return null;
   }
 
-  function removeComment(comments, id) {
-    const index = comments.findIndex((comment) => comment.id === id);
-    if (index >= 0) return comments.splice(index, 1)[0];
-    for (const comment of comments) {
-      const removed = removeComment(comment.replies || [], id);
-      if (removed) return removed;
+  // 로그인 전 시연 참여자도 같은 익명 ID를 공유하지 않도록 탭 단위 식별자를 분리합니다.
+  // 실제 운영에서는 항상 인증된 사용자 ID를 서버가 결정합니다.
+  function getLocalVisitorId() {
+    if (localVisitorId) return localVisitorId;
+    try { localVisitorId = window.sessionStorage?.getItem(LOCAL_VISITOR_KEY) || ''; } catch (_) { /* no-op */ }
+    if (!localVisitorId) {
+      localVisitorId = `local-visitor-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      try { window.sessionStorage?.setItem(LOCAL_VISITOR_KEY, localVisitorId); } catch (_) { /* no-op */ }
     }
-    return null;
+    return localVisitorId;
   }
 
   function getLocalAuthor() {
     const account = window.AuthService?.getCurrentAccount?.();
-    return { id: account?.id || 'local-user', nickname: account?.nickname || '나' };
+    return { id: account?.id || getLocalVisitorId(), nickname: account?.nickname || '나' };
+  }
+
+  function createCommentError(code, message) {
+    const error = new Error(message);
+    error.code = code;
+    return error;
   }
 
   function readLocalStore() {
@@ -100,6 +110,10 @@
     bucket.sequence = localCommentSequence;
     bucket.hypedCommentIdsByUser[getLocalAuthor().id] = localHypedCommentId || null;
     try { window.localStorage.setItem(LOCAL_STORE_KEY, JSON.stringify(localStore)); } catch (_) { /* no-op */ }
+    // 같은 탭의 사이클 리포트도 최신 댓글 보관본을 갱신할 수 있게 알립니다.
+    if (typeof window.dispatchEvent === 'function' && typeof CustomEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('jorong:comments-changed', { detail: { marketSessionId: getMarketSessionId() } }));
+    }
   }
 
   // [HTTP 요청] 인증 쿠키/토큰을 포함해 현재 로그인 사용자의 작성 권한과 HYPE 선택 상태를 서버가 판별할 수 있게 합니다.
@@ -149,7 +163,7 @@
     let best = null;
     function inspect(comments) {
       comments.forEach((comment) => {
-        if (!best || Number(comment.hypeCount || 0) > Number(best.hypeCount || 0)) best = comment;
+        if (String(comment.status || 'PUBLIC').toUpperCase() !== 'DELETED' && (!best || Number(comment.hypeCount || 0) > Number(best.hypeCount || 0))) best = comment;
         inspect(comment.replies || []);
       });
     }
@@ -173,7 +187,7 @@
       content: String(content).trim(),
       author: getLocalAuthor(),
       createdAt: new Date().toISOString(),
-      canDelete: true,
+      status: 'PUBLIC',
       hypeCount: 0,
       isHypedByCurrentUser: false,
       replies: [],
@@ -199,18 +213,29 @@
     });
   }
 
-  // [댓글 삭제] 서버는 현재 사용자가 작성자인지 검사하고, 삭제 댓글과 답글을 soft delete 또는 함께 숨겨야 합니다.
+  // [댓글 삭제] 본인이 쓴 정확한 댓글/답글만 소프트 삭제합니다.
+  // 부모 댓글을 지워도 다른 사용자의 답글은 보존해야 하므로 트리에서 제거하지 않습니다.
   async function deleteComment(commentId) {
     if (!commentId) throw new Error('삭제할 댓글 정보가 없습니다.');
     if (!API_BASE_URL) {
       const bucket = syncLocalBucket({ reload: true });
-      removeComment(localRoots, commentId);
+      const comment = findComment(localRoots, commentId);
+      if (!comment) throw createCommentError('COMMENT_NOT_FOUND', '삭제할 댓글을 찾을 수 없습니다.');
+      if (String(comment.status || 'PUBLIC').toUpperCase() === 'DELETED') throw createCommentError('COMMENT_ALREADY_DELETED', '이미 삭제된 댓글입니다.');
+      if (String(comment.author?.id || '') !== String(getLocalAuthor().id)) {
+        throw createCommentError('COMMENT_DELETE_FORBIDDEN', '본인이 작성한 댓글만 삭제할 수 있습니다.');
+      }
+      comment.status = 'DELETED';
+      comment.deletedAt = new Date().toISOString();
+      comment.deletedBy = getLocalAuthor().id;
       Object.keys(bucket.hypedCommentIdsByUser).forEach((userId) => {
         if (bucket.hypedCommentIdsByUser[userId] === commentId) bucket.hypedCommentIdsByUser[userId] = null;
       });
+      // 삭제된 댓글의 HYPE는 시장 집계에서 제외합니다.
+      comment.hypeCount = 0;
       if (localHypedCommentId === commentId) localHypedCommentId = null;
       saveLocalBucket(bucket);
-      return { deletedCommentId: commentId };
+      return { deletedCommentId: commentId, comment };
     }
     return request(`/comments/${encodeURIComponent(commentId)}`, { method: 'DELETE' });
   }
@@ -224,6 +249,7 @@
       if (!localHypedCommentId) {
         const comment = findComment(localRoots, commentId);
         if (!comment) throw new Error('HYPE할 댓글을 찾지 못했습니다.');
+        if (String(comment.status || 'PUBLIC').toUpperCase() === 'DELETED') throw new Error('삭제된 댓글에는 HYPE를 보낼 수 없습니다.');
         localHypedCommentId = commentId;
         comment.hypeCount = Number(comment.hypeCount || 0) + 1;
         comment.isHypedByCurrentUser = true;
@@ -237,6 +263,32 @@
     });
   }
 
+  // [리포트용 내 댓글] 정산 결과와 함께 해당 시장에서 내가 쓴 원댓글·답글을 읽습니다.
+  // API 모드에서는 GET /me/cycle-reports 응답의 myComments를 사용하므로 여기서는 로컬 시연만 처리합니다.
+  function getMyCommentsForMarket(marketSessionId) {
+    if (API_BASE_URL) return [];
+    const bucket = readLocalStore().markets?.[marketSessionId];
+    const authorId = String(getLocalAuthor().id);
+    const mine = [];
+    function collect(comments) {
+      (comments || []).forEach((comment) => {
+        if (String(comment.author?.id || '') === authorId) {
+          mine.push({
+            id: String(comment.id),
+            parentCommentId: comment.parentCommentId || null,
+            content: String(comment.content || ''),
+            status: String(comment.status || 'PUBLIC').toUpperCase(),
+            createdAt: comment.createdAt || null,
+            deletedAt: comment.deletedAt || null,
+          });
+        }
+        collect(comment.replies || []);
+      });
+    }
+    collect(bucket?.roots || []);
+    return mine.sort((left, right) => Date.parse(left.createdAt || 0) - Date.parse(right.createdAt || 0));
+  }
+
   window.CommentService = Object.freeze({
     TARGET_ID,
     MARKET_SESSION_ID: marketConfig.session.id,
@@ -245,5 +297,7 @@
     createComment,
     deleteComment,
     hypeComment,
+    getMyCommentsForMarket,
+    getCurrentAuthorId: () => getLocalAuthor().id,
   });
 })();

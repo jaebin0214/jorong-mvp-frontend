@@ -3,6 +3,8 @@ window.MarketCountdown = (() => {
   const config = window.MarketConfig.get();
   const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
   const useBackendClock = Boolean(API_BASE_URL);
+  const marketAvailable = config.marketAvailable === true;
+  const hasNextMarket = config.session.hasNextMarket === true;
   const clockUrl = window.JORONG_MARKET_CLOCK_URL || `${API_BASE_URL}/markets/current/clock`;
   const durationMs = config.session.durationHours * 60 * 60 * 1000;
   const safeSessionId = config.session.id.replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -11,11 +13,12 @@ window.MarketCountdown = (() => {
   const countdownElement = document.querySelector('.exchange-countdown');
   const countdownLabel = document.querySelector('#exchange-countdown-label');
   let marketSessionId = config.session.id;
-  let endAt = useBackendClock ? null : getLocalEndAt();
-  let nextOpenAt = useBackendClock ? null : getLocalNextOpenAt(endAt);
+  let endAt = marketAvailable && !useBackendClock ? getLocalEndAt() : null;
+  let nextOpenAt = marketAvailable && !useBackendClock && hasNextMarket ? getLocalNextOpenAt(endAt) : null;
   let serverOffsetMs = 0;
-  let clockReady = !useBackendClock;
-  let marketStatus = 'OPEN';
+  let clockReady = marketAvailable && !useBackendClock;
+  // 관리자 페이지가 수동 종료한 로컬 회차도 타이머가 남아 있더라도 즉시 종료 상태로 취급합니다.
+  let marketStatus = String(config.session.status || 'OPEN').toUpperCase();
   let hasEnded = false;
   let intervalId = null;
   let syncIntervalId = null;
@@ -61,7 +64,7 @@ window.MarketCountdown = (() => {
   }
 
   function isMarketEnded() {
-    return clockReady && (['CLOSED', 'SETTLED'].includes(marketStatus) || (Number.isFinite(endAt) && getNow() >= endAt));
+    return marketAvailable && clockReady && (['CLOSED', 'SETTLED', 'ARCHIVED'].includes(marketStatus) || (Number.isFinite(endAt) && getNow() >= endAt));
   }
 
   // [종료 알림] 한 회차당 한 번만 발행하되, 다음 장 카운트다운은 계속 갱신합니다.
@@ -119,6 +122,11 @@ window.MarketCountdown = (() => {
   }
 
   function render() {
+    if (!marketAvailable) {
+      if (countdownLabel) countdownLabel.textContent = '다음 거래 준비 중';
+      if (countdownElement) countdownElement.textContent = '--:--:--';
+      return;
+    }
     if (!clockReady || !Number.isFinite(endAt)) {
       if (countdownElement) countdownElement.textContent = '--:--:--';
       return;
@@ -141,7 +149,7 @@ window.MarketCountdown = (() => {
 
   render();
   intervalId = window.setInterval(render, 1000);
-  if (useBackendClock) {
+  if (marketAvailable && useBackendClock) {
     syncFromServer();
     syncIntervalId = window.setInterval(syncFromServer, 30_000);
   }
