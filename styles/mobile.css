@@ -162,6 +162,22 @@
   .board-footer { min-height: 62px; }
   .board-write-button { width: 86px; height: 40px; border-radius: 10px; font-size: 12px; }
 
+  /* [사이클 리포트] 누적된 정산 카드를 하단 탭 위에서 한 장씩 읽을 수 있게 맞춥니다. */
+  .cycle-report-view { min-height: calc(100dvh - 56px); padding: 28px 20px calc(98px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
+  .cycle-report-heading { margin-bottom: 20px; }
+  .cycle-report-heading .eyebrow { font-size: 11px; }
+  .cycle-report-heading h1 { font-size: 26px; }
+  .cycle-report-heading > p:last-child { font-size: 13px; line-height: 1.5; }
+  .cycle-report-list { gap: 16px; }
+  .cycle-report-card { border-radius: 16px; padding: 15px; }
+  .cycle-report-card-heading { padding-bottom: 14px; }
+  .cycle-report-card-heading h2 { font-size: 21px; }
+  .cycle-report-settlement-row { grid-template-columns: 1fr; gap: 12px; margin-top: 14px; }
+  .cycle-report-settlement-row .settlement-subject-card { min-height: 120px; grid-template-columns: 92px 1fr; }
+  .cycle-report-settlement-row .settlement-subject-card img { width: 92px; height: 92px; }
+  .cycle-report-settlement-row .settlement-result-card { min-height: 0; }
+  .cycle-report-market-summary { margin-top: 12px; }
+
   /* [정산] 같은 정산 데이터와 타이머를 한 열 카드로 정리합니다. */
   .market-settlement-view { width: 100%; min-height: calc(100dvh - 56px); padding: 20px 20px calc(98px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
   .market-settlement-hero { min-height: 0; padding: 8px 0 22px; text-align: left; }

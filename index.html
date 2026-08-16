@@ -14,6 +14,8 @@
     <link rel="stylesheet" href="./styles/board.css" />
     <link rel="stylesheet" href="./styles/investment.css" />
     <link rel="stylesheet" href="./styles/settlement.css" />
+    <!-- [사이클 리포트] 과거 시장별 개인 정산 결과를 정산 카드 형식으로 표시합니다. -->
+    <link rel="stylesheet" href="./styles/cycle-report.css" />
     <link rel="stylesheet" href="./styles/concept-introduction.css" />
     <link rel="stylesheet" href="./styles/ingame-tutorial.css" />
     <!-- [모바일 전용 UI] 767px 이하에서만 데스크톱 구조를 모바일 앱 화면으로 재배치합니다. -->
@@ -28,7 +30,7 @@
           <span>조롱 거래소</span>
         </button>
         <!-- [거래소 전용 메뉴] exchange 화면에서만 표시되는 상단 탐색 메뉴입니다. -->
-        <nav class="exchange-header-nav" aria-label="거래소 메뉴"><button class="is-active" type="button" data-view="exchange">거래소</button><button type="button" data-view="board">게시판</button><button type="button" data-toast="리포트 기능은 다음 단계에서 연결됩니다.">사이클 리포트</button></nav>
+        <nav class="exchange-header-nav" aria-label="거래소 메뉴"><button class="is-active" type="button" data-view="exchange">거래소</button><button type="button" data-view="board">게시판</button><button type="button" data-view="cycle-report" data-requires-auth="true">사이클 리포트</button></nav>
         <div class="header-actions">
           <div class="landing-header-actions"><span class="account-prompt">이미 계정이 있나요?</span><button class="header-login" type="button" data-view="login">로그인</button><span class="header-member-name" id="landing-header-member" hidden aria-live="polite"></span></div>
           <!-- [거래소 계정 영역] 비로그인 사용자는 랜딩의 시작하기에서 로그인으로 먼저 안내하므로, 여기서는 로그인과 현재 회원명만 표시합니다. -->
@@ -246,6 +248,14 @@
           </div>
         </section>
 
+        <!-- [사이클 리포트] 종료된 각 시장의 개인 정산 결과를 현재 정산 화면과 같은 정보 구성으로 누적 표시합니다. -->
+        <section class="view cycle-report-view" id="cycle-report" aria-labelledby="cycle-report-title">
+          <header class="cycle-report-heading"><p class="eyebrow">CYCLE REPORT</p><h1 id="cycle-report-title">나의 사이클 리포트</h1><p>참여했던 종목의 최종 가격과 개인 정산 결과를 확인하세요.</p></header>
+          <div class="cycle-report-list" id="cycle-report-list" aria-live="polite"></div>
+          <p class="cycle-report-empty" id="cycle-report-empty" hidden>정산이 완료된 투자 내역이 아직 없습니다.<br />거래 종료 후 이곳에서 결과를 확인할 수 있어요.</p>
+          <p class="cycle-report-error" id="cycle-report-error" hidden></p>
+        </section>
+
         <section class="view detail-view" id="detail" aria-labelledby="detail-title">
           <div class="detail-path"><button type="button" data-view="exchange">거래소</button><span>›</span><span>오늘의 종목</span><span>›</span><b>훈이</b></div>
           <section class="detail-summary"><div class="detail-subject"><span class="subject-portrait">ㅎ</span><div><p>오늘의 조롱 종목</p><h1 id="detail-title">훈이 <em>+96 P (+8.40%)</em></h1><span>현재 6,087명이 이 종목을 지켜보고 있어요.</span></div></div><div class="detail-metrics"><div><small>시작가</small><b>1,144 P</b></div><div><small>오늘 최고</small><b>1,294 P</b></div><div><small>거래량</small><b>7,219건</b></div></div><button class="share-button" type="button" data-toast="공유 링크를 준비 중입니다.">↗ 공유</button></section>
@@ -267,7 +277,7 @@
     <nav class="mobile-bottom-nav" id="mobile-bottom-nav" aria-label="모바일 하단 메뉴">
       <button class="is-active" type="button" data-view="exchange"><span aria-hidden="true">◉</span>거래소</button>
       <button type="button" data-view="board"><span aria-hidden="true">▤</span>게시판</button>
-      <button type="button" data-toast="사이클 리포트 기능은 다음 단계에서 연결됩니다."><span aria-hidden="true">◴</span>리포트</button>
+      <button type="button" data-view="cycle-report" data-requires-auth="true"><span aria-hidden="true">◴</span>리포트</button>
     </nav>
 
     <!-- [모바일 댓글 작성] 기존 댓글 form에 내용을 전달해 같은 CommentService를 재사용합니다. -->
@@ -338,6 +348,9 @@
     <script src="./scripts/investment-ui.js"></script>
     <!-- [정산 UI] 장 종료 뒤 서버 정산 결과와 다음 장 카운트다운을 표시합니다. -->
     <script src="./scripts/market-settlement-ui.js"></script>
+    <!-- [사이클 리포트 데이터·UI] 시장별 정산 이력을 로컬 시연 또는 향후 API에서 조회합니다. -->
+    <script src="./scripts/cycle-report-service.js"></script>
+    <script src="./scripts/cycle-report-ui.js"></script>
     <script src="./scripts/account-history-ui.js"></script>
     <!-- [거래 종료 UI] 카운트다운 종료 이벤트를 받아 거래 영역을 딤 처리하고 조작을 막습니다. -->
     <script src="./scripts/market-end-ui.js"></script>

@@ -3,7 +3,11 @@ window.AdminService = (() => {
   const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
   const ADMIN_API_ENABLED = Boolean(API_BASE_URL && window.JORONG_ADMIN_API_ENABLED === true);
   const STORAGE_KEY = 'jorong_admin_demo_v1';
-  const OPERATOR = { id: 'admin-local', name: '로컬 데모 운영자', role: '관리자' };
+  // [사용자 화면 로컬 연동] API 미연결 시 가입자·댓글은 사용자용 저장소에서 읽고, 관리자 조작 기록은 별도 저장소에 유지합니다.
+  const LOCAL_ACCOUNT_DIRECTORY_KEY = 'jorong-mvp-local-accounts-v1';
+  const LOCAL_COMMENT_STORE_KEY = 'jorong-mvp-local-comments-v1';
+  const STORE_VERSION = 2;
+  const OPERATOR = { id: 'admin-local', name: '로컬 운영자', role: '관리자' };
   const MARKET_STATES = Object.freeze({ DRAFT: '초안', SCHEDULED: '예약', LIVE: '거래 중', CLOSED: '종료', SETTLED: '정산 완료', ARCHIVED: '보관' });
   const ALLOWED_TRANSITIONS = Object.freeze({ DRAFT: ['SCHEDULED'], SCHEDULED: ['DRAFT', 'LIVE'], LIVE: ['CLOSED'], CLOSED: ['SETTLED'], SETTLED: ['ARCHIVED'], ARCHIVED: [] });
   let memoryStore = null;
@@ -20,48 +24,35 @@ window.AdminService = (() => {
   // [로컬 시연 시드] 실제 사용자 댓글·주문 저장소와 절대 섞지 않는 관리자 전용 데이터입니다.
   function createSeed() {
     const now = new Date();
-    const liveStart = addHours(now, -2);
-    const liveEnd = addHours(now, 1.25);
-    const nextStart = addHours(now, 3);
-    const nextEnd = addHours(nextStart, 2);
-    const secondStart = addHours(now, 6.5);
-    const secondEnd = addHours(secondStart, 2);
-    const closedStart = addHours(now, -30);
-    const closedEnd = addHours(now, -28);
-    const settledStart = addHours(now, -54);
-    const settledEnd = addHours(now, -52);
+    // 로컬 연동을 확인할 수 있도록 현재 거래 중인 훈이 한 종목만 제공합니다.
+    // 댓글·사용자·운영 기록·추세는 빈 상태에서 운영자가 직접 만들도록 둡니다.
+    const liveStart = addHours(now, -1);
+    const liveEnd = addHours(now, 5);
     return {
-      version: 1,
+      version: STORE_VERSION,
       createdAt: nowIso(),
       markets: [
-        { id: 'market_007_hoon', sequence: 7, status: 'LIVE', subjectName: '훈이', shortIntroduction: '참을 수 없는 자신감, 과연 시장의 평가는?', description: '짱구는 못말려의 훈이를 오늘의 조롱 거래소 종목으로 소개합니다.', imagePath: './assets/hoon.png', operationDate: localDate(liveStart), startAt: liveStart.toISOString(), endAt: liveEnd.toISOString(), basePrice: 1000, minTradeUnit: 10, settlementMethod: '자동 정산', autoStart: true, autoSettle: true, commentsPublic: true, participantCount: 128, tradeCount: 842, commentCount: 36, createdAt: nowIso(), updatedAt: nowIso() },
-        { id: 'market_008_yuri', sequence: 8, status: 'SCHEDULED', subjectName: '유리', shortIntroduction: '단단한 원칙과 한마디의 반전', description: '다음 회차 종목 소개 예시입니다.', imagePath: '', operationDate: localDate(nextStart), startAt: nextStart.toISOString(), endAt: nextEnd.toISOString(), basePrice: 1200, minTradeUnit: 10, settlementMethod: '자동 정산', autoStart: true, autoSettle: true, commentsPublic: true, participantCount: 0, tradeCount: 0, commentCount: 0, createdAt: nowIso(), updatedAt: nowIso() },
-        { id: 'market_009_maenggu', sequence: 9, status: 'DRAFT', subjectName: '맹구', shortIntroduction: '알 수 없는 표정의 시장 반응', description: '운영 검토 중인 종목 초안입니다.', imagePath: '', operationDate: localDate(secondStart), startAt: secondStart.toISOString(), endAt: secondEnd.toISOString(), basePrice: 950, minTradeUnit: 10, settlementMethod: '자동 정산', autoStart: false, autoSettle: true, commentsPublic: true, participantCount: 0, tradeCount: 0, commentCount: 0, createdAt: nowIso(), updatedAt: nowIso() },
-        { id: 'market_006_chulsoo', sequence: 6, status: 'CLOSED', subjectName: '철수', shortIntroduction: '철저한 분석, 시장은 동의했을까?', description: '마감되어 정산 대기 중인 종목입니다.', imagePath: '', operationDate: localDate(closedStart), startAt: closedStart.toISOString(), endAt: closedEnd.toISOString(), basePrice: 1100, minTradeUnit: 10, settlementMethod: '운영자 확인 후 정산', autoStart: true, autoSettle: false, commentsPublic: true, participantCount: 97, tradeCount: 622, commentCount: 28, createdAt: nowIso(), updatedAt: nowIso() },
-        { id: 'market_005_jjanggu', sequence: 5, status: 'SETTLED', subjectName: '짱구', shortIntroduction: '예측 불가한 한 방', description: '정산 완료된 과거 회차입니다.', imagePath: '', operationDate: localDate(settledStart), startAt: settledStart.toISOString(), endAt: settledEnd.toISOString(), basePrice: 1000, minTradeUnit: 10, settlementMethod: '자동 정산', autoStart: true, autoSettle: true, commentsPublic: true, participantCount: 168, tradeCount: 1260, commentCount: 74, createdAt: nowIso(), updatedAt: nowIso() },
+        { id: 'market_001_hoon', sequence: 1, status: 'LIVE', subjectName: '훈이', shortIntroduction: '참을 수 없는 자신감, 과연 시장의 평가는?', description: '짱구는 못말려의 훈이를 오늘의 조롱 거래소 종목으로 소개합니다.', imagePath: './assets/hoon.png', operationDate: localDate(liveStart), startAt: liveStart.toISOString(), endAt: liveEnd.toISOString(), basePrice: 1000, minTradeUnit: 10, settlementMethod: '자동 정산', autoStart: true, autoSettle: true, commentsPublic: true, participantCount: 0, tradeCount: 0, commentCount: 0, createdAt: nowIso(), updatedAt: nowIso() },
       ],
-      comments: [
-        { id: 'admin_comment_001', marketId: 'market_007_hoon', authorId: 'user_001', authorName: '웃긴개미_241', authorType: 'USER', content: '오늘은 자신감이 너무 과한데요. 시장이 냉정하게 평가해줄 듯!', status: 'PUBLIC', reportCount: 0, isNotice: false, pinned: false, createdAt: addHours(now, -1.3).toISOString(), updatedAt: nowIso() },
-        { id: 'admin_comment_002', marketId: 'market_007_hoon', authorId: 'user_002', authorName: '밈전문투자단', authorType: 'USER', content: '캐릭터를 향한 과도한 비난 표현', status: 'FLAGGED', reportCount: 3, isNotice: false, pinned: false, createdAt: addHours(now, -1.0).toISOString(), updatedAt: nowIso() },
-        { id: 'admin_comment_003', marketId: 'market_007_hoon', authorId: 'admin-local', authorName: '조롱 거래소 운영진', authorType: 'ADMIN', content: '건전한 대화와 유쾌한 조롱을 부탁드립니다.', status: 'PUBLIC', reportCount: 0, isNotice: true, pinned: true, publishedImmediately: true, operatorName: OPERATOR.name, createdAt: addHours(now, -0.8).toISOString(), updatedAt: nowIso() },
-        { id: 'admin_comment_004', marketId: 'market_006_chulsoo', authorId: 'user_003', authorName: '차트는감성', authorType: 'USER', content: '운영 검토로 숨김 처리된 댓글입니다.', status: 'HIDDEN', reportCount: 1, isNotice: false, pinned: false, createdAt: addHours(now, -28.5).toISOString(), updatedAt: nowIso() },
-      ],
-      users: [
-        { id: 'user_001', nickname: '웃긴개미_241', credits: 8400, tradeCount: 7, commentCount: 12, status: 'ACTIVE', commentRestricted: false, createdAt: addHours(now, -240).toISOString() },
-        { id: 'user_002', nickname: '밈전문투자단', credits: 12500, tradeCount: 11, commentCount: 18, status: 'ACTIVE', commentRestricted: false, createdAt: addHours(now, -420).toISOString() },
-        { id: 'user_003', nickname: '차트는감성', credits: 3200, tradeCount: 4, commentCount: 9, status: 'RESTRICTED', commentRestricted: true, createdAt: addHours(now, -700).toISOString() },
-        { id: 'user_004', nickname: '웃음저격수', credits: 10000, tradeCount: 1, commentCount: 2, status: 'ACTIVE', commentRestricted: false, createdAt: addHours(now, -72).toISOString() },
-      ],
+      comments: [],
+      users: [],
       auditLogs: [],
-      participationTrend: [38, 54, 68, 81, 63, 92],
+      participationTrend: [],
     };
+  }
+
+  function isCurrentStore(value) {
+    return value && value.version === STORE_VERSION && Array.isArray(value.markets) && Array.isArray(value.comments) && Array.isArray(value.users) && Array.isArray(value.auditLogs);
   }
 
   function readStore() {
     if (memoryStore) return clone(memoryStore);
     try {
       const saved = window.localStorage.getItem(STORAGE_KEY);
-      if (saved) { memoryStore = JSON.parse(saved); return clone(memoryStore); }
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (isCurrentStore(parsed)) { memoryStore = parsed; return clone(memoryStore); }
+      }
     } catch (_) { /* localStorage가 막혀도 현재 탭 메모리 시연은 유지합니다. */ }
     memoryStore = createSeed();
     writeStore(memoryStore);
@@ -71,6 +62,99 @@ window.AdminService = (() => {
   function writeStore(nextState) {
     memoryStore = clone(nextState);
     try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(memoryStore)); } catch (_) { /* no-op */ }
+  }
+
+  function readSharedLocalData(key, fallback) {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(key) || 'null');
+      return parsed || fallback;
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function writeSharedLocalData(key, value) {
+    try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* no-op */ }
+  }
+
+  function flattenUserComments(comments, callback) {
+    (comments || []).forEach((comment) => {
+      callback(comment);
+      flattenUserComments(comment.replies || [], callback);
+    });
+  }
+
+  function resolveMarketIdForLocalComment(state, marketSessionId) {
+    const matched = state.markets.find((market) => String(market.id) === String(marketSessionId));
+    return matched?.id || state.markets.find((market) => market.status === 'LIVE')?.id || state.markets[0]?.id || String(marketSessionId || '');
+  }
+
+  // [로컬 사용자 데이터 병합] 사용자 페이지에서 작성한 가입자·댓글을 관리자 조회용 형식으로 변환합니다.
+  // 관리자 댓글/조치 기록은 덮어쓰지 않으며, 실제 권한·숨김 판정은 추후 API가 서버에서 처리합니다.
+  function syncLocalUserActivity(state) {
+    const directory = readSharedLocalData(LOCAL_ACCOUNT_DIRECTORY_KEY, { accounts: [] });
+    const commentStore = readSharedLocalData(LOCAL_COMMENT_STORE_KEY, { markets: {} });
+    const previousComments = new Map(state.comments.filter((comment) => comment.source === 'USER_LOCAL').map((comment) => [comment.id, comment]));
+    const userComments = [];
+    Object.entries(commentStore?.markets || {}).forEach(([marketSessionId, bucket]) => {
+      flattenUserComments(bucket?.roots || [], (comment) => {
+        const prior = previousComments.get(comment.id);
+        const author = comment.author || {};
+        userComments.push({
+          id: String(comment.id),
+          marketId: resolveMarketIdForLocalComment(state, comment.marketSessionId || marketSessionId),
+          authorId: String(author.id || 'local-user'),
+          authorName: String(author.nickname || '익명'),
+          authorType: 'USER',
+          content: String(comment.content || ''),
+          status: prior?.status || 'PUBLIC',
+          reportCount: Number(prior?.reportCount || 0),
+          isNotice: false,
+          pinned: false,
+          hypeCount: Number(comment.hypeCount || 0),
+          parentCommentId: comment.parentCommentId || null,
+          source: 'USER_LOCAL',
+          createdAt: comment.createdAt || nowIso(),
+          updatedAt: prior?.updatedAt || comment.createdAt || nowIso(),
+          moderationReason: prior?.moderationReason,
+          moderatedBy: prior?.moderatedBy,
+        });
+      });
+    });
+    const adminComments = state.comments.filter((comment) => comment.source !== 'USER_LOCAL');
+    state.comments = [...userComments, ...adminComments].sort((left, right) => Date.parse(right.createdAt || 0) - Date.parse(left.createdAt || 0));
+
+    const previousUsers = new Map(state.users.filter((user) => user.source === 'USER_LOCAL').map((user) => [user.id, user]));
+    const commentCounts = new Map();
+    userComments.forEach((comment) => commentCounts.set(comment.authorId, (commentCounts.get(comment.authorId) || 0) + 1));
+    const localUsers = Array.isArray(directory?.accounts) ? directory.accounts.map((account) => {
+      const previous = previousUsers.get(String(account.id));
+      return {
+        id: String(account.id),
+        nickname: String(account.nickname || '익명'),
+        credits: Math.max(0, Math.round(Number(account.points) || 0)),
+        tradeCount: Number(previous?.tradeCount || 0),
+        commentCount: commentCounts.get(String(account.id)) || 0,
+        status: previous?.status || 'ACTIVE',
+        commentRestricted: Boolean(previous?.commentRestricted),
+        source: 'USER_LOCAL',
+        createdAt: account.createdAt || nowIso(),
+      };
+    }) : [];
+    state.users = [...localUsers, ...state.users.filter((user) => user.source !== 'USER_LOCAL')];
+    state.markets.forEach((market) => {
+      market.commentCount = state.comments.filter((comment) => comment.marketId === market.id && comment.status !== 'DELETED').length;
+    });
+  }
+
+  function syncSharedAccountCredits(user) {
+    if (user.source !== 'USER_LOCAL') return;
+    const directory = readSharedLocalData(LOCAL_ACCOUNT_DIRECTORY_KEY, { version: 1, accounts: [] });
+    const account = directory.accounts?.find((item) => String(item.id) === String(user.id));
+    if (!account) return;
+    account.points = Number(user.credits);
+    account.updatedAt = nowIso();
+    writeSharedLocalData(LOCAL_ACCOUNT_DIRECTORY_KEY, directory);
   }
 
   function mutate(mutator) {
@@ -96,6 +180,27 @@ window.AdminService = (() => {
     market.status = nextState;
     market.updatedAt = nowIso();
     appendAudit(state, { category: 'MARKET', action, target: `${market.sequence}번 · ${market.subjectName}`, detail: `${MARKET_STATES[previousState]} → ${MARKET_STATES[nextState]}` });
+  }
+
+  // [로컬 예약 전환] 실제 운영에서는 서버 스케줄러가 책임지지만, 로컬 시연에서는
+  // 관리자 페이지가 열려 있는 동안 예약 시각이 된 다음 종목을 LIVE로 전환합니다.
+  function reconcileLocalMarketSchedule(state) {
+    const now = Date.now();
+    const dueMarket = state.markets
+      .filter((market) => market.status === 'SCHEDULED' && market.autoStart && Date.parse(market.startAt || '') <= now)
+      .sort((left, right) => Date.parse(left.startAt) - Date.parse(right.startAt))[0];
+    if (!dueMarket) return false;
+
+    const liveMarket = state.markets.find((market) => market.status === 'LIVE');
+    // 이전 장이 아직 유효하면 새 장을 겹쳐 열지 않습니다.
+    if (liveMarket && Date.parse(liveMarket.endAt || '') > now) return false;
+    if (liveMarket) {
+      transitionMarket(state, liveMarket, 'CLOSED', '예약 시간 종료');
+      if (liveMarket.autoSettle) transitionMarket(state, liveMarket, 'SETTLED', '자동 정산 완료');
+    }
+    validateMarketSchedule({ ...dueMarket, status: 'LIVE' }, state.markets);
+    transitionMarket(state, dueMarket, 'LIVE', '예약 시간 자동 시작');
+    return true;
   }
 
   function normalizeIsoDate(value) { const timestamp = Date.parse(value || ''); return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : ''; }
@@ -132,7 +237,16 @@ window.AdminService = (() => {
     return true;
   }
 
-  function localLoad() { return clone(readStore()); }
+  // 단순 조회는 관리자 저장소를 다시 쓰지 않습니다. 사용자 탭에서 새 댓글을 쓸 때
+  // 관리자 갱신 때문에 거래소 탭이 불필요하게 새로고침되는 것을 막습니다.
+  function localLoad() {
+    const state = readStore();
+    const scheduleChanged = reconcileLocalMarketSchedule(state);
+    syncLocalUserActivity(state);
+    memoryStore = clone(state);
+    if (scheduleChanged) writeStore(memoryStore);
+    return clone(state);
+  }
   function localCreateMarket(input) { return mutate((state) => { const data = validateMarketInput(input); const sequence = Math.max(0, ...state.markets.map((market) => Number(market.sequence) || 0)) + 1; const market = { id: makeId('market'), sequence, status: 'DRAFT', ...data, participantCount: 0, tradeCount: 0, commentCount: 0, createdAt: nowIso(), updatedAt: nowIso() }; state.markets.push(market); appendAudit(state, { category: 'MARKET', action: '종목 생성', target: `${sequence}번 · ${market.subjectName}`, detail: '초안으로 생성' }); return clone(state); }); }
   function localUpdateDraftMarket(marketId, input) { return mutate((state) => { const market = findMarket(state, marketId); if (market.status !== 'DRAFT') throw createError('MARKET_EDIT_LOCKED', '거래가 시작된 종목은 일반 편집으로 변경할 수 없습니다. 예약 종목은 초안으로 되돌린 뒤 수정해주세요.'); Object.assign(market, validateMarketInput(input), { updatedAt: nowIso() }); appendAudit(state, { category: 'MARKET', action: '종목 수정', target: `${market.sequence}번 · ${market.subjectName}`, detail: '초안 정보 수정' }); return clone(state); }); }
   function localScheduleMarket(marketId) { return mutate((state) => { const market = findMarket(state, marketId); validateMarketSchedule({ ...market, status: 'SCHEDULED' }, state.markets); transitionMarket(state, market, 'SCHEDULED', '종목 예약'); return clone(state); }); }
@@ -144,7 +258,7 @@ window.AdminService = (() => {
   function localDuplicateMarket(marketId) { return mutate((state) => { const source = findMarket(state, marketId); const sequence = Math.max(0, ...state.markets.map((market) => Number(market.sequence) || 0)) + 1; const market = { ...clone(source), id: makeId('market'), sequence, status: 'DRAFT', subjectName: `${source.subjectName} 복사본`, participantCount: 0, tradeCount: 0, commentCount: 0, createdAt: nowIso(), updatedAt: nowIso() }; state.markets.push(market); appendAudit(state, { category: 'MARKET', action: '종목 복제', target: `${sequence}번 · ${market.subjectName}`, detail: `${source.sequence}번 종목에서 복제` }); return clone(state); }); }
   function localModerateComment(commentId, { action, reason, operator = OPERATOR.name }) { return mutate((state) => { const comment = findComment(state, commentId); if (!String(reason || '').trim()) throw createError('MODERATION_REASON_REQUIRED', '댓글 처리 사유를 입력해주세요.'); const actionMap = { HIDE: ['HIDDEN', '댓글 숨김'], UNHIDE: ['PUBLIC', '댓글 숨김 해제'], DELETE: ['DELETED', '댓글 소프트 삭제'] }; const next = actionMap[action]; if (!next) throw createError('INVALID_MODERATION_ACTION', '지원하지 않는 댓글 처리입니다.'); comment.status = next[0]; comment.moderationReason = String(reason).trim(); comment.moderatedBy = operator; comment.updatedAt = nowIso(); appendAudit(state, { category: 'COMMENT', action: next[1], target: comment.authorName, detail: `${comment.content.slice(0, 38)} · 사유: ${comment.moderationReason}`, operator }); return clone(state); }); }
   function localCreateStaffComment(input) { return mutate((state) => { const market = findMarket(state, input.marketId); const content = String(input.content || '').trim(); if (!content) throw createError('COMMENT_REQUIRED', '운영진 댓글 내용을 입력해주세요.'); const comment = { id: makeId('admin_comment'), marketId: market.id, authorId: OPERATOR.id, authorName: '조롱 거래소 운영진', authorType: 'ADMIN', operatorName: OPERATOR.name, content, status: input.immediatePublished ? 'PUBLIC' : 'HIDDEN', reportCount: 0, isNotice: Boolean(input.isNotice), pinned: Boolean(input.pinned), publishedImmediately: Boolean(input.immediatePublished), createdAt: nowIso(), updatedAt: nowIso() }; state.comments.unshift(comment); market.commentCount = Number(market.commentCount || 0) + 1; appendAudit(state, { category: 'COMMENT', action: '운영진 댓글 작성', target: `${market.sequence}번 · ${market.subjectName}`, detail: `${comment.isNotice ? '공지 · ' : ''}${content.slice(0, 38)}` }); return clone(state); }); }
-  function localAdjustCredits(userId, { amount, reason, operator = OPERATOR.name }) { return mutate((state) => { const user = findUser(state, userId); const adjustment = Math.round(Number(amount)); if (!Number.isSafeInteger(adjustment) || adjustment === 0) throw createError('INVALID_CREDIT_ADJUSTMENT', '0이 아닌 정수 조정 값을 입력해주세요.'); if (!String(reason || '').trim()) throw createError('CREDIT_REASON_REQUIRED', '크레딧 조정 사유를 입력해주세요.'); const before = Number(user.credits); const after = Math.max(0, before + adjustment); user.credits = after; appendAudit(state, { category: 'USER', action: '크레딧 조정', target: `${user.nickname} (${user.id})`, detail: `${before.toLocaleString('ko-KR')} → ${after.toLocaleString('ko-KR')} KRW · 조정 ${adjustment > 0 ? '+' : ''}${adjustment.toLocaleString('ko-KR')} · 사유: ${String(reason).trim()}`, operator }); return clone(state); }); }
+  function localAdjustCredits(userId, { amount, reason, operator = OPERATOR.name }) { return mutate((state) => { const user = findUser(state, userId); const adjustment = Math.round(Number(amount)); if (!Number.isSafeInteger(adjustment) || adjustment === 0) throw createError('INVALID_CREDIT_ADJUSTMENT', '0이 아닌 정수 조정 값을 입력해주세요.'); if (!String(reason || '').trim()) throw createError('CREDIT_REASON_REQUIRED', '크레딧 조정 사유를 입력해주세요.'); const before = Number(user.credits); const after = Math.max(0, before + adjustment); user.credits = after; syncSharedAccountCredits(user); appendAudit(state, { category: 'USER', action: '크레딧 조정', target: `${user.nickname} (${user.id})`, detail: `${before.toLocaleString('ko-KR')} → ${after.toLocaleString('ko-KR')} KRW · 조정 ${adjustment > 0 ? '+' : ''}${adjustment.toLocaleString('ko-KR')} · 사유: ${String(reason).trim()}`, operator }); return clone(state); }); }
   function localRestrictUser(userId, { restricted, reason, operator = OPERATOR.name }) { return mutate((state) => { const user = findUser(state, userId); if (!String(reason || '').trim()) throw createError('RESTRICTION_REASON_REQUIRED', '댓글 작성 제한 사유를 입력해주세요.'); user.commentRestricted = Boolean(restricted); user.status = restricted ? 'RESTRICTED' : 'ACTIVE'; appendAudit(state, { category: 'USER', action: restricted ? '댓글 작성 제한' : '댓글 작성 제한 해제', target: `${user.nickname} (${user.id})`, detail: `사유: ${String(reason).trim()}`, operator }); return clone(state); }); }
   function localResetDemo() { const seed = createSeed(); writeStore(seed); return clone(seed); }
 

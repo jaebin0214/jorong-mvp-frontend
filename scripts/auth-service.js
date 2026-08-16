@@ -3,6 +3,8 @@ window.AuthService = (() => {
   const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
   const TOKEN_STORAGE_KEY = 'jorong-mvp-access-token';
   const LOCAL_SESSION_STORAGE_KEY = 'jorong-mvp-local-session';
+  // [로컬 계정 디렉터리] 관리자 화면이 실제 로컬 가입자를 읽을 수 있도록 비밀번호 없이 계정 요약만 공유합니다.
+  const LOCAL_ACCOUNT_DIRECTORY_KEY = 'jorong-mvp-local-accounts-v1';
   const INITIAL_POINTS = 10000;
   const localAccounts = new Map();
   let currentAccount = null;
@@ -19,6 +21,36 @@ window.AuthService = (() => {
 
   function removeSessionStorage(key) {
     try { window.sessionStorage.removeItem(key); } catch (_) { /* no-op */ }
+  }
+
+  function readLocalAccountDirectory() {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(LOCAL_ACCOUNT_DIRECTORY_KEY) || 'null');
+      return stored?.version === 1 && Array.isArray(stored.accounts) ? stored : { version: 1, accounts: [] };
+    } catch (_) {
+      return { version: 1, accounts: [] };
+    }
+  }
+
+  function writeLocalAccountDirectory(directory) {
+    try { window.localStorage.setItem(LOCAL_ACCOUNT_DIRECTORY_KEY, JSON.stringify(directory)); } catch (_) { /* no-op */ }
+  }
+
+  // 운영 화면에는 아이디·포인트·생성 시각만 보냅니다. 비밀번호와 인증 토큰은 공유 저장소에 넣지 않습니다.
+  function mirrorLocalAccount(account) {
+    if (API_BASE_URL || !account?.id || !account?.nickname) return;
+    const directory = readLocalAccountDirectory();
+    const safeAccount = {
+      id: String(account.id),
+      nickname: String(account.nickname),
+      points: Math.max(0, Math.round(Number(account.points) || 0)),
+      createdAt: account.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const index = directory.accounts.findIndex((item) => item.id === safeAccount.id || item.nickname === safeAccount.nickname);
+    if (index >= 0) directory.accounts[index] = { ...directory.accounts[index], ...safeAccount };
+    else directory.accounts.push(safeAccount);
+    writeLocalAccountDirectory(directory);
   }
 
   // [로컬 데모 세션] API 미연결 시에도 새로고침으로 로그인 화면이 초기화되지 않도록
@@ -85,6 +117,7 @@ window.AuthService = (() => {
       investmentLogs: payload.investmentLogs || payload.investments || accountSource.investmentLogs || [],
     };
     persistLocalSession(currentAccount);
+    mirrorLocalAccount(currentAccount);
 
     // [화면 동기화 이벤트] 투자 금액·마이페이지 등 독립된 UI 파일이 로그인 정보를 직접 참조하지 않도록 이벤트로 전달합니다.
     window.dispatchEvent(new CustomEvent('jorong:auth-session', {
@@ -116,7 +149,8 @@ window.AuthService = (() => {
 
   // [로컬 계정] API 주소가 없을 때만 쓰는 시연용 계정입니다. 실제 서비스의 비밀번호와 포인트는 서버 DB가 보관합니다.
   function createLocalAccount(credentials) {
-    if (localAccounts.has(credentials.nickname)) throw new Error('이미 사용 중인 아이디입니다.');
+    const directory = readLocalAccountDirectory();
+    if (localAccounts.has(credentials.nickname) || directory.accounts.some((account) => account.nickname === credentials.nickname)) throw new Error('이미 사용 중인 아이디입니다.');
     const account = {
       id: `local-account-${Date.now()}`,
       nickname: credentials.nickname,
@@ -125,6 +159,7 @@ window.AuthService = (() => {
       createdAt: new Date().toISOString(),
     };
     localAccounts.set(credentials.nickname, { ...account, password: credentials.password });
+    mirrorLocalAccount(account);
     return { account, wallet: { points: INITIAL_POINTS }, investmentLogs: [] };
   }
 
@@ -135,7 +170,7 @@ window.AuthService = (() => {
     }
     return API_BASE_URL
       ? request(`/auth/nickname-availability?nickname=${encodeURIComponent(normalizedNickname)}`, { method: 'GET' })
-      : { available: !localAccounts.has(normalizedNickname) };
+      : { available: !localAccounts.has(normalizedNickname) && !readLocalAccountDirectory().accounts.some((account) => account.nickname === normalizedNickname) };
   }
 
   // [회원가입] points는 클라이언트가 보내지 않습니다. 서버가 트랜잭션으로 신규 회원과 초기 10,000 포인트를 생성해야 합니다.
@@ -200,5 +235,12 @@ window.AuthService = (() => {
     logout,
     getRequestHeaders,
     getCurrentAccount: () => currentAccount,
+    // [로컬 지갑 동기화] 투자 시연이 바꾼 잔액을 관리자 목록에도 반영합니다.
+    updateLocalWalletPoints: (points) => {
+      if (API_BASE_URL || !currentAccount || !Number.isFinite(Number(points))) return;
+      currentAccount.points = Math.max(0, Math.round(Number(points)));
+      persistLocalSession(currentAccount);
+      mirrorLocalAccount(currentAccount);
+    },
   });
 })();

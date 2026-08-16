@@ -1,0 +1,25 @@
+/* [사이클 리포트] 종료된 회차별 개인 정산 결과를 기존 정산 카드와 같은 정보 밀도로 나열합니다. */
+.cycle-report-view { min-height:calc(100dvh - 51px); padding:44px max(35px, calc((100% - 1050px) / 2)); background:#f6f8fc; }
+.cycle-report-heading { max-width:1050px; margin:0 auto 28px; }
+.cycle-report-heading .eyebrow { margin:0 0 8px; color:#2162ee; font-size:12px; }
+.cycle-report-heading h1 { margin:0; color:#092045; font-size:32px; letter-spacing:-.065em; }
+.cycle-report-heading > p:last-child { margin:10px 0 0; color:#6e7d99; font-size:14px; }
+.cycle-report-list { max-width:1050px; display:grid; gap:22px; margin:0 auto; }
+.cycle-report-card { border:1px solid #dbe3f0; border-radius:15px; padding:22px; background:#fff; box-shadow:0 8px 18px rgb(18 53 108 / 4%); }
+.cycle-report-card-heading { display:flex; align-items:center; justify-content:space-between; gap:18px; padding-bottom:18px; border-bottom:1px solid #e4eaf3; }
+.cycle-report-card-heading span { color:#72839b; font-size:12px; font-weight:700; }
+.cycle-report-card-heading h2 { margin:5px 0 0; color:#092045; font-size:24px; letter-spacing:-.055em; }
+.cycle-report-side { min-width:70px; height:29px; display:grid; place-items:center; border-radius:15px; font-size:12px; }
+.cycle-report-side.is-support { color:#1463f2; background:#e0f2ff; }
+.cycle-report-side.is-mock { color:#f5425c; background:#ffedf2; }
+.cycle-report-settlement-row { display:grid; grid-template-columns:210px minmax(0, 1fr); gap:20px; margin-top:18px; }
+.cycle-report-settlement-row .settlement-subject-card, .cycle-report-settlement-row .settlement-result-card { min-height:300px; }
+.cycle-report-settlement-row .settlement-subject-card img { width:130px; height:165px; }
+.cycle-report-market-summary { min-height:0; margin-top:18px; }
+.cycle-report-support-bar { background:#1463f2; }
+.cycle-report-mock-bar { background:#f5425c; }
+.cycle-report-empty, .cycle-report-error { max-width:1050px; margin:0 auto; border:1px dashed #cdd9e8; border-radius:15px; padding:60px 20px; color:#708199; background:#fff; font-size:14px; line-height:1.65; text-align:center; }
+.cycle-report-error { border-style:solid; border-color:#ffd7df; color:#d94259; background:#fff6f7; }
+
+@media (max-width:900px) { .cycle-report-view { padding:32px 24px; }.cycle-report-settlement-row { grid-template-columns:180px minmax(0, 1fr); }.cycle-report-card { padding:18px; } }
+@media (max-width:650px) { .cycle-report-view { padding:28px 14px 34px; }.cycle-report-heading { margin-bottom:20px; }.cycle-report-heading h1 { font-size:25px; }.cycle-report-heading > p:last-child { font-size:12px; line-height:1.5; }.cycle-report-card { border-radius:13px; padding:15px; }.cycle-report-card-heading { padding-bottom:14px; }.cycle-report-card-heading h2 { font-size:20px; }.cycle-report-card-heading span { font-size:10px; }.cycle-report-side { min-width:61px; height:26px; font-size:10px; }.cycle-report-settlement-row { grid-template-columns:1fr; gap:12px; margin-top:14px; }.cycle-report-settlement-row .settlement-subject-card, .cycle-report-settlement-row .settlement-result-card { min-height:0; }.cycle-report-settlement-row .settlement-subject-card { grid-template-columns:90px 1fr; }.cycle-report-settlement-row .settlement-subject-card img { width:90px; height:108px; }.cycle-report-market-summary { margin-top:12px; }.cycle-report-empty, .cycle-report-error { padding:48px 18px; font-size:13px; } }

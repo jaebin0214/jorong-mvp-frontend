@@ -46,6 +46,14 @@
 
   if (!layer || !spotlight || !callout || !stepLabel || !title || !description || !nextButton || !skipButton) return;
 
+  // [장 종료 예외] 정산 화면에서는 거래 방법을 안내할 필요가 없으므로, 서버 기준으로 닫힌 시장의 튜토리얼을 차단합니다.
+  function canStartTutorial() {
+    const marketEnded = window.MarketCountdown?.isEnded?.() === true;
+    const settlementView = document.querySelector('#market-settlement-view');
+    const settlementVisible = Boolean(settlementView && !settlementView.hidden);
+    return !marketEnded && !settlementVisible;
+  }
+
   function getPendingSignup() {
     try {
       const saved = window.sessionStorage.getItem(PENDING_SIGNUP_KEY);
@@ -147,7 +155,7 @@
   }
 
   function open() {
-    if (isOpen || !getTarget()) return;
+    if (isOpen || !getTarget() || !canStartTutorial()) return false;
     activeStepIndex = 0;
     isOpen = true;
     layer.hidden = false;
@@ -155,6 +163,7 @@
     document.body.classList.add('is-ingame-tutorial-open');
     renderStep();
     nextButton.focus({ preventScroll: true });
+    return true;
   }
 
   function finish() {
@@ -180,6 +189,7 @@
   // Edge에서는 화면 전환 직후 모달의 hidden 상태가 아직 반영되지 않는 경우가 있어, 다음 이벤트 루프에서 한 번 더 확인합니다.
   function startQueuedTutorial() {
     if (!queuedAccount || !matchesPendingAccount(queuedAccount, getPendingSignup())) return false;
+    if (!canStartTutorial()) return false;
 
     const subjectIntro = document.querySelector('#subject-intro-modal');
     if (subjectIntro && !subjectIntro.hidden) return true;
@@ -190,6 +200,8 @@
   function startAfterLogin(account) {
     const pending = getPendingSignup();
     if (!matchesPendingAccount(account, pending)) return false;
+    // 장 종료 후 로그인한 경우에는 정산 화면을 가리지 않고, 다음 거래가 열릴 때까지 예약 상태만 유지합니다.
+    if (!canStartTutorial()) return false;
     queuedAccount = account;
 
     window.clearTimeout(startAfterLoginTimer);
@@ -212,6 +224,10 @@
   window.addEventListener('jorong:subject-intro-closed', () => {
     startQueuedTutorial();
   });
+  // 튜토리얼을 보는 중 장이 끝나도 정산 화면을 바로 확인할 수 있도록 레이어와 예약을 종료합니다.
+  window.addEventListener('jorong:market-ended', () => {
+    if (isOpen) finish();
+  });
 
-  window.IngameTutorial = Object.freeze({ scheduleAfterSignup, startAfterLogin, open, finish });
+  window.IngameTutorial = Object.freeze({ scheduleAfterSignup, startAfterLogin, open, finish, canStart: canStartTutorial });
 })();

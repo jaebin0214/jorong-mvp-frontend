@@ -3,9 +3,13 @@
   const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
   const marketConfig = window.MarketConfig.get();
   const TARGET_ID = marketConfig.subject.id;
-  const localRoots = [];
+  // [로컬 댓글 저장소] 관리자 화면과 사용자 거래소가 같은 사이트 주소에서 댓글·답글·HYPE를 함께 읽습니다.
+  const LOCAL_STORE_KEY = 'jorong-mvp-local-comments-v1';
+  let localRoots = [];
   let localCommentSequence = 0;
   let localHypedCommentId = null;
+  let localStore = null;
+  let activeLocalSessionId = '';
 
   // [현재 세션 ID] 서버 시계의 현재 라운드 ID를 우선 사용해 투자·댓글·가격 차트가 한 시장을 가리키게 합니다.
   function getMarketSessionId() {
@@ -48,6 +52,56 @@
     return { id: account?.id || 'local-user', nickname: account?.nickname || '나' };
   }
 
+  function readLocalStore() {
+    try {
+      const stored = JSON.parse(window.localStorage.getItem(LOCAL_STORE_KEY) || 'null');
+      return stored?.version === 1 && stored?.markets && typeof stored.markets === 'object' ? stored : { version: 1, markets: {} };
+    } catch (_) {
+      return { version: 1, markets: {} };
+    }
+  }
+
+  function getLargestCommentSequence(comments) {
+    let largest = 0;
+    (comments || []).forEach((comment) => {
+      const match = String(comment?.id || '').match(/^local-comment-(\d+)$/);
+      if (match) largest = Math.max(largest, Number(match[1]));
+      largest = Math.max(largest, getLargestCommentSequence(comment?.replies || []));
+    });
+    return largest;
+  }
+
+  // 회차별 댓글 트리와 사용자별 HYPE 선택을 하나의 로컬 레코드에 저장합니다.
+  function syncLocalBucket({ reload = false } = {}) {
+    const marketSessionId = getMarketSessionId();
+    if (reload || !localStore || activeLocalSessionId !== marketSessionId) localStore = readLocalStore();
+    if (!localStore.markets[marketSessionId]) {
+      localStore.markets[marketSessionId] = { roots: [], sequence: 0, hypedCommentIdsByUser: {} };
+    }
+    const bucket = localStore.markets[marketSessionId];
+    bucket.roots = Array.isArray(bucket.roots) ? bucket.roots : [];
+    bucket.hypedCommentIdsByUser = bucket.hypedCommentIdsByUser && typeof bucket.hypedCommentIdsByUser === 'object' ? bucket.hypedCommentIdsByUser : {};
+    localRoots = bucket.roots;
+    localCommentSequence = Math.max(Number(bucket.sequence) || 0, getLargestCommentSequence(localRoots));
+    localHypedCommentId = bucket.hypedCommentIdsByUser[getLocalAuthor().id] || null;
+    activeLocalSessionId = marketSessionId;
+    return bucket;
+  }
+
+  function markCurrentUserHype(comments) {
+    (comments || []).forEach((comment) => {
+      comment.isHypedByCurrentUser = comment.id === localHypedCommentId;
+      markCurrentUserHype(comment.replies || []);
+    });
+  }
+
+  function saveLocalBucket(bucket) {
+    bucket.roots = localRoots;
+    bucket.sequence = localCommentSequence;
+    bucket.hypedCommentIdsByUser[getLocalAuthor().id] = localHypedCommentId || null;
+    try { window.localStorage.setItem(LOCAL_STORE_KEY, JSON.stringify(localStore)); } catch (_) { /* no-op */ }
+  }
+
   // [HTTP 요청] 인증 쿠키/토큰을 포함해 현재 로그인 사용자의 작성 권한과 HYPE 선택 상태를 서버가 판별할 수 있게 합니다.
   async function request(path, options = {}) {
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -78,6 +132,8 @@
   // [댓글 목록 조회] 재접속·화면 첫 진입 시 DB에 저장된 댓글/답글/HYPE 집계와 내 HYPE 선택을 가져옵니다.
   async function loadComments() {
     if (!API_BASE_URL) {
+      syncLocalBucket({ reload: true });
+      markCurrentUserHype(localRoots);
       return {
         comments: localRoots,
         currentUserHypedCommentId: localHypedCommentId,
@@ -104,6 +160,7 @@
   // [로컬 작성] 시연 중에도 서버 응답과 같은 comment 구조를 반환해 UI와 API 연결 코드를 분리합니다.
   function createLocalComment({ targetId, parentCommentId = null, content, marketSessionId }) {
     assertCommentingIsOpen();
+    const bucket = syncLocalBucket({ reload: true });
     if (marketSessionId && marketSessionId !== getMarketSessionId()) throw new Error('현재 거래 세션과 일치하지 않습니다.');
     if (targetId !== TARGET_ID) throw new Error('존재하지 않는 투자 항목입니다.');
     if (!String(content || '').trim()) throw new Error('댓글 내용을 입력해주세요.');
@@ -128,6 +185,7 @@
     } else {
       localRoots.unshift(comment);
     }
+    saveLocalBucket(bucket);
     return { comment };
   }
 
@@ -145,8 +203,13 @@
   async function deleteComment(commentId) {
     if (!commentId) throw new Error('삭제할 댓글 정보가 없습니다.');
     if (!API_BASE_URL) {
+      const bucket = syncLocalBucket({ reload: true });
       removeComment(localRoots, commentId);
+      Object.keys(bucket.hypedCommentIdsByUser).forEach((userId) => {
+        if (bucket.hypedCommentIdsByUser[userId] === commentId) bucket.hypedCommentIdsByUser[userId] = null;
+      });
       if (localHypedCommentId === commentId) localHypedCommentId = null;
+      saveLocalBucket(bucket);
       return { deletedCommentId: commentId };
     }
     return request(`/comments/${encodeURIComponent(commentId)}`, { method: 'DELETE' });
@@ -156,6 +219,7 @@
   async function hypeComment(commentId) {
     if (!commentId) throw new Error('HYPE할 댓글을 찾지 못했습니다.');
     if (!API_BASE_URL) {
+      const bucket = syncLocalBucket({ reload: true });
       if (localHypedCommentId && localHypedCommentId !== commentId) throw new Error('이번 시장에서는 이미 다른 댓글에 HYPE를 보냈습니다.');
       if (!localHypedCommentId) {
         const comment = findComment(localRoots, commentId);
@@ -163,6 +227,7 @@
         localHypedCommentId = commentId;
         comment.hypeCount = Number(comment.hypeCount || 0) + 1;
         comment.isHypedByCurrentUser = true;
+        saveLocalBucket(bucket);
       }
       return { selectedCommentId: localHypedCommentId, bestCommentId: getBestLocalCommentId() };
     }

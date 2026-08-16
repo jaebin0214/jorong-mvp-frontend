@@ -40,6 +40,7 @@
 .admin-live-copy { display:grid; flex:1; gap:8px; }
 .admin-live-copy h2 { margin:0; font-size:20px; }
 .admin-live-copy p { margin:0; color:var(--admin-muted); font-size:14px; }
+.admin-live-copy .admin-local-bridge-note { color:#3865af; font-size:11px; line-height:1.5; }
 .admin-timer-box { display:flex; align-items:center; justify-content:space-between; min-height:44px; border-radius:10px; padding:0 12px; color:var(--admin-blue); background:var(--admin-blue-soft); font-size:13px; font-weight:800; }
 .admin-timer-box strong { font-size:20px; }
 .admin-card-actions { margin-top:auto; }

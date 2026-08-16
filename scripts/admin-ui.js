@@ -31,6 +31,8 @@
   let modalHandler = null;
   let modalLastFocused = null;
   let toastTimer;
+  let liveClockTimerId = null;
+  let scheduleSyncTimerId = null;
 
   function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
   function formatKrw(value) { return `${Math.max(0, Math.round(Number(value) || 0)).toLocaleString('ko-KR')} KRW`; }
@@ -44,6 +46,50 @@
   function statusBadge(status) { return `<span class="admin-status ${statusClass(status)}">${escapeHtml(stateLabel[status] || status)}</span>`; }
   function commentStatusLabel(status) { return { PUBLIC: '공개', HIDDEN: '숨김', FLAGGED: '신고', BANNED: '금칙어', DELETED: '삭제' }[status] || status; }
   function commentStatusBadge(status) { return `<span class="admin-status ${statusClass(status)}">${commentStatusLabel(status)}</span>`; }
+
+  // [공통 종료 시각] 로컬 관리자 LIVE 종목의 endAt은 거래소 MarketConfig로 그대로 전달됩니다.
+  // 따라서 양쪽 화면이 같은 브라우저 시각으로 계산하면 초 단위까지 같은 시간이 표시됩니다.
+  function getLiveClock(live) {
+    const endAt = Date.parse(live?.endAt || '');
+    if (!Number.isFinite(endAt)) return { label: '거래 시간을 확인 중입니다.', text: '--:--:--' };
+    let targetAt = endAt;
+    let label = '거래 종료까지';
+    if (Date.now() >= endAt) {
+      const next = state?.markets
+        ?.filter((market) => market.status === 'SCHEDULED' && Date.parse(market.startAt || '') > endAt)
+        .sort((left, right) => Date.parse(left.startAt) - Date.parse(right.startAt))[0];
+      targetAt = Date.parse(next?.startAt || '') || (endAt + (24 * 60 * 60 * 1000));
+      label = '다음 장 시작까지';
+    }
+    const totalSeconds = Math.max(0, Math.ceil((targetAt - Date.now()) / 1000));
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return { label, text: [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':') };
+  }
+
+  function renderLiveCountdown() {
+    const label = $('#admin-live-countdown-label');
+    const value = $('#admin-live-countdown');
+    if (!label || !value) return;
+    const clock = getLiveClock(getLiveMarket());
+    label.textContent = clock.label;
+    value.textContent = clock.text;
+    value.classList.toggle('is-next-market', clock.label === '다음 장 시작까지');
+  }
+
+  function getMarketStateSignature(value) {
+    return (value?.markets || []).map((market) => `${market.id}:${market.status}:${market.updatedAt}`).join('|');
+  }
+
+  // 로컬 예약 자동 시작은 관리자 탭이 열린 동안만 시연합니다. 변경될 때만 화면을 다시 그립니다.
+  async function syncLocalMarketSchedule() {
+    if (service.getMode() !== 'LOCAL_DEMO' || !state) return;
+    const nextState = await service.load();
+    if (getMarketStateSignature(nextState) === getMarketStateSignature(state)) return;
+    state = nextState;
+    renderAll();
+  }
 
   // [뷰 전환] 사이드 메뉴 버튼과 각 섹션의 숨김 상태를 함께 동기화합니다.
   function showView(viewId) {
@@ -62,21 +108,20 @@
     const live = getLiveMarket();
     const liveBody = $('#admin-live-body');
     const closeButton = $('#admin-close-live');
-    const remaining = live ? Math.max(0, Date.parse(live.endAt) - Date.now()) : 0;
-    const hours = String(Math.floor(remaining / 3600000)).padStart(2, '0');
-    const minutes = String(Math.floor((remaining % 3600000) / 60000)).padStart(2, '0');
-    const seconds = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
+    const clock = getLiveClock(live);
     $('#admin-live-status').textContent = live ? '● 현재 거래 중' : '● 거래 중인 종목 없음';
     $('#admin-live-round').textContent = live ? `오늘 ${live.sequence}번째 종목` : '예약을 확인해주세요';
     closeButton.disabled = !live;
-    liveBody.innerHTML = live ? `<div class="admin-market-thumb">${live.imagePath ? `<img src="${escapeHtml(live.imagePath)}" alt="${escapeHtml(live.subjectName)} 종목 이미지" />` : ''}</div><div class="admin-live-copy"><h2>오늘의 종목 #${live.sequence} · ${escapeHtml(live.subjectName)}</h2><p>${escapeHtml(live.shortIntroduction)}</p><div class="admin-timer-box"><span>거래 종료까지</span><strong>${hours} : ${minutes} : ${seconds}</strong></div></div>` : '<div class="admin-empty">현재 거래 중인 종목이 없습니다. 종목 관리에서 예약을 확인해주세요.</div>';
+    liveBody.innerHTML = live ? `<div class="admin-market-thumb">${live.imagePath ? `<img src="${escapeHtml(live.imagePath)}" alt="${escapeHtml(live.subjectName)} 종목 이미지" />` : ''}</div><div class="admin-live-copy"><h2>오늘의 종목 #${live.sequence} · ${escapeHtml(live.subjectName)}</h2><p>${escapeHtml(live.shortIntroduction)}</p><div class="admin-timer-box"><span id="admin-live-countdown-label">${clock.label}</span><strong id="admin-live-countdown">${clock.text}</strong></div>${service.getMode() === 'LOCAL_DEMO' ? '<p class="admin-local-bridge-note">로컬 거래소 연동 준비됨 · 같은 브라우저와 같은 사이트 주소에서 거래소를 열면 이 LIVE 종목이 자동 반영됩니다.</p>' : ''}</div>` : '<div class="admin-empty">현재 거래 중인 종목이 없습니다. 종목 관리에서 예약을 확인해주세요.</div>';
+    renderLiveCountdown();
     const scheduled = state.markets.filter((market) => market.status === 'SCHEDULED').sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt)).slice(0, 2);
     $('#admin-next-schedules').innerHTML = scheduled.length ? scheduled.map((market) => `<div class="admin-schedule-row"><div><strong>${formatDateTime(market.startAt)}</strong><span>종목 #${market.sequence} · ${escapeHtml(market.subjectName)}</span></div><em>예약 완료</em></div>`).join('') : '<div class="admin-empty">다음 예약 종목이 없습니다.</div>';
     const comments = state.comments || [];
     const needsReview = comments.filter((comment) => ['FLAGGED', 'BANNED'].includes(comment.status)).length;
-    const metrics = live ? [{ label: '현재 참여자', value: `${formatNumber(live.participantCount)}명`, detail: '↑ 18명' }, { label: '누적 거래', value: `${formatNumber(live.tradeCount)}건`, detail: '최근 10분 +64' }, { label: '작성 댓글', value: `${formatNumber(live.commentCount)}개`, detail: '댓글 공개 상태' }, { label: '검토 필요 댓글', value: `${formatNumber(needsReview)}개`, detail: needsReview ? '신고·금칙어 확인 필요' : '검토 항목 없음', tone: needsReview ? 'is-warning' : '' }] : [{ label: '예약 종목', value: `${scheduled.length}개`, detail: '다음 운영 일정' }, { label: '등록 종목', value: `${state.markets.length}개`, detail: '보관 기록 포함' }, { label: '작성 댓글', value: `${comments.length}개`, detail: '운영진 댓글 포함' }, { label: '검토 필요 댓글', value: `${needsReview}개`, detail: '댓글 검토로 이동', tone: needsReview ? 'is-warning' : '' }];
+    const metrics = live ? [{ label: '현재 참여자', value: `${formatNumber(live.participantCount)}명`, detail: '실시간 집계 데이터 연동 전' }, { label: '누적 거래', value: `${formatNumber(live.tradeCount)}건`, detail: '실시간 집계 데이터 연동 전' }, { label: '작성 댓글', value: `${formatNumber(live.commentCount)}개`, detail: '댓글 공개 상태' }, { label: '검토 필요 댓글', value: `${formatNumber(needsReview)}개`, detail: needsReview ? '신고·금칙어 확인 필요' : '검토 항목 없음', tone: needsReview ? 'is-warning' : '' }] : [{ label: '예약 종목', value: `${scheduled.length}개`, detail: '다음 운영 일정' }, { label: '등록 종목', value: `${state.markets.length}개`, detail: '보관 기록 포함' }, { label: '작성 댓글', value: `${comments.length}개`, detail: '운영진 댓글 포함' }, { label: '검토 필요 댓글', value: `${needsReview}개`, detail: '댓글 검토로 이동', tone: needsReview ? 'is-warning' : '' }];
     $('#admin-dashboard-metrics').innerHTML = metrics.map((metric) => `<article class="admin-metric"><header>${metric.label}<i></i></header><strong>${metric.value}</strong><span class="${metric.tone || ''}">${metric.detail}</span></article>`).join('');
-    $('#admin-participation-trend').innerHTML = (state.participationTrend || []).map((value, index) => `<div class="admin-trend-item"><i style="height:${Math.max(12, value)}%"></i><span>${10 + index}:00</span></div>`).join('');
+    const participationTrend = state.participationTrend || [];
+    $('#admin-participation-trend').innerHTML = participationTrend.length ? participationTrend.map((value, index) => `<div class="admin-trend-item"><i style="height:${Math.max(12, value)}%"></i><span>${10 + index}:00</span></div>`).join('') : '<div class="admin-empty">집계된 참여 추이가 없습니다.</div>';
     const checklist = [{ done: Boolean(live), text: live ? '현재 거래 중 종목이 정상 상태입니다.' : '거래 중 종목을 시작해야 합니다.' }, { done: scheduled.length > 0, text: scheduled.length ? '다음 예약 종목과 시간을 확인했습니다.' : '다음 종목 예약이 필요합니다.' }, { done: needsReview === 0, text: needsReview ? `검토가 필요한 댓글 ${needsReview}개가 있습니다.` : '검토가 필요한 댓글이 없습니다.' }, { done: true, text: '로컬 시연 모드임을 확인했습니다.' }];
     $('#admin-checklist').innerHTML = checklist.map((item) => `<li class="${item.done ? '' : 'is-pending'}"><i>${item.done ? '✓' : '!'}</i>${item.text}</li>`).join('');
   }
@@ -217,7 +262,7 @@
   // [이벤트] 버튼의 데이터 속성만으로 대상 ID와 처리 종류를 전달해 UI와 서비스 책임을 분리합니다.
   $$('[data-admin-view]').forEach((button) => button.addEventListener('click', () => showView(button.dataset.adminView)));
   $('#admin-close-live').addEventListener('click', () => { const live = getLiveMarket(); if (live) openCloseMarketModal(live); });
-  $('#admin-reset-demo').addEventListener('click', () => openModal({ eyebrow: '로컬 시연 데이터', title: '시연 데이터를 초기화할까요?', content: '<p>관리자 로컬 시연 데이터만 초기 상태로 되돌립니다. 사용자용 투자·댓글 시연 데이터에는 영향을 주지 않습니다.</p>', confirmLabel: '초기화', danger: true, onConfirm: async () => { state = await service.resetDemo(); closeMarketEditor(); $('#admin-staff-composer').hidden = true; renderAll(); showToast('관리자 시연 데이터를 초기화했습니다.'); } }));
+  $('#admin-reset-demo').addEventListener('click', () => openModal({ eyebrow: '로컬 관리자 데이터', title: '관리자 데이터를 초기화할까요?', content: '<p>훈이 LIVE 종목만 유지하고, 관리자 페이지에서 생성한 댓글·사용자·운영 기록을 비웁니다. 사용자용 투자·댓글 시연 데이터에는 영향을 주지 않습니다.</p>', confirmLabel: '초기화', danger: true, onConfirm: async () => { state = await service.resetDemo(); closeMarketEditor(); $('#admin-staff-composer').hidden = true; renderAll(); showToast('관리자 로컬 데이터를 초기화했습니다.'); } }));
   $('#admin-market-status-filters').addEventListener('click', (event) => { const button = event.target.closest('[data-market-filter]'); if (!button) return; marketStatusFilter = button.dataset.marketFilter; renderMarkets(); });
   $('#admin-market-date-filter').addEventListener('change', renderMarkets);
   $('#admin-create-market').addEventListener('click', () => populateMarketEditor());
@@ -238,6 +283,12 @@
   $('#admin-export-users').addEventListener('click', () => { downloadCsv('jorong-admin-users.csv', ['사용자 ID', '닉네임', '크레딧', '참여 거래', '작성 댓글', '상태', '댓글 제한'], state.users.map((user) => [user.id, user.nickname, user.credits, user.tradeCount, user.commentCount, user.status, user.commentRestricted ? '제한' : '가능'])); showToast('사용자 CSV를 준비했습니다.'); });
   $('#admin-audit-search').addEventListener('input', renderAudit); $('#admin-audit-type-filter').addEventListener('change', renderAudit); $('#admin-export-audit').addEventListener('click', () => { downloadCsv('jorong-admin-audit.csv', ['시각', '유형', '작업', '대상', '처리자', '상세'], state.auditLogs.map((log) => [log.createdAt, log.category, log.action, log.target, log.operator, log.detail])); showToast('운영 기록 CSV를 준비했습니다.'); });
   modalCancel.addEventListener('click', closeModal); modalClose.addEventListener('click', closeModal); modalConfirm.addEventListener('click', confirmModal); window.addEventListener('keydown', trapModalFocus);
+  // 다른 탭의 거래소가 로컬 계정·댓글을 저장하면 관리자 화면도 새로고침 없이 목록을 다시 읽습니다.
+  window.addEventListener('storage', async (event) => {
+    if (service.getMode() !== 'LOCAL_DEMO' || !['jorong-mvp-local-accounts-v1', 'jorong-mvp-local-comments-v1'].includes(event.key) || !state) return;
+    state = await service.load();
+    renderAll();
+  });
 
   async function initialize() {
     try {
@@ -247,6 +298,8 @@
       $('#admin-operator-name').textContent = isApi ? '관리자 세션 확인 중' : `운영자 · ${service.getOperator().name}`;
       $('#admin-operator-role').textContent = isApi ? '서버 권한 검증 필요' : '관리자 권한 시연';
       renderAll();
+      liveClockTimerId = window.setInterval(renderLiveCountdown, 1000);
+      scheduleSyncTimerId = window.setInterval(syncLocalMarketSchedule, 5000);
     } catch (error) {
       $$('.admin-view').forEach((view) => { view.hidden = true; });
       const dashboard = $('#admin-dashboard'); dashboard.hidden = false; dashboard.innerHTML = `<article class="admin-card"><div class="admin-empty"><h2>관리자 접근 권한을 확인할 수 없습니다.</h2><p>${escapeHtml(error.message || '관리자 데이터를 불러오지 못했습니다.')}</p><button class="admin-primary" type="button" onclick="location.reload()">다시 시도</button></div></article>`;

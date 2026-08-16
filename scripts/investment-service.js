@@ -172,7 +172,11 @@
     const position = payload.position ?? payload.openPosition ?? null;
     const orders = payload.orders || payload.investments || payload.investmentLogs;
 
-    if (Number.isFinite(walletPoints)) state.walletPoints = Math.round(walletPoints);
+    if (Number.isFinite(walletPoints)) {
+      state.walletPoints = Math.round(walletPoints);
+      // [로컬 운영 연동] 사용자의 투자 후 잔액을 관리자 사용자 목록의 로컬 계정 요약에도 반영합니다.
+      if (!API_BASE_URL) window.AuthService?.updateLocalWalletPoints?.(state.walletPoints);
+    }
     if (Number.isFinite(Number(target.value ?? market.currentPrice))) {
       state.targetValue = Number(target.value ?? market.currentPrice);
       state.previousTargetValue = Number(target.previousValue ?? market.previousPrice ?? state.targetValue);

@@ -24,6 +24,25 @@ window.LocalAdminMarketBridge = (() => {
       .sort((left, right) => Date.parse(right.updatedAt || right.startAt || 0) - Date.parse(left.updatedAt || left.startAt || 0))[0] || null;
   }
 
+  // [회차·다음 장 변경 감지] storage 이벤트가 일부 브라우저·미리보기 창에서 누락되어도
+  // 현재 LIVE 종목 또는 다음 예약 시작 시각이 바뀌면 거래소 타이머를 다시 읽도록 합니다.
+  function getLiveMarketSignature() {
+    const market = getLiveMarket();
+    if (!market) return 'no-live-market';
+    const nextOpenAt = getNextScheduledStart(market, readDemoStore()?.markets || []);
+    return [market.id, market.status, market.startAt, market.endAt, market.updatedAt, market.basePrice, market.imagePath, nextOpenAt].join('|');
+  }
+
+  let loadedMarketSignature = isEnabled ? getLiveMarketSignature() : '';
+
+  function reloadIfLiveMarketChanged() {
+    if (!isEnabled) return;
+    const latestSignature = getLiveMarketSignature();
+    if (latestSignature === loadedMarketSignature) return;
+    loadedMarketSignature = latestSignature;
+    window.location.reload();
+  }
+
   function getNextScheduledStart(liveMarket, markets) {
     const liveEndAt = Date.parse(liveMarket.endAt || '');
     const next = markets
@@ -70,13 +89,16 @@ window.LocalAdminMarketBridge = (() => {
   // 다른 탭에서 관리자 페이지가 저장한 변경을 감지하면 거래소 탭을 새로고침해 최신 종목을 즉시 표시합니다.
   if (isEnabled) {
     window.addEventListener('storage', (event) => {
-      if (event.key === ADMIN_STORE_KEY) window.location.reload();
+      if (event.key === ADMIN_STORE_KEY) reloadIfLiveMarketChanged();
     });
+    // storage 이벤트를 지원하지 않거나 미리보기 탭에서 전달하지 않는 환경을 위한 보완입니다.
+    window.setInterval?.(reloadIfLiveMarketChanged, 1500);
   }
 
   return Object.freeze({
     isEnabled: () => isEnabled,
     getLiveMarket,
+    getLiveMarketSignature,
     getMarketConfigOverride,
   });
 })();

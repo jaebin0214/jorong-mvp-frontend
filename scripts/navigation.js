@@ -2,7 +2,7 @@
 window.Navigation = (() => {
   const views = [...document.querySelectorAll('.view')];
   const appShell = document.querySelector('.app-shell');
-  const exchangeViewIds = new Set(['exchange', 'board']);
+  const exchangeViewIds = new Set(['exchange', 'board', 'cycle-report']);
 
   function show(viewId) {
     const target = document.querySelector(`#${viewId}`) || document.querySelector('#landing');
@@ -22,6 +22,11 @@ window.Navigation = (() => {
   // 단, 랜딩의 시작하기는 비로그인 사용자를 먼저 로그인 화면으로 안내합니다.
   document.querySelectorAll('[data-view]').forEach((button) => {
     button.addEventListener('click', () => {
+      // [개인 리포트 보호] 개인 투자·정산 정보 화면은 로그인한 사용자만 열 수 있습니다.
+      if (button.dataset.requiresAuth === 'true' && !window.AuthService?.getCurrentAccount?.()) {
+        show('login');
+        return;
+      }
       if (button.id === 'landing-start') {
         const isLoggedIn = Boolean(window.AuthService?.getCurrentAccount?.());
         show(isLoggedIn ? 'exchange' : 'login');
