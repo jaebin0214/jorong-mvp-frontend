@@ -59,7 +59,11 @@ window.ConceptIntroduction = (() => {
     layer.dataset.conceptStep = String(step);
     art.innerHTML = slide.art;
     title.textContent = slide.title;
-    description.textContent = slide.description;
+    // [마지막 모바일 장] 타이머의 안내 문구와 시간을 분리해, 화면별로 각각의 크기를 조절할 수 있게 합니다.
+    description.innerHTML = slide.final
+      ? '<span class="concept-final-countdown"><small>거래 시작까지</small><strong>03:00:00</strong></span><span class="concept-final-caption">시작하면 오늘의 종목과 실시간 가격을 확인할 수 있어요.</span>'
+      : '';
+    if (!slide.final) description.textContent = slide.description;
     next.textContent = slide.buttonLabel || '다음';
     layer.classList.toggle('is-final', Boolean(slide.final));
     renderProgress();
