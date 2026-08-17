@@ -662,3 +662,168 @@
   .mobile-investment-sheet-handle,
   .mobile-investment-quick-amounts { display: none !important; }
 }
+
+/* [모바일 컨셉 소개] 첨부된 iPhone 디자인을 따라, 버튼 대신 전체 화면 터치로 진행합니다.
+   데스크톱의 버튼·진행점·배치는 이 범위 밖에 있어 기존 방식 그대로 유지됩니다. */
+@media (max-width: 767px) {
+  .concept-introduction-layer {
+    padding: 0;
+    background: #f6f9ff;
+    touch-action: manipulation;
+  }
+  .concept-introduction-layer.is-open { cursor: pointer; }
+  .concept-introduction {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    grid-template-rows: none !important;
+    padding: 0 24px calc(24px + env(safe-area-inset-bottom));
+    box-sizing: border-box;
+    background: #f6f9ff;
+  }
+  .concept-introduction::before { display: none; }
+  .concept-introduction-art {
+    width: 100%;
+    min-height: 0;
+    height: 344px;
+    display: grid;
+    place-items: end center;
+    padding: 0 0 26px;
+    box-sizing: border-box;
+  }
+  .concept-introduction-copy {
+    width: 100%;
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    padding: 0;
+    text-align: center;
+    pointer-events: none;
+  }
+  .concept-introduction-copy h1 {
+    max-width: 320px;
+    margin: 0;
+    color: #092045;
+    font-size: 17px;
+    line-height: 1.52;
+    letter-spacing: -.065em;
+    word-break: keep-all;
+  }
+  .concept-introduction-copy p {
+    max-width: 330px;
+    margin: 16px 0 0;
+    color: #6e7d99;
+    font-size: 11px;
+    line-height: 1.65;
+    letter-spacing: -.045em;
+    word-break: keep-all;
+  }
+  /* 실제 진행 버튼은 숨기고, 모든 화면 터치가 다음 단계로 진행됩니다. */
+  .concept-introduction-next,
+  .concept-introduction-progress { display: none !important; }
+
+  /* CI 01 · Welcome */
+  .concept-introduction-layer[data-concept-step="0"] .concept-introduction-art { height: 350px; padding-bottom: 20px; }
+  .concept-introduction-layer[data-concept-step="0"] .concept-logo { display: grid; justify-items: center; gap: 22px; }
+  .concept-introduction-layer[data-concept-step="0"] .concept-logo::after {
+    content: 'THE ROAST EXCHANGE';
+    color: #1463f2;
+    font-size: 9px;
+    font-weight: 850;
+    letter-spacing: -.035em;
+  }
+  .concept-introduction-layer[data-concept-step="0"] .concept-logo img { width: 76px; height: 82px; filter: none; }
+
+  /* CI 02 · Two Sides */
+  .concept-introduction-layer[data-concept-step="1"] .concept-introduction-art { height: 390px; padding-bottom: 22px; }
+  .concept-introduction-layer[data-concept-step="1"] .concept-choice-pair { width: 100%; gap: 12px; }
+  .concept-introduction-layer[data-concept-step="1"] .concept-choice-pair span { min-height: 92px; border-radius: 15px; font-size: 17px; }
+
+  /* CI 03 · Reaction Market */
+  .concept-introduction-layer[data-concept-step="2"] .concept-introduction-art { height: 380px; padding-bottom: 20px; }
+  .concept-introduction-layer[data-concept-step="2"] .concept-flow {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .concept-introduction-layer[data-concept-step="2"] .concept-flow span,
+  .concept-introduction-layer[data-concept-step="2"] .concept-flow i,
+  .concept-introduction-layer[data-concept-step="2"] .concept-flow b { display: none; }
+  .concept-introduction-layer[data-concept-step="2"] .concept-flow::before {
+    content: '한마디 + 선택 = 실시간 가격';
+    color: #1463f2;
+    font-size: 10px;
+    font-weight: 850;
+  }
+  .concept-introduction-layer[data-concept-step="2"] .concept-flow::after {
+    content: '오늘의 거래 종료까지\A 02:59:56';
+    width: 180px;
+    height: 68px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto;
+    border-radius: 16px;
+    color: #fff;
+    background: #092045;
+    box-shadow: 0 12px 22px rgb(9 32 69 / 14%);
+    font-size: 20px;
+    font-weight: 850;
+    line-height: 1.45;
+    white-space: pre-line;
+  }
+
+  /* CI 04 · Start: 원래 버튼 대신 같은 모양의 시각 요소를 보여주고, 화면 터치로 시작합니다. */
+  .concept-introduction-layer.is-final .concept-introduction { grid-template-rows: none !important; }
+  .concept-introduction-layer.is-final .concept-introduction-art { height: 236px; padding-bottom: 16px; }
+  .concept-introduction-layer.is-final .concept-logo img { width: 64px; height: 70px; filter: none; }
+  .concept-introduction-layer.is-final .concept-introduction-copy h1 { font-size: 0; }
+  .concept-introduction-layer.is-final .concept-introduction-copy h1::after {
+    content: '오늘의 반응을\A 3시간의 시장으로 만나보세요.';
+    color: #092045;
+    font-size: 18px;
+    font-weight: 850;
+    line-height: 1.46;
+    letter-spacing: -.065em;
+    white-space: pre-line;
+  }
+  .concept-introduction-layer.is-final .concept-introduction-copy p { width: 100%; margin-top: 12px; font-size: 0; }
+  .concept-introduction-layer.is-final .concept-introduction-copy p::before {
+    content: '거래 시작까지\A 03:00:00';
+    width: 100%;
+    height: 64px;
+    display: grid;
+    place-items: center;
+    border-radius: 16px;
+    color: #fff;
+    background: #092045;
+    box-shadow: 0 12px 22px rgb(9 32 69 / 14%);
+    font-size: 21px;
+    font-weight: 850;
+    line-height: 1.38;
+    white-space: pre-line;
+  }
+  .concept-introduction-layer.is-final .concept-introduction-copy p::after {
+    content: '시작하면 오늘의 종목과 실시간 가격을 확인할 수 있어요.';
+    display: block;
+    margin-top: 14px;
+    color: #6e7d99;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+  .concept-introduction-layer.is-final .concept-introduction-copy::after {
+    content: '시작하기';
+    width: 100%;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    margin-top: 18px;
+    border-radius: 13px;
+    color: #fff;
+    background: #1463f2;
+    box-shadow: 0 8px 16px rgb(20 99 242 / 18%);
+    font-size: 14px;
+    font-weight: 850;
+  }
+}

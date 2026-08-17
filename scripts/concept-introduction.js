@@ -55,6 +55,8 @@ window.ConceptIntroduction = (() => {
     const slides = window.MVP_DATA.conceptIntroductionSlides;
     const slide = slides[step];
 
+    // [모바일 전용 디자인 상태] 같은 데이터로 데스크톱·모바일의 서로 다른 Figma 배치를 적용합니다.
+    layer.dataset.conceptStep = String(step);
     art.innerHTML = slide.art;
     title.textContent = slide.title;
     description.textContent = slide.description;
@@ -83,13 +85,25 @@ window.ConceptIntroduction = (() => {
     return true;
   }
 
-  next.addEventListener('click', () => {
+  // [다음 장] 데스크톱 버튼과 모바일 화면 터치가 같은 진행 함수를 사용합니다.
+  function advance() {
     const slides = window.MVP_DATA.conceptIntroductionSlides;
     if (step === slides.length - 1) complete();
     else {
       step += 1;
       render();
     }
+  }
+
+  next.addEventListener('click', advance);
+  // [모바일 터치 진행] 버튼을 보이지 않게 하더라도 화면의 어느 빈 영역을 터치해도
+  // 첫 장부터 마지막 시작 화면까지 자연스럽게 넘어갈 수 있게 합니다.
+  layer.addEventListener('click', (event) => {
+    if (!window.matchMedia('(max-width: 767px)').matches) return;
+    if (!layer.classList.contains('is-open')) return;
+    // 링크·입력 요소가 이후 추가되어도 의도하지 않은 진행을 막습니다.
+    if (event.target.closest('a, input, textarea, select')) return;
+    advance();
   });
 
   replayButton?.addEventListener('click', () => open({ force: true }));

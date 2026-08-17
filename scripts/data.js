@@ -2,7 +2,7 @@
 window.MVP_DATA = {
   conceptIntroductionSlides: [
     // [컨셉 1] 조롱 거래소가 온라인 반응을 하나의 시장으로 바라보는 방식을 소개합니다.
-    { title: '조롱 거래소에 오신 것을 환영합니다.', description: '온라인의 반응은 늘 빠르게 흘러갑니다. 조롱 거래소는 그 순간의 화제를 하나의 종목으로 만들고, 사람들이 무엇을 느끼는지 함께 바라볼 수 있는 시장으로 바꿉니다.', art: '<div class="concept-logo"><img src="./assets/jorong_logo.png" alt="조롱 거래소 로고" /></div>' },
+    { title: '조롱 거래소에 오신 것을\n환영합니다.', description: '빠르게 흘러가는 온라인의 반응을 하나의 종목으로 만들고, 모두가 느끼는 오늘의 분위기를 시장으로 바꿉니다.', art: '<div class="concept-logo"><img src="./assets/jorong_logo.png" alt="조롱 거래소 로고" /></div>' },
     // [컨셉 2] 서로 다른 반응을 조롱과 옹호라는 두 가지 선택으로 표현합니다.
     { title: '같은 대상이라도,\n사람들의 마음은 서로 다릅니다.', description: '누군가는 조롱하고, 누군가는 옹호합니다. 우리는 어느 쪽이 맞는지 정하지 않습니다. 서로 다른 선택이 모이는 모습 자체가 오늘의 분위기가 됩니다.', art: '<div class="concept-choice-pair"><span class="concept-choice-roast">조롱</span><span class="concept-choice-support">옹호</span></div>' },
     // [컨셉 3] 의견과 선택이 쌓이면 집단 반응의 변화를 실시간으로 확인할 수 있습니다.
