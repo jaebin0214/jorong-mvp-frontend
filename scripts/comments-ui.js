@@ -12,7 +12,9 @@
   let commentCount = 0;
   // [투자 잠금 판단] 전체 댓글 수와 별개로 현재 로그인 사용자가 작성한 원댓글이 있는지 보관합니다.
   let hasCurrentUserRootComment = false;
-  let selectedHypeCommentId = null;
+  // 확정(2026-08-17): HYPE는 "라운드당 1회"가 아니라 "댓글당 1회"만 제한됩니다.
+  // 그래서 선택한 댓글 하나가 아니라, 이번 라운드에 내가 HYPE한 모든 댓글 ID를 집합으로 관리합니다.
+  let hypedCommentIds = new Set();
   let bestCommentId = null;
   let toastTimer;
 
@@ -50,13 +52,18 @@
     return Number(best?.hypeCount || 0) > 0 ? best.id : null;
   }
 
-  function findCurrentUserHype(comments) {
-    for (const comment of comments || []) {
-      if (comment.isHypedByCurrentUser) return comment.id;
-      const replyMatch = findCurrentUserHype(comment.replies || []);
-      if (replyMatch) return replyMatch;
+  // [내 HYPE 전부 수집] 서버 응답에 currentUserHypedCommentIds가 없는 경우(예: 구버전 캐시)를 대비해
+  // 댓글 트리의 isHypedByCurrentUser 플래그로도 같은 집합을 계산할 수 있게 합니다.
+  function collectCurrentUserHypeIds(comments) {
+    const ids = new Set();
+    function inspect(items) {
+      (items || []).forEach((comment) => {
+        if (comment.isHypedByCurrentUser) ids.add(comment.id);
+        inspect(comment.replies || []);
+      });
     }
-    return null;
+    inspect(comments);
+    return ids;
   }
 
   function focusCommentComposer() {
@@ -85,31 +92,30 @@
     ));
   }
 
-  // [HYPE 버튼] 이미 HYPE를 보낸 사용자는 다른 모든 버튼을 잠그며, 최종 허용/집계는 API가 반환한 데이터로 다시 그립니다.
+  // [HYPE 버튼] 이 댓글에 이미 HYPE를 보냈으면 이 버튼만 잠급니다. 다른 댓글에는 라운드당 제한 없이 계속 HYPE할 수 있습니다.
+  // (확정 2026-08-17: 라운드당 1회 제한 폐지, 댓글당 1회만 제한 — 최종 허용/집계는 서버가 반환한 데이터로 다시 그립니다.)
   function createHypeButton(comment, card) {
     const button = document.createElement('button');
-    const isSelected = selectedHypeCommentId === comment.id || comment.isHypedByCurrentUser === true;
-    const isLocked = Boolean(selectedHypeCommentId && !isSelected);
+    const isSelected = hypedCommentIds.has(comment.id) || comment.isHypedByCurrentUser === true;
     button.type = 'button';
     button.className = 'exchange-hype-button';
     button.textContent = 'HYPE';
     button.setAttribute('aria-label', '이 댓글에 HYPE 보내기');
     button.setAttribute('aria-pressed', String(isSelected));
     button.classList.toggle('is-selected', isSelected);
-    if (isLocked) {
+    if (isSelected) {
       button.disabled = true;
-      button.classList.add('is-locked');
-      button.setAttribute('aria-label', '이번 시장에서는 이미 다른 댓글에 HYPE를 보냈습니다.');
+      button.setAttribute('aria-label', '이미 이 댓글에 HYPE를 보냈습니다.');
+      card.classList.add('is-hyped');
     }
-    if (isSelected) card.classList.add('is-hyped');
 
     button.addEventListener('click', async () => {
-      if (selectedHypeCommentId && selectedHypeCommentId !== comment.id) return;
+      if (hypedCommentIds.has(comment.id)) return;
       button.disabled = true;
       try {
         const result = await service.hypeComment(comment.id);
-        selectedHypeCommentId = result.selectedCommentId || result.currentUserHypedCommentId || comment.id;
-        bestCommentId = result.bestCommentId || result.bestHypedComment?.id || bestCommentId;
+        hypedCommentIds.add(comment.id);
+        bestCommentId = result.bestCommentId || bestCommentId;
         await refreshComments();
       } catch (error) {
         showToast(error.message || 'HYPE를 저장하지 못했습니다.');
@@ -303,7 +309,9 @@
   async function refreshComments() {
     const result = await service.loadComments();
     const comments = result.comments || [];
-    selectedHypeCommentId = result.currentUserHypedCommentId || findCurrentUserHype(comments) || null;
+    hypedCommentIds = Array.isArray(result.currentUserHypedCommentIds)
+      ? new Set(result.currentUserHypedCommentIds)
+      : collectCurrentUserHypeIds(comments);
     bestCommentId = result.bestCommentId || findBestCommentId(comments);
     hasCurrentUserRootComment = findCurrentUsersRootComment(comments);
     commentList.replaceChildren();

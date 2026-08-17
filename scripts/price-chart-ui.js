@@ -3,7 +3,7 @@ window.PriceChartUI = (() => {
   const chartContainer = document.querySelector('.exchange-chart');
   const chartStatus = document.querySelector('#exchange-chart-status');
   const config = window.MarketConfig.get();
-  const hasBackendApi = Boolean((window.JORONG_API_BASE_URL || '').trim());
+  const hasBackendApi = Boolean(window.JorongSupabase);
   const initialPrice = Number(config.subject.initialPrice);
   // [운영 종목 기준선] 가격 변동의 중앙 기준선은 운영자가 개설 시 정한 최초 가격입니다.
   // 종목마다 기준 가격이 달라도 같은 방식으로 5개 눈금과 50 KRW 단위를 유지합니다.

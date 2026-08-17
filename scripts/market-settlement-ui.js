@@ -133,8 +133,8 @@
       }
     } catch (_) {
       showPending();
-      // [비동기 정산 대기] 서버 배치가 아직 끝나지 않은 경우에만 결과를 짧게 다시 조회합니다.
-      if ((window.JORONG_API_BASE_URL || '').trim() && !settlementPollId) {
+      // [비동기 정산 대기] 서버 배치(settle_market)가 아직 끝나지 않은 경우에만 결과를 짧게 다시 조회합니다.
+      if (window.JorongSupabase && !settlementPollId) {
         settlementPollId = window.setInterval(async () => {
           try {
             const snapshot = await window.InvestmentService.loadSettlement();

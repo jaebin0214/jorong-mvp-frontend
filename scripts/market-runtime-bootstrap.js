@@ -1,12 +1,11 @@
-// [시장 런타임 부트스트랩] API 연결 환경에서 현재 또는 가장 최근 종료 시장의 종목·시간 설정을
-// 먼저 캐시해 정적 HTML도 서버 데이터로 초기화합니다. API가 없으면 로컬 관리자 브리지가 그대로 동작합니다.
+// [시장 런타임 부트스트랩] Supabase 연결 환경에서 현재 또는 가장 최근 종료 시장의 종목·시간 설정을
+// 먼저 캐시해 정적 HTML도 서버 데이터로 초기화합니다. 미연결이면 로컬 관리자 브리지가 그대로 동작합니다.
 (() => {
-  const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
+  const supabaseClient = window.JorongSupabase;
   const CACHE_KEY = 'jorong:market-runtime-config:v1';
-  const RUNTIME_URL = window.JORONG_MARKET_RUNTIME_CONFIG_URL || `${API_BASE_URL}/markets/current`;
   const hasExplicitConfig = Boolean(Object.keys(window.JORONG_MARKET_CONFIG || {}).length);
 
-  if (!API_BASE_URL || hasExplicitConfig) return;
+  if (!supabaseClient || hasExplicitConfig) return;
 
   function readCache() {
     try {
@@ -21,8 +20,9 @@
     try { window.localStorage.setItem(CACHE_KEY, JSON.stringify({ config, savedAt: new Date().toISOString() })); } catch (_) { /* 저장소가 막힌 환경에서는 이번 접속만 사용합니다. */ }
   }
 
+  // get_market_runtime() RPC의 반환 형태(displayMarket/nextMarket)를 화면용 설정 구조로 통일합니다.
   function normalizeRuntimeConfig(payload = {}) {
-    // API는 OPEN 시장, 종료 직후에는 마지막 CLOSED/SETTLED 시장을 displayMarket/lastMarket으로 반환합니다.
+    // RPC는 LIVE 시장, 없으면 가장 최근 CLOSED/SETTLED 시장을 displayMarket으로 반환합니다.
     const market = payload.displayMarket || payload.market || payload.currentMarket || payload.lastMarket || payload.session || {};
     const subject = market.subject || payload.subject || {};
     const startAt = market.openAt || market.startsAt || market.startAt || payload.openAt || payload.startsAt || null;
@@ -75,9 +75,9 @@
 
   async function syncRuntimeConfig() {
     try {
-      const response = await fetch(RUNTIME_URL, { credentials: 'include', headers: { Accept: 'application/json' }, cache: 'no-store' });
-      if (!response.ok) throw new Error('시장 런타임 정보를 불러오지 못했습니다.');
-      const config = normalizeRuntimeConfig(await response.json());
+      const { data, error } = await supabaseClient.rpc('get_market_runtime');
+      if (error) throw error;
+      const config = normalizeRuntimeConfig(data || {});
       const current = window.JORONG_MARKET_CONFIG || {};
       if (signature(config) === signature(current)) return;
       writeCache(config);
@@ -85,7 +85,7 @@
       // 기존 모듈은 시작 시 한 번만 시장 설정을 읽으므로, 시장 회차가 바뀐 경우 안전하게 다시 초기화합니다.
       window.location.reload();
     } catch (_) {
-      // 네트워크 오류에서는 마지막 캐시를 유지합니다. 서버 API가 복구되면 다음 동기화에서 갱신됩니다.
+      // 네트워크/RPC 오류에서는 마지막 캐시를 유지합니다. 다음 동기화에서 다시 시도합니다.
     }
   }
 

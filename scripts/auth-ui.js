@@ -60,6 +60,17 @@
       // 가입·로그인 흐름 중에는 컨셉 소개를 다시 열지 않고, 사용자가 원할 때만 랜딩에서 다시 볼 수 있게 합니다.
       window.ConceptIntroduction?.complete?.();
       signupForm.reset();
+      // [복구 코드 안내] Supabase 연결 시 서버가 이번 응답에서만 평문으로 복구 코드를 내려줍니다.
+      // 비밀번호를 잊었을 때 계정을 복구할 유일한 수단이므로, 화면을 넘어가기 전에 반드시 보여주고
+      // 사용자가 직접 확인(확인 버튼)해야 다음 화면으로 이동하도록 합니다.
+      if (result.recovery_code) {
+        window.alert(
+          `회원가입이 완료됐습니다!\n\n` +
+          `[중요] 비밀번호를 잊었을 때 계정을 복구하는 유일한 코드입니다. 지금 꼭 별도로 저장해주세요.\n` +
+          `이 코드는 지금 한 번만 보여드리며, 다시 확인할 수 없습니다.\n\n` +
+          `복구 코드: ${result.recovery_code}`
+        );
+      }
       showToast(`${result.account.nickname}님, 회원가입이 완료되었습니다. 로그인해주세요.`);
       window.Navigation.show('login');
     } catch (error) {

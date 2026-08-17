@@ -1,10 +1,31 @@
-// [사이클 리포트 데이터] 개인의 시장별 정산 결과를 로컬 시연 또는 서버 API에서 같은 형식으로 조회합니다.
+// [사이클 리포트 데이터] 개인의 시장별 정산 결과를 로컬 시연 또는 Supabase(get_my_cycle_reports RPC)에서 같은 형식으로 조회합니다.
 window.CycleReportService = (() => {
-  const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
+  const supabaseClient = window.JorongSupabase;
   const STORAGE_PREFIX = 'jorong:cycle-report-history:v1';
   let memoryHistory = [];
   // [중복 정산 보관 방지] 리포트 화면의 여러 렌더 요청이 동시에 들어와도 같은 정산을 한 번만 보관합니다.
   let archiveCurrentSettlementTask = null;
+
+  function createError(code, message) {
+    const error = new Error(message);
+    error.code = code;
+    return error;
+  }
+
+  // [RPC 오류 변환] Postgres RAISE EXCEPTION의 'CODE: 설명' 형태 메시지를 코드/한국어 메시지로 분리합니다.
+  function parseRpcError(error, fallback) {
+    const raw = String(error?.message || '').trim();
+    const withDetail = raw.match(/^([A-Z][A-Z0-9_]*)\s*:\s*([\s\S]+)$/);
+    if (withDetail) return createError(withDetail[1], withDetail[2].trim());
+    if (/^[A-Z][A-Z0-9_]*$/.test(raw)) return createError(raw, fallback);
+    return createError(undefined, raw || fallback);
+  }
+
+  async function callRpc(name, args) {
+    const { data, error } = await supabaseClient.rpc(name, args);
+    if (error) throw parseRpcError(error, '사이클 리포트를 불러오지 못했습니다.');
+    return data || {};
+  }
 
   function getAccount() {
     return window.AuthService?.getCurrentAccount?.() || null;
@@ -46,20 +67,20 @@ window.CycleReportService = (() => {
     };
   }
 
-  // [댓글 이력 결합] 로컬에서는 CommentService의 회차별 저장소를 읽고, API 모드에서는
-  // 서버가 cycle report 응답에 포함한 myComments를 그대로 사용합니다.
+  // [댓글 이력 결합] 로컬에서는 CommentService의 회차별 저장소를 읽고, Supabase 연결 시에는
+  // get_my_cycle_reports() RPC 응답에 이미 포함된 myComments를 그대로 사용합니다(이 함수는 로컬 전용).
   function getLocalMyComments(marketId) {
     const comments = window.CommentService?.getMyCommentsForMarket?.(marketId);
     return Array.isArray(comments) ? comments : null;
   }
 
   function enrichLocalReportWithComments(report) {
-    if (API_BASE_URL || !report?.market?.id) return report;
+    if (supabaseClient || !report?.market?.id) return report;
     const comments = getLocalMyComments(report.market.id);
     return comments ? { ...report, myComments: comments } : report;
   }
 
-  // [정산 스냅샷 정규화] 로컬 InvestmentService 결과와 백엔드 응답의 필드 차이를 리포트용 구조로 통일합니다.
+  // [정산 스냅샷 정규화] 로컬 InvestmentService 결과와 get_my_cycle_reports() RPC 응답의 필드 차이를 리포트용 구조로 통일합니다.
   function normalizeReport(snapshot = {}) {
     const market = snapshot.market || snapshot.session || {};
     const settlement = snapshot.settlement || snapshot.result || {};
@@ -90,7 +111,7 @@ window.CycleReportService = (() => {
   }
 
   function archiveSnapshot(snapshot) {
-    if (API_BASE_URL || !getStorageKey()) return null;
+    if (supabaseClient || !getStorageKey()) return null;
     const report = enrichLocalReportWithComments(normalizeReport(snapshot));
     if (!report) return null;
     const history = readLocalHistory();
@@ -107,8 +128,9 @@ window.CycleReportService = (() => {
   }
 
   // [현재 장 반영] 로컬 시연에서는 장이 끝난 뒤 리포트를 열 때도 종료 정산을 한 번 저장해 누락을 막습니다.
+  // Supabase 연결 시에는 settle_market()이 이미 서버에 정산을 저장해두므로 이 보관 작업이 필요 없습니다.
   async function archiveCurrentSettlementWhenClosed() {
-    if (API_BASE_URL || !window.MarketCountdown?.isEnded?.() || !window.InvestmentService?.loadSettlement) return;
+    if (supabaseClient || !window.MarketCountdown?.isEnded?.() || !window.InvestmentService?.loadSettlement) return;
     if (archiveCurrentSettlementTask) return archiveCurrentSettlementTask;
     archiveCurrentSettlementTask = (async () => {
       const snapshot = await window.InvestmentService.loadSettlement();
@@ -122,23 +144,14 @@ window.CycleReportService = (() => {
   }
 
   async function requestReports() {
-    const response = await fetch(`${API_BASE_URL}/me/cycle-reports`, {
-      credentials: 'include',
-      headers: { Accept: 'application/json', ...(window.AuthService?.getRequestHeaders?.() || {}) },
-    });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const error = new Error(payload.message || '사이클 리포트를 불러오지 못했습니다.');
-      error.code = payload.code || 'CYCLE_REPORT_REQUEST_FAILED';
-      throw error;
-    }
-    const rawReports = payload.reports || payload.items || payload.settlements || [];
+    const body = await callRpc('get_my_cycle_reports', {});
+    const rawReports = Array.isArray(body.reports) ? body.reports : [];
     return sortByLatest(rawReports.map(normalizeReport).filter(Boolean));
   }
 
   async function loadReports() {
     if (!getAccount()) return [];
-    if (API_BASE_URL) return requestReports();
+    if (supabaseClient) return requestReports();
     await archiveCurrentSettlementWhenClosed();
     const history = readLocalHistory();
     const enriched = sortByLatest(history.map(enrichLocalReportWithComments));
@@ -149,13 +162,13 @@ window.CycleReportService = (() => {
 
   window.addEventListener('jorong:market-settled', (event) => archiveSnapshot(event.detail));
   window.addEventListener('jorong:comments-changed', () => {
-    if (!API_BASE_URL && window.MarketCountdown?.isEnded?.()) archiveCurrentSettlementWhenClosed().catch(() => {});
+    if (!supabaseClient && window.MarketCountdown?.isEnded?.()) archiveCurrentSettlementWhenClosed().catch(() => {});
   });
   // 새로고침 직후에는 정산 이벤트가 인증 복원보다 먼저 발생할 수 있습니다.
   // 계정이 복원된 뒤 현재 종료 장을 다시 보관해 개인 리포트가 사라지지 않게 합니다.
   window.addEventListener('jorong:auth-session', (event) => {
     memoryHistory = [];
-    if (!API_BASE_URL && event.detail?.account) archiveCurrentSettlementWhenClosed().catch(() => {});
+    if (!supabaseClient && event.detail?.account) archiveCurrentSettlementWhenClosed().catch(() => {});
   });
 
   return Object.freeze({ loadReports, archiveSnapshot, normalizeReport });

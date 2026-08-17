@@ -1,14 +1,16 @@
-// [인증 서비스] API 주소를 설정하면 회원·로그인·세션 정보를 서버에서 받아오고, 설정 전에는 화면 확인용 로컬 데이터로 동작합니다.
+// [인증 서비스] Supabase 프로젝트에 연결되어 있으면 Edge Function(signup-with-nickname/login-with-nickname)으로
+// 회원가입·로그인·세션 정보를 받아오고, 연결 전(scripts/api-config.js에 URL/키가 비어있을 때)에는
+// 화면 확인용 로컬 데이터로 동작합니다. (scripts/supabase-client.js가 만든 window.JorongSupabase 사용)
 window.AuthService = (() => {
-  const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
-  const TOKEN_STORAGE_KEY = 'jorong-mvp-access-token';
+  const supabaseClient = window.JorongSupabase;
+  const SUPABASE_URL = (window.JORONG_SUPABASE_URL || '').replace(/\/$/, '');
+  const SUPABASE_ANON_KEY = window.JORONG_SUPABASE_ANON_KEY || '';
   const LOCAL_SESSION_STORAGE_KEY = 'jorong-mvp-local-session';
   // [로컬 계정 디렉터리] 관리자 화면이 실제 로컬 가입자를 읽을 수 있도록 비밀번호 없이 계정 요약만 공유합니다.
   const LOCAL_ACCOUNT_DIRECTORY_KEY = 'jorong-mvp-local-accounts-v1';
   const INITIAL_POINTS = 10000;
   const localAccounts = new Map();
   let currentAccount = null;
-  let accessToken = readSessionStorage(TOKEN_STORAGE_KEY);
 
   // [안전한 탭 저장소] 브라우저 정책으로 sessionStorage가 막혀도 인증 화면 전체가 멈추지 않게 합니다.
   function readSessionStorage(key) {
@@ -37,8 +39,9 @@ window.AuthService = (() => {
   }
 
   // 운영 화면에는 아이디·포인트·생성 시각만 보냅니다. 비밀번호와 인증 토큰은 공유 저장소에 넣지 않습니다.
+  // Supabase 연결 시에는 실제 계정 목록을 admin_* RPC로 받아오므로(추후 단계) 이 로컬 미러링은 쓰지 않습니다.
   function mirrorLocalAccount(account) {
-    if (API_BASE_URL || !account?.id || !account?.nickname) return;
+    if (supabaseClient || !account?.id || !account?.nickname) return;
     const directory = readLocalAccountDirectory();
     const safeAccount = {
       id: String(account.id),
@@ -53,10 +56,11 @@ window.AuthService = (() => {
     writeLocalAccountDirectory(directory);
   }
 
-  // [로컬 데모 세션] API 미연결 시에도 새로고침으로 로그인 화면이 초기화되지 않도록
+  // [로컬 데모 세션] Supabase 미연결 시에도 새로고침으로 로그인 화면이 초기화되지 않도록
   // 비밀번호를 제외한 계정 정보만 현재 브라우저 탭의 sessionStorage에 보관합니다.
+  // Supabase 연결 시에는 supabase-js가 세션을 자체적으로 localStorage에 보관하므로 이 저장소는 쓰지 않습니다.
   function persistLocalSession(account) {
-    if (API_BASE_URL || !account?.id || !account?.nickname) return;
+    if (supabaseClient || !account?.id || !account?.nickname) return;
     const storedPoints = Number(account.points);
     const safeAccount = {
       id: account.id,
@@ -69,7 +73,7 @@ window.AuthService = (() => {
   }
 
   function getPersistedLocalSession() {
-    if (API_BASE_URL) return null;
+    if (supabaseClient) return null;
     try {
       const saved = JSON.parse(readSessionStorage(LOCAL_SESSION_STORAGE_KEY) || 'null');
       return saved?.id && saved?.nickname ? saved : null;
@@ -79,7 +83,8 @@ window.AuthService = (() => {
     }
   }
 
-  // [입력값 검사] 화면에서는 아이디로 부르되, API 호환을 위해 내부 필드명 nickname을 유지합니다.
+  // [입력값 검사] 화면에서는 아이디로 부르되, 내부 필드명 nickname을 유지합니다.
+  // (백엔드는 2~16자까지 허용하지만, 화면 문구·입력창(maxlength=12)에 맞춰 여기서는 2~12자로 더 엄격하게 검사합니다.)
   function validateCredentials({ nickname, password }) {
     const normalizedNickname = String(nickname || '').trim();
     const normalizedPassword = String(password || '');
@@ -93,20 +98,43 @@ window.AuthService = (() => {
     return { nickname: normalizedNickname, password: normalizedPassword };
   }
 
-  // [인증 헤더] 백엔드가 세션 쿠키를 쓸 때도, Bearer 토큰을 쓸 때도 함께 사용할 수 있도록 공통 헤더를 만듭니다.
+  // [호환용] Supabase 연결 이후에는 supabase-js가 세션의 Authorization 헤더를 자동으로 붙여주므로
+  // 실제로는 쓰이지 않습니다. 아직 fetch 기반으로 남아있는 다른 서비스 파일(다음 단계에서 전환 예정)이
+  // 호출해도 에러가 나지 않도록 빈 객체만 반환합니다.
   function getRequestHeaders() {
-    return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+    return {};
   }
 
-  // [세션 정규화] 로그인·회원가입·/auth/me 응답의 계정/지갑 형태를 하나의 화면용 구조로 통일합니다.
-  function applySession(payload = {}) {
+  // [Edge Function 호출] signup-with-nickname / login-with-nickname / check-nickname은 로그인 전
+  // 상태에서 호출하므로 anon key로 인증합니다 (Supabase Edge Function은 apikey/Authorization 헤더 필수).
+  async function requestEdgeFunction(name, payload) {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok || body.ok === false) throw new Error(body.message || '인증 요청을 처리하지 못했습니다.');
+    return body;
+  }
+
+  // [세션 정규화] Edge Function 응답(account/wallet/session)을 화면용 구조로 통일하고,
+  // 반환된 access_token/refresh_token으로 supabase-js 세션을 실제로 성립시킵니다.
+  // 이후의 모든 supabase.rpc()/from() 호출은 이 세션의 로그인 사용자로 자동 인증됩니다.
+  async function applySession(payload = {}) {
     const accountSource = payload.account || payload.user || null;
     const walletSource = payload.wallet || accountSource?.wallet || {};
-    const returnedToken = payload.accessToken || payload.token || payload.access_token;
 
-    if (returnedToken) {
-      accessToken = returnedToken;
-      writeSessionStorage(TOKEN_STORAGE_KEY, returnedToken);
+    if (supabaseClient && payload.session?.access_token && payload.session?.refresh_token) {
+      const { error } = await supabaseClient.auth.setSession({
+        access_token: payload.session.access_token,
+        refresh_token: payload.session.refresh_token,
+      });
+      if (error) throw new Error('세션을 저장하지 못했습니다. 다시 로그인해주세요.');
     }
 
     if (!accountSource) return null;
@@ -130,24 +158,7 @@ window.AuthService = (() => {
     return currentAccount;
   }
 
-  // [HTTP 요청] 인증 쿠키와 Bearer 토큰을 함께 전송하고, API의 message 오류를 화면에서 사용할 Error로 변환합니다.
-  async function request(path, options = {}) {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      credentials: 'include',
-      ...options,
-      headers: {
-        Accept: 'application/json',
-        ...getRequestHeaders(),
-        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
-        ...(options.headers || {}),
-      },
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.message || '인증 요청을 처리하지 못했습니다.');
-    return body;
-  }
-
-  // [로컬 계정] API 주소가 없을 때만 쓰는 시연용 계정입니다. 실제 서비스의 비밀번호와 포인트는 서버 DB가 보관합니다.
+  // [로컬 계정] Supabase 미연결일 때만 쓰는 시연용 계정입니다. 실제 서비스의 비밀번호와 포인트는 서버 DB가 보관합니다.
   function createLocalAccount(credentials) {
     const directory = readLocalAccountDirectory();
     if (localAccounts.has(credentials.nickname) || directory.accounts.some((account) => account.nickname === credentials.nickname)) throw new Error('이미 사용 중인 아이디입니다.');
@@ -168,61 +179,80 @@ window.AuthService = (() => {
     if (normalizedNickname.length < 2 || normalizedNickname.length > 12) {
       throw new Error('아이디는 2~12자로 입력해주세요.');
     }
-    return API_BASE_URL
-      ? request(`/auth/nickname-availability?nickname=${encodeURIComponent(normalizedNickname)}`, { method: 'GET' })
-      : { available: !localAccounts.has(normalizedNickname) && !readLocalAccountDirectory().accounts.some((account) => account.nickname === normalizedNickname) };
+    if (!supabaseClient) {
+      return { available: !localAccounts.has(normalizedNickname) && !readLocalAccountDirectory().accounts.some((account) => account.nickname === normalizedNickname) };
+    }
+    const body = await requestEdgeFunction('check-nickname', { nickname: normalizedNickname });
+    return { available: !!body.available, message: body.message };
   }
 
-  // [회원가입] points는 클라이언트가 보내지 않습니다. 서버가 트랜잭션으로 신규 회원과 초기 10,000 포인트를 생성해야 합니다.
+  // [회원가입] points는 클라이언트가 보내지 않습니다. 서버가 트랜잭션으로 신규 회원과 초기 10,000 포인트를 생성합니다.
+  // Supabase 연결 시 응답에는 1회성 평문 복구 코드(recovery_code)가 포함되며, auth-ui.js가 이를 화면에 표시합니다.
   async function signup(payload) {
     const credentials = validateCredentials(payload);
-    const result = API_BASE_URL
-      ? await request('/auth/signup', { method: 'POST', body: JSON.stringify(credentials) })
+    const result = supabaseClient
+      ? await requestEdgeFunction('signup-with-nickname', credentials)
       : createLocalAccount(credentials);
+    await applySession(result);
     return result;
   }
 
-  // [로그인] 아이디와 비밀번호를 서버로 전달하고, 반환된 포인트와 투자 내역을 현재 세션에 보관합니다.
+  // [로그인] 아이디와 비밀번호를 Edge Function으로 전달하고, 반환된 세션·포인트를 현재 화면에 반영합니다.
   async function login(payload) {
     const credentials = validateCredentials(payload);
     let result;
-    if (API_BASE_URL) {
-      result = await request('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
+    if (supabaseClient) {
+      result = await requestEdgeFunction('login-with-nickname', credentials);
     } else {
       const local = localAccounts.get(credentials.nickname);
       if (!local || local.password !== credentials.password) throw new Error('아이디 또는 비밀번호가 일치하지 않습니다.');
       const { password, ...account } = local;
       result = { account, wallet: { points: account.points }, investmentLogs: account.investmentLogs };
     }
-    applySession(result);
+    await applySession(result);
     return result;
   }
 
-  // [재접속 복원] 서버 연결 시 /auth/me, 로컬 시연에서는 비밀번호를 제외한 탭 세션으로 로그인 상태를 복원합니다.
+  // [재접속 복원] Supabase 연결 시에는 supabase-js가 보관해둔 세션으로 profiles/wallets를 다시 읽어 복원하고,
+  // (profiles는 전체 공개 SELECT, wallets는 본인 행만 SELECT 가능하도록 RLS가 이미 열려 있습니다)
+  // 로컬 시연에서는 비밀번호를 제외한 탭 세션으로 로그인 상태를 복원합니다.
   async function restoreSession() {
-    if (!API_BASE_URL) {
+    if (!supabaseClient) {
       if (currentAccount) return currentAccount;
       const savedAccount = getPersistedLocalSession();
       return savedAccount ? applySession({ account: savedAccount, wallet: { points: savedAccount.points }, investmentLogs: savedAccount.investmentLogs }) : null;
     }
     try {
-      const result = await request('/auth/me', { method: 'GET' });
-      applySession(result);
-      return result;
+      const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+      if (sessionError || !session) {
+        currentAccount = null;
+        return null;
+      }
+      const [{ data: profile, error: profileError }, { data: wallet }] = await Promise.all([
+        supabaseClient.from('profiles').select('id, nickname, created_at').eq('id', session.user.id).maybeSingle(),
+        supabaseClient.from('wallets').select('balance').eq('user_id', session.user.id).maybeSingle(),
+      ]);
+      if (profileError || !profile) {
+        currentAccount = null;
+        return null;
+      }
+      return applySession({
+        account: { id: profile.id, nickname: profile.nickname, createdAt: profile.created_at },
+        wallet: { points: wallet?.balance ?? 0 },
+        investmentLogs: [],
+      });
     } catch (_) {
       currentAccount = null;
       return null;
     }
   }
 
-  // [로그아웃] 서버 쿠키 삭제 API가 있으면 호출하고, 브라우저에 보관한 토큰과 화면 세션도 함께 비웁니다.
+  // [로그아웃] Supabase 세션을 폐기하고, 브라우저에 남아있던 로컬 시연 세션도 함께 비웁니다.
   async function logout() {
-    if (API_BASE_URL) {
-      try { await request('/auth/logout', { method: 'POST' }); } catch (_) { /* 서버 로그아웃 실패 시에도 로컬 세션은 제거합니다. */ }
+    if (supabaseClient) {
+      try { await supabaseClient.auth.signOut(); } catch (_) { /* 서버 로그아웃 실패 시에도 로컬 상태는 정리합니다. */ }
     }
-    accessToken = '';
     currentAccount = null;
-    removeSessionStorage(TOKEN_STORAGE_KEY);
     removeSessionStorage(LOCAL_SESSION_STORAGE_KEY);
     window.dispatchEvent(new CustomEvent('jorong:auth-session', { detail: { account: null, wallet: null, investmentLogs: [] } }));
   }
@@ -235,9 +265,9 @@ window.AuthService = (() => {
     logout,
     getRequestHeaders,
     getCurrentAccount: () => currentAccount,
-    // [로컬 지갑 동기화] 투자 시연이 바꾼 잔액을 관리자 목록에도 반영합니다.
+    // [로컬 지갑 동기화] 투자 시연이 바꾼 잔액을 관리자 목록에도 반영합니다. (Supabase 연결 시에는 서버가 잔액을 관리하므로 no-op)
     updateLocalWalletPoints: (points) => {
-      if (API_BASE_URL || !currentAccount || !Number.isFinite(Number(points))) return;
+      if (supabaseClient || !currentAccount || !Number.isFinite(Number(points))) return;
       currentAccount.points = Math.max(0, Math.round(Number(points)));
       persistLocalSession(currentAccount);
       mirrorLocalAccount(currentAccount);
