@@ -1,167 +1,189 @@
-/* [모바일 전용 앱 UI] 데스크톱 코드와 충돌하지 않도록 767px 이하에서만 재배치합니다. */
+/* [MVP 모바일 UI] Figma의 393px iPhone 프레임을 기준으로, 기존 데스크톱 기능은 유지하고
+   화면 배치만 모바일 앱 흐름으로 다시 구성합니다. */
 @media (max-width: 767px) {
-  :root { --mobile-page: #f6f9ff; --mobile-line: #dbe4f0; --mobile-ink: #092045; }
-  html { background: var(--mobile-page); }
-  body { min-width: 0; overflow-x: hidden; background: var(--mobile-page); }
-  body.is-mobile-comment-composer-open { overflow: hidden; }
+  :root {
+    --mobile-page: #f6f9ff;
+    --mobile-surface: #ffffff;
+    --mobile-ink: #092045;
+    --mobile-muted: #6e7d99;
+    --mobile-line: #dbe3f0;
+    --mobile-blue: #1463f2;
+    --mobile-blue-soft: #e0f2ff;
+    --mobile-red: #f5425c;
+    --mobile-red-soft: #ffedf2;
+    --mobile-card-radius: 16px;
+  }
+
+  html,
+  body { min-width: 0; background: var(--mobile-page); overflow-x: hidden; }
+  body.is-mobile-comment-composer-open,
+  body.is-mobile-investment-sheet-open { overflow: hidden; }
   .app-shell { width: 100%; min-height: 100dvh; margin: 0; background: var(--mobile-page); box-shadow: none; }
   main { padding-bottom: 0; }
 
-  /* [앱 바] 데스크톱 헤더를 56px 모바일 앱 바로 축소합니다. */
-  .app-header { height: 56px; position: sticky; z-index: 70; top: 0; display: flex; padding: 0 20px; border-bottom: 1px solid var(--mobile-line); background: rgb(255 255 255 / 94%); backdrop-filter: blur(12px); }
-  .wordmark { gap: 7px; min-width: 0; }
-  .wordmark .brand-logo { width: 25px; height: 25px; }
-  .wordmark span { font-size: 17px; }
+  /* [공통 앱 바] 20px 좌우 여백, 56px 높이의 Figma MVP 앱 바입니다. */
+  .app-header {
+    position: sticky;
+    z-index: 80;
+    top: 0;
+    width: 100%;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--mobile-line);
+    background: rgb(255 255 255 / 96%);
+    box-shadow: none;
+    backdrop-filter: blur(12px);
+  }
+  .wordmark { min-width: 0; gap: 8px; }
+  .wordmark .brand-logo { width: 24px; height: 24px; }
+  .wordmark span { color: var(--mobile-ink); font-size: 17px; line-height: 24px; }
   .app-shell.is-exchange .exchange-header-nav { display: none; }
-  .header-actions { margin-left: auto; }
-  .landing-header-actions, .app-shell.is-exchange .exchange-header-actions { gap: 8px; }
+  .header-actions { min-width: 0; margin-left: auto; }
   .account-prompt { display: none; }
-  .header-login, .exchange-header-actions button { min-width: auto; height: 32px; padding: 0 11px; border-radius: 8px; font-size: 12px; }
-  .exchange-header-actions b { margin-right: 0; font-size: 12px; }
-  .exchange-header-actions .header-member-name, .landing-header-actions .header-member-name { min-height: 32px; padding: 0; color: #375172; background: transparent; font-size: 12px; }
+  .landing-header-actions,
+  .app-shell.is-exchange .exchange-header-actions { gap: 8px; }
+  .header-login,
+  .exchange-header-actions > button { min-width: 0; height: 32px; border-radius: 10px; padding: 0 11px; font-size: 12px; }
+  .exchange-header-actions > b { margin-right: 0; color: var(--mobile-muted); font-size: 12px; white-space: nowrap; }
+  .header-profile { display: inline-flex; align-items: center; gap: 4px; }
+  .exchange-header-actions .header-member-name,
+  .landing-header-actions .header-member-name { min-height: 30px; padding: 0 4px; color: var(--mobile-ink); background: transparent; font-size: 11px; }
+  .exchange-header-actions .header-logout-button,
+  .landing-header-actions .header-logout-button { min-width: 0; height: 30px; padding: 0 8px; border-radius: 8px; font-size: 10px; }
 
-  /* [랜딩] 미리보기 이미지를 감추고 Figma의 타이머 중심 세로 히어로를 사용합니다. */
+  /* [랜딩] 타이머 중심의 단일 353px 콘텐츠 컬럼입니다. */
   .landing-view { min-height: calc(100dvh - 56px); background: var(--mobile-page); }
-  .landing-rebuild { width: 100%; min-height: calc(100dvh - 56px); display: flex; flex-direction: column; justify-content: center; padding: 30px 20px calc(38px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
-  .landing-rebuild-copy { width: 100%; max-width: 353px; margin: 0 auto; text-align: center; }
-  .landing-rebuild-copy .eyebrow { margin: 0 0 14px; font-size: 12px; letter-spacing: -.03em; }
-  .landing-rebuild-copy h1 { margin: 0; font-size: clamp(30px, 8vw, 34px); line-height: 1.26; letter-spacing: -.075em; }
-  .landing-rebuild-copy > p:not(.eyebrow) { margin: 17px 0 0; font-size: 15px; line-height: 1.58; letter-spacing: -.045em; }
-  .mobile-landing-timer { width: 100%; height: 112px; display: grid; align-content: center; justify-items: center; gap: 8px; margin-top: 42px; border-radius: 20px; color: #fff; background: #092045; box-shadow: 0 14px 28px rgb(9 32 69 / 12%); }
-  .mobile-landing-timer span { color: #bac9e5; font-size: 12px; font-weight: 750; }
-  .mobile-landing-timer strong { font-size: 39px; line-height: 1; letter-spacing: .04em; }
-  .mobile-landing-timer.is-next-market { background: #2162ee; }
-  .landing-rebuild-copy .landing-start-button { width: 100%; height: 52px; margin-top: 24px; border-radius: 16px; font-size: 16px; }
-  .landing-rebuild-copy > strong { display: block; margin-top: 14px; color: #2162ee; font-size: 13px; }
+  .landing-rebuild {
+    width: 100%;
+    min-height: calc(100dvh - 56px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 34px 20px calc(32px + env(safe-area-inset-bottom));
+    background: var(--mobile-page);
+  }
+  .landing-rebuild-copy { width: min(100%, 353px); margin: 0 auto; text-align: center; }
+  .landing-rebuild-copy .eyebrow { margin: 0 0 18px; color: var(--mobile-blue); font-size: 12px; font-weight: 800; }
+  .landing-rebuild-copy h1 { margin: 0; color: var(--mobile-ink); font-size: 32px; line-height: 1.31; letter-spacing: -.07em; }
+  .landing-rebuild-copy > p:not(.eyebrow) { margin: 18px 0 0; color: var(--mobile-muted); font-size: 15px; line-height: 1.54; letter-spacing: -.045em; }
+  .mobile-landing-timer {
+    width: 100%;
+    height: 112px;
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 8px;
+    margin-top: 36px;
+    border-radius: 20px;
+    color: #fff;
+    background: var(--mobile-ink);
+    box-shadow: 0 16px 32px rgb(9 32 69 / 16%);
+  }
+  .mobile-landing-timer span { color: #d6e0f3; font-size: 12px; font-weight: 700; }
+  .mobile-landing-timer strong { font-size: 40px; line-height: 1; letter-spacing: .04em; }
+  .mobile-landing-timer.is-next-market { background: var(--mobile-blue); }
+  .landing-rebuild-copy .landing-start-button { width: 100%; height: 52px; margin-top: 24px; border-radius: 16px; font-size: 15px; }
+  .landing-rebuild-copy > strong { display: block; margin-top: 14px; color: var(--mobile-blue); font-size: 13px; }
   .landing-product-preview { display: none; }
-  .landing-concept-replay { width: 100%; max-width: 353px; height: 44px; margin: 16px auto 0; border-radius: 12px; font-size: 13px; }
+  .landing-concept-replay { width: min(100%, 353px); height: 44px; margin: 16px auto 0; border-radius: 14px; font-size: 13px; }
 
-  /* [인증] 큰 데스크톱 카드 대신 여백 20px의 단일 컬럼 폼으로 정리합니다. */
-  .signup-view { min-height: calc(100dvh - 56px); padding: 30px 20px calc(38px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
-  .signup-card, .signup-card.login-card { width: 100%; max-width: 440px; min-height: 0; margin: 0 auto; border: 1px solid var(--mobile-line); border-radius: 20px; padding: 28px 20px; box-shadow: 0 10px 25px rgb(21 54 105 / 5%); }
-  .signup-card h1 { font-size: 28px; }
-  .signup-intro { margin-top: 10px; font-size: 13px; line-height: 1.55; }
-  .signup-bonus { margin-top: 15px; }
-  .signup-field { margin-top: 22px; font-size: 14px; }
-  .signup-field input, .nickname-control { height: 52px; font-size: 14px; }
-  .signup-field small { font-size: 10px; line-height: 1.5; }
-  .terms-all { min-height: 52px; margin-top: 25px; font-size: 13px; }
-  .terms-list { gap: 10px; font-size: 11px; line-height: 1.3; }
-  .signup-submit { height: 52px; margin-top: 25px; border-radius: 13px; font-size: 15px; }
+  /* [회원가입·로그인] Figma 입력 필드의 60px 높이와 353px 폭을 적용합니다. */
+  .signup-view { min-height: calc(100dvh - 56px); display: flex; align-items: center; padding: 24px 20px calc(28px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
+  .signup-card,
+  .signup-card.login-card { width: min(100%, 353px); min-height: 0; margin: 0 auto; border: 0; border-radius: 0; padding: 0; background: transparent; box-shadow: none; }
+  .signup-card h1 { margin: 0; color: var(--mobile-ink); font-size: 26px; line-height: 1.38; letter-spacing: -.06em; }
+  .signup-intro { margin: 8px 0 0; color: var(--mobile-muted); font-size: 12px; line-height: 1.5; }
+  .signup-bonus { min-width: 220px; height: 34px; display: inline-grid; place-items: center; margin-top: 16px; border-radius: 17px; color: var(--mobile-blue); background: var(--mobile-blue-soft); font-size: 12px; }
+  .signup-field { display: grid; gap: 8px; margin-top: 14px; color: var(--mobile-ink); font-size: 13px; font-weight: 800; }
+  .signup-field input,
+  .nickname-control { height: 60px; border-color: var(--mobile-line); border-radius: 16px; background: #fff; font-size: 13px; }
+  .signup-field input { padding: 0 16px; }
+  .nickname-control input { min-width: 0; height: 58px; border: 0; padding: 0 12px 0 16px; }
+  .nickname-control button { height: 36px; margin-right: 10px; border-radius: 10px; font-size: 11px; }
+  .signup-field small { font-size: 10px; line-height: 1.45; }
+  .terms-all { min-height: 56px; margin-top: 16px; border-color: var(--mobile-line); border-radius: 16px; padding: 0 16px; background: #fff; font-size: 13px; }
+  .terms-list { gap: 8px; margin-top: 10px; font-size: 10px; line-height: 1.35; }
+  .signup-submit { width: 100%; height: 52px; margin-top: 20px; border-radius: 16px; font-size: 15px; }
+  .signup-login-copy { margin-top: 15px; font-size: 12px; }
+  .signup-note { display: none; }
 
-  /* [거래소 모바일 카드] 세 영역을 Figma 기준 353px 폭의 세로 카드로 쌓습니다. */
+  /* [거래소] Figma의 타이머 → 종목 요약 → 차트 → 투자 흐름을 한 열로 배치합니다. */
   .exchange-view { min-height: calc(100dvh - 56px); background: var(--mobile-page); }
-  .exchange-rebuild { width: 100%; min-height: calc(100dvh - 56px); padding: 16px 20px calc(98px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
+  .exchange-rebuild { width: 100%; min-height: calc(100dvh - 56px); padding: 16px 20px calc(106px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
   .exchange-hero-bar { height: auto; display: block; }
-  .exchange-countdown-block { width: 100%; gap: 8px; }
-  .exchange-countdown-block > span { font-size: 12px; }
-  .exchange-countdown { width: 100%; height: 112px; border-radius: 20px; font-size: 39px; }
-  .exchange-focus-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 16px; }
-  .exchange-focus-grid .exchange-subject-card, .exchange-focus-grid .exchange-chart-card, .exchange-focus-grid .exchange-roast-card { width: 100%; height: auto; }
-  .exchange-subject-card { min-height: 120px; display: flex; align-items: center; justify-items: initial; gap: 14px; border: 1px solid var(--mobile-line); border-radius: 16px; padding: 13px; background: #fff; }
-  .exchange-subject-image { width: 92px !important; height: 92px !important; flex: 0 0 92px; border-radius: 12px; object-position: 15% 67%; }
+  .exchange-countdown-block { width: 100%; position: relative; display: grid; justify-items: center; }
+  .exchange-countdown-block > span { position: absolute; z-index: 1; top: 17px; color: #dce5f5; font-size: 12px; font-weight: 700; }
+  .exchange-countdown { width: 100%; height: 112px; place-items: end center; border-radius: 20px; padding: 0 0 17px; color: #fff; background: var(--mobile-ink); box-shadow: 0 16px 32px rgb(9 32 69 / 16%); font-size: 40px; }
+  .exchange-countdown.is-next-market { background: var(--mobile-blue); }
+  .exchange-focus-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 12px; }
+  .exchange-focus-grid .exchange-subject-card,
+  .exchange-focus-grid .exchange-chart-card,
+  .exchange-focus-grid .exchange-roast-card { width: 100%; height: auto; }
+  .exchange-subject-card { min-height: 120px; display: flex; align-items: center; gap: 14px; border: 1px solid var(--mobile-line); border-radius: var(--mobile-card-radius); padding: 14px; background: #fff; }
   .exchange-subject-card > b { display: none; }
+  .exchange-subject-image { width: 92px !important; height: 92px !important; flex: 0 0 92px; border: 0; border-radius: 12px; object-position: 15% 67%; }
   .mobile-subject-information { min-width: 0; display: grid; gap: 2px; text-align: left; }
-  .mobile-subject-information > span { color: #71819a; font-size: 11px; font-weight: 700; }
-  .mobile-subject-information > b { color: var(--mobile-ink); font-size: 17px; line-height: 1.35; }
-  .mobile-subject-information > strong { color: #122f5c; font-size: 21px; line-height: 1.3; letter-spacing: -.045em; }
-  .mobile-subject-information > em { color: #557095; font-size: 12px; font-style: normal; font-weight: 750; }
-  .mobile-subject-information > em.is-up { color: #2162ee; }
-  .mobile-subject-information > em.is-down { color: #ef4d63; }
-  .exchange-chart-card { height: 164px !important; padding: 10px 8px 5px; border: 1px solid var(--mobile-line); border-radius: 16px; }
+  .mobile-subject-information > span { color: var(--mobile-muted); font-size: 11px; font-weight: 700; }
+  .mobile-subject-information > b { overflow: hidden; color: var(--mobile-ink); font-size: 16px; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-subject-information > strong { color: var(--mobile-ink); font-size: 21px; line-height: 1.25; letter-spacing: -.045em; }
+  .mobile-subject-information > em { color: var(--mobile-muted); font-size: 12px; font-style: normal; font-weight: 750; }
+  .mobile-subject-information > em.is-up { color: var(--mobile-blue); }
+  .mobile-subject-information > em.is-down { color: var(--mobile-red); }
+  .exchange-chart-card { height: 116px !important; padding: 0; overflow: hidden; border: 1px solid var(--mobile-line); border-radius: var(--mobile-card-radius); background: #fff; }
   .exchange-chart-title { display: none; }
-  .exchange-chart { height: 100%; min-height: 0; margin: 0; }
-  .exchange-chart .price-candle-chart { min-height: 100%; }
-  .price-candle-chart .price-chart-y-label, .price-candle-chart .price-chart-x-label { font-size: 14px; }
-  .price-candle-chart .price-chart-axis-title { font-size: 14px; }
+  .exchange-chart { width: 100%; height: 114px; margin: 0; overflow: hidden; border: 0; border-radius: inherit; background: #fff; }
+  .exchange-chart svg,
+  .exchange-chart .price-candle-chart { width: 100%; height: 100%; display: block; }
+  .price-candle-chart { background: #fff; }
+  .price-candle-chart .price-chart-grid { stroke: #e7edf5; }
+  .price-candle-chart .price-chart-y-label,
+  .price-candle-chart .price-chart-x-label { font-size: 13px; }
+  .price-candle-chart .price-chart-axis-title { display: none; }
+  .exchange-price-pin { font-size: 11px; }
 
-  /* [잠긴 투자 카드] 댓글 작성 전에는 별도의 권유 카드로 명확하게 표시합니다. */
-  .exchange-roast-card { min-height: 64px; border: 0; border-radius: 16px; background: transparent; overflow: visible; }
-  .exchange-roast-cta { position: relative; min-height: 64px; display: flex; align-items: center; justify-content: space-between; inset: auto; padding: 0 17px; border: 1px solid #ffd7df; border-radius: 16px; color: #e5405b; background: #fff0f3; text-align: left; }
-  .exchange-roast-cta > b { color: inherit; font-size: 15px; letter-spacing: -.045em; text-shadow: none; }
-  .exchange-roast-cta > b::after { content: "  · 조롱 작성 →"; font-size: 12px; font-weight: 800; }
-  .exchange-roast-cta:hover { background: #ffe7ed; }
-
-  /* [모바일 투자 바텀시트] 기존 ID와 이벤트를 그대로 두고 표시 위치만 화면 하단으로 바꿉니다. */
-  .exchange-roast-card > .investment-panel:not([hidden]), .exchange-roast-card > .additional-investment-panel:not([hidden]), .exchange-roast-card > .investment-status-card:not([hidden]) { position: fixed; z-index: 130; left: 0; right: 0; bottom: 0; width: min(100%, 480px); height: auto; min-height: 0; max-height: min(80dvh, 650px); margin: 0 auto; overflow-y: auto; border: 1px solid #d8e2ee; border-bottom: 0; border-radius: 24px 24px 0 0; padding: 28px 20px calc(24px + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -100vmax rgb(4 15 34 / 36%), 0 -12px 35px rgb(3 25 65 / 15%); }
-  .exchange-roast-card > .investment-panel:not([hidden]) { display: flex; gap: 0; }
-  .exchange-roast-card > .investment-panel h2 { font-size: 25px; line-height: 1.2; }
-  .exchange-roast-card > .investment-panel .investment-balance { margin-top: 7px; font-size: 16px; }
-  .exchange-roast-card > .investment-panel .investment-directions { gap: 10px; margin-top: 27px; }
-  .exchange-roast-card > .investment-panel .investment-directions button { height: 46px; border-radius: 14px; font-size: 15px; }
-  .exchange-roast-card > .investment-panel .investment-amount-control { height: 54px; margin-top: 15px; border-radius: 12px; padding: 0 14px; }
-  .exchange-roast-card > .investment-panel .investment-amount-input input { width: 140px; font-size: 19px; }
-  .investment-panel .investment-submit { height: 52px; margin-top: 20px; border-radius: 13px; font-size: 16px; }
-  .investment-status-card, .additional-investment-panel { gap: 15px; }
-  .investment-status-card > header h2, .additional-investment-panel h2 { font-size: 23px; }
-  .position-side-badge { min-width: 64px; height: 28px; font-size: 12px; }
-  .position-pnl > span { font-size: 12px; }
-  .position-pnl strong { font-size: 24px; }
-  .position-metrics { gap: 15px 18px; padding-top: 14px; }
-  .position-metrics span { font-size: 11px; }
-  .position-metrics b { font-size: 14px; }
-  .position-lock-note { padding: 10px 12px; font-size: 11px; }
-  .position-add-button { height: 48px !important; border-radius: 12px; font-size: 15px; }
-  .additional-side-lock, .additional-investment-balance, .additional-execution { font-size: 13px; }
-  .additional-investment-actions button { height: 48px; border-radius: 12px; font-size: 14px; }
-
-  /* [접힌 투자 바텀시트] 투자 카드는 본문을 차지하지 않고 하단 도크에서 대기합니다.
-     도크 탭·위로 스와이프 시에만 기존 투자/현황/추가 투자 패널이 위로 올라옵니다. */
-  body.is-mobile-investment-sheet-open { overflow: hidden; }
-  .exchange-focus-grid .exchange-roast-card {
-    position: fixed;
+  /* [접힌 투자 도크] 하단에서 대기하며 탭 또는 위 스와이프로 열립니다. */
+  .exchange-roast-card {
+    position: fixed !important;
     z-index: 120;
     left: 0;
     right: 0;
-    bottom: calc(68px + env(safe-area-inset-bottom));
-    width: min(100%, 480px);
-    height: 64px !important;
-    min-height: 0;
-    display: block;
+    bottom: calc(78px + env(safe-area-inset-bottom));
+    width: min(100%, 393px) !important;
+    min-height: 0 !important;
     margin: 0 auto;
     border: 0;
     border-radius: 20px 20px 0 0;
     padding: 0;
     background: transparent;
     overflow: visible;
-    text-align: left;
   }
-  /* 잠금 안내는 접힌 도크 문구로 통합하고, 기존 클릭 이벤트만 그대로 재사용합니다. */
   .exchange-roast-card > .exchange-roast-cta:not([hidden]) { display: none; }
   .mobile-investment-sheet-trigger {
     width: 100% !important;
-    height: 64px !important;
+    height: 62px !important;
     display: grid !important;
-    grid-template-columns: 34px minmax(0, 1fr) 28px;
+    grid-template-columns: 36px minmax(0, 1fr) 28px;
     align-items: center;
     gap: 4px;
-    border: 1px solid #d8e2ee !important;
+    border: 1px solid var(--mobile-line) !important;
     border-radius: 20px 20px 0 0 !important;
-    padding: 8px 18px 9px !important;
-    color: #092045 !important;
+    padding: 8px 20px 9px !important;
+    color: var(--mobile-ink) !important;
     background: #fff !important;
-    box-shadow: 0 -5px 18px rgb(9 32 69 / 9%);
+    box-shadow: 0 -7px 20px rgb(9 32 69 / 11%);
     font: inherit !important;
     text-align: left;
-    cursor: pointer;
-    transition: opacity .18s ease, transform .22s ease;
   }
   .mobile-investment-sheet-trigger > i,
-  .mobile-investment-sheet-handle > i {
-    display: block;
-    width: 28px;
-    height: 4px;
-    justify-self: center;
-    border-radius: 999px;
-    background: #bdc9d9;
-  }
+  .mobile-investment-sheet-handle > i { width: 36px; height: 5px; display: block; justify-self: center; border-radius: 99px; background: var(--mobile-line); }
   .mobile-investment-sheet-trigger > span { min-width: 0; display: grid; gap: 2px; }
-  .mobile-investment-sheet-trigger b { color: #092045 !important; font-size: 15px !important; line-height: 1.1; letter-spacing: -.045em; }
-  .mobile-investment-sheet-trigger small { overflow: hidden; color: #71819a; font-size: 11px; font-weight: 700; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
-  .mobile-investment-sheet-trigger > em { color: #2162ee; font-size: 22px; font-style: normal; font-weight: 850; line-height: 1; text-align: right; }
-  .mobile-investment-sheet-trigger:focus-visible { outline: 3px solid rgb(33 98 238 / 32%); outline-offset: -3px; }
+  .mobile-investment-sheet-trigger b { color: var(--mobile-ink) !important; font-size: 14px !important; line-height: 1.15; }
+  .mobile-investment-sheet-trigger small { overflow: hidden; color: var(--mobile-muted); font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-investment-sheet-trigger > em { color: var(--mobile-blue); font-size: 22px; font-style: normal; font-weight: 900; line-height: 1; text-align: right; }
+  .mobile-investment-sheet-trigger:focus-visible { outline: 3px solid rgb(20 99 242 / 30%); outline-offset: -3px; }
   .exchange-roast-card.is-mobile-investment-sheet-open .mobile-investment-sheet-trigger { opacity: 0; pointer-events: none; transform: translateY(16px); }
-
   .exchange-roast-card > .investment-panel:not([hidden]),
   .exchange-roast-card > .additional-investment-panel:not([hidden]),
   .exchange-roast-card > .investment-status-card:not([hidden]) {
@@ -169,18 +191,18 @@
     z-index: 1;
     left: 0;
     right: 0;
-    bottom: calc(68px + env(safe-area-inset-bottom));
-    width: min(100%, 480px);
-    max-height: min(78dvh, 650px);
+    bottom: 0;
+    width: min(100%, 393px);
+    max-height: min(68dvh, 552px);
+    min-height: 0;
     margin: 0 auto;
     overflow-y: auto;
     overscroll-behavior: contain;
-    border: 1px solid #d8e2ee;
-    border-bottom: 0;
-    border-radius: 24px 24px 0 0;
-    padding: 11px 20px 24px;
+    border: 0;
+    border-radius: 20px 20px 0 0;
+    padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
     background: #fff;
-    box-shadow: none;
+    box-shadow: 0 -100vmax rgb(8 13 26 / 32%), 0 -16px 32px rgb(9 32 69 / 16%);
     opacity: 0;
     pointer-events: none;
     transform: translateY(calc(100% + 76px));
@@ -190,153 +212,225 @@
   .exchange-roast-card.is-mobile-investment-sheet-open > .investment-panel:not([hidden]),
   .exchange-roast-card.is-mobile-investment-sheet-open > .additional-investment-panel:not([hidden]),
   .exchange-roast-card.is-mobile-investment-sheet-open > .investment-status-card:not([hidden]) {
-    box-shadow: 0 -100vmax rgb(4 15 34 / 36%), 0 -12px 35px rgb(3 25 65 / 15%);
     opacity: 1;
     pointer-events: auto;
     transform: translateY(0);
     transition: transform .38s cubic-bezier(.18, .87, .26, 1), opacity .2s ease;
     visibility: visible;
   }
-  .mobile-investment-sheet-handle {
-    width: 100% !important;
-    height: 22px !important;
-    display: grid !important;
-    place-items: center;
-    flex: 0 0 22px;
-    margin: -4px 0 10px !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    padding: 0 !important;
-    background: transparent !important;
-    cursor: grab;
-  }
+  .mobile-investment-sheet-handle { width: 100% !important; height: 18px !important; display: grid !important; place-items: center; flex: 0 0 18px; margin: 0 0 12px !important; border: 0 !important; border-radius: 0 !important; padding: 0 !important; background: transparent !important; cursor: grab; }
   .mobile-investment-sheet-handle:active { cursor: grabbing; }
-  .mobile-investment-sheet-handle > i { width: 36px; }
-  .exchange-roast-card > .investment-panel h2 { font-size: 25px; line-height: 1.2; }
-  .exchange-roast-card > .investment-panel .investment-balance { margin-top: 7px; font-size: 16px; }
-  .exchange-roast-card > .investment-panel .investment-directions { gap: 10px; margin-top: 27px; }
-  .exchange-roast-card > .investment-panel .investment-directions button { height: 46px; border-radius: 14px; font-size: 15px; }
-  .exchange-roast-card > .investment-panel .investment-amount-control { height: 54px; margin-top: 15px; border-radius: 12px; padding: 0 14px; }
-  .exchange-roast-card > .investment-panel .investment-amount-input input { width: 140px; font-size: 19px; }
-  .investment-panel .investment-submit { height: 52px; margin-top: 20px; border-radius: 13px; font-size: 16px; }
-  .investment-status-card, .additional-investment-panel { gap: 15px; }
-  .investment-status-card > header h2, .additional-investment-panel h2 { font-size: 23px; }
-  .position-side-badge { min-width: 64px; height: 28px; font-size: 12px; }
-  .position-pnl > span { font-size: 12px; }
-  .position-pnl strong { font-size: 24px; }
-  .position-metrics { gap: 15px 18px; padding-top: 14px; }
-  .position-metrics span { font-size: 11px; }
-  .position-metrics b { font-size: 14px; }
-  .position-lock-note { padding: 10px 12px; font-size: 11px; }
-  .position-add-button { height: 48px !important; border-radius: 12px; font-size: 15px; }
-  .additional-side-lock, .additional-investment-balance, .additional-execution { font-size: 13px; }
-  .additional-investment-actions button { height: 48px; border-radius: 12px; font-size: 14px; }
 
-  /* [커뮤니티] 리스트는 전체 페이지에서 자연스럽게 늘어나며, 작성은 전용 화면으로 전환합니다. */
-  .exchange-community-card { margin-top: 14px; border: 1px solid var(--mobile-line); border-radius: 16px; padding: 16px 14px; box-shadow: none; }
-  .exchange-community-heading { align-items: center; }
-  .exchange-community-heading h1 { font-size: 18px; }
-  .exchange-community-heading span { font-size: 11px; }
-  .mobile-community-compose { display: inline-flex; align-items: center; justify-content: center; min-width: 84px; height: 34px; border: 0; border-radius: 9px; color: #fff; background: #092045; font-size: 12px; font-weight: 850; }
+  /* [투자 입력 시트] 552px Figma 시트의 정보 위계와 간격입니다. */
+  .exchange-roast-card > .investment-panel { display: flex; gap: 0; }
+  .exchange-roast-card > .investment-panel h2 { margin: 0; color: var(--mobile-ink); font-size: 22px; line-height: 1.25; }
+  .exchange-roast-card > .investment-panel .investment-balance { margin-top: 5px; color: var(--mobile-muted); font-size: 13px; }
+  .exchange-roast-card > .investment-panel .investment-directions { gap: 13px; margin-top: 19px; }
+  .exchange-roast-card > .investment-panel .investment-directions::before { content: '투자 방향'; grid-column: 1 / -1; color: var(--mobile-ink); font-size: 13px; font-weight: 850; }
+  .exchange-roast-card > .investment-panel .investment-directions button { height: 52px; border-radius: 14px; font-size: 16px; }
+  .exchange-roast-card > .investment-panel .investment-amount-control { position: relative; height: 56px; margin-top: 28px; border-color: var(--mobile-line); border-radius: 12px; padding: 0 16px; background: var(--mobile-page); }
+  .exchange-roast-card > .investment-panel .investment-amount-control::before { content: '투자 금액'; position: absolute; top: -27px; left: 0; color: var(--mobile-ink); font-size: 13px; font-weight: 850; }
+  .exchange-roast-card > .investment-panel .investment-amount-input input { width: 156px; color: var(--mobile-ink); font-size: 17px; }
+  .exchange-roast-card > .investment-panel .investment-amount-input span { color: var(--mobile-ink); font-size: 14px; }
+  .exchange-roast-card > .investment-panel .investment-amount-control button { font-size: 18px; }
+  .mobile-investment-quick-amounts { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 8px; }
+  .mobile-investment-quick-amounts button { height: 30px; border: 0; border-radius: 15px; color: var(--mobile-ink); background: var(--mobile-page); font-size: 12px; font-weight: 850; }
+  .mobile-investment-quick-amounts button:active { color: #fff; background: var(--mobile-blue); }
+  .investment-panel .investment-submit { height: 54px; margin-top: 18px; border-radius: 14px; background: var(--mobile-ink); font-size: 16px; }
+  .investment-panel .investment-submit:hover { background: #0f2f66; }
+
+  /* [내 투자 현황·추가 투자] 같은 바텀 시트 문법으로 읽기 쉽게 재배치합니다. */
+  .investment-status-card,
+  .additional-investment-panel { gap: 13px; }
+  .investment-status-card > header h2,
+  .additional-investment-panel h2 { color: var(--mobile-ink); font-size: 22px; }
+  .position-side-badge { min-width: 56px; height: 24px; font-size: 11px; }
+  .position-pnl { gap: 3px; }
+  .position-pnl > span { font-size: 11px; }
+  .position-pnl strong { font-size: 20px; }
+  .position-metrics { gap: 12px; padding-top: 12px; }
+  .position-metrics span { font-size: 10px; }
+  .position-metrics b { font-size: 13px; }
+  .position-lock-note { padding: 10px 12px; font-size: 10px; }
+  .position-add-button { height: 44px !important; border-radius: 14px !important; font-size: 13px !important; }
+  .additional-side-lock,
+  .additional-investment-balance,
+  .additional-execution { font-size: 12px; }
+  .additional-investment-panel .investment-amount-control { min-height: 52px; border-radius: 12px; }
+  .additional-investment-actions button { height: 44px !important; border-radius: 14px !important; font-size: 13px !important; }
+
+  /* [커뮤니티] 첫 카드 미리보기 스타일을 유지하면서 실제 댓글 목록은 아래로 계속 읽을 수 있게 둡니다. */
+  .exchange-community-card { margin-top: 12px; border: 1px solid var(--mobile-line); border-radius: var(--mobile-card-radius); padding: 12px; background: #fff; box-shadow: none; }
+  .exchange-community-heading { min-height: 22px; align-items: center; }
+  .exchange-community-heading h1 { color: var(--mobile-ink); font-size: 13px; }
+  .exchange-community-heading span { color: var(--mobile-muted); font-size: 10px; }
+  .mobile-community-compose { min-width: 76px; height: 30px; border-radius: 10px; color: #fff; background: var(--mobile-ink); font-size: 11px; }
   .exchange-comment-form { display: none; }
-  .exchange-comment-empty { min-height: 68px; margin: 12px 0 0; border: 1px dashed #d9e4f1; border-radius: 12px; padding: 25px 12px; font-size: 13px; }
-  .exchange-comment-list { margin-top: 6px; }
-  .exchange-comment { grid-template-columns: 31px minmax(0, 1fr); gap: 9px; padding: 16px 0; }
-  .exchange-comment > i, .exchange-reply-avatar { width: 30px; height: 30px; font-size: 11px; }
-  .exchange-comment header, .exchange-reply header { gap: 6px; }
-  .exchange-comment header b, .exchange-reply header b { font-size: 12px; }
-  .exchange-comment header span, .exchange-reply header span { font-size: 10px; }
-  .exchange-comment p { margin: 7px 0 11px; font-size: 14px; line-height: 1.5; }
-  .exchange-comment footer { gap: 8px; }
-  .exchange-hype-button { min-width: 95px; height: 27px; font-size: 11px; }
-  .exchange-reply { grid-template-columns: 25px minmax(0, 1fr) auto; gap: 7px; padding: 11px 0; }
+  .exchange-comment-empty { min-height: 54px; margin: 10px 0 0; border: 0; padding: 16px 8px; color: var(--mobile-muted); font-size: 11px; }
+  .exchange-comment-list { margin: 0; }
+  .exchange-comment-list .exchange-comment { margin-top: 0; }
+  .exchange-comment { grid-template-columns: 28px minmax(0, 1fr); gap: 8px; padding: 13px 0; }
+  .exchange-comment > i,
+  .exchange-reply-avatar { width: 28px; height: 28px; font-size: 10px; }
+  .exchange-comment header,
+  .exchange-reply header { gap: 5px; }
+  .exchange-comment header b,
+  .exchange-reply header b { font-size: 11px; }
+  .exchange-comment header span,
+  .exchange-reply header span { font-size: 9px; }
+  .exchange-comment p { margin: 6px 0 9px; font-size: 13px; line-height: 1.48; }
+  .exchange-comment footer { gap: 7px; }
+  .exchange-hype-button { min-width: 94px; height: 25px; }
+  .exchange-reply { grid-template-columns: 24px minmax(0, 1fr) auto; gap: 7px; padding: 10px 0; }
   .exchange-reply-avatar { width: 24px; height: 24px; }
-  .exchange-reply p { font-size: 12px; }
+  .exchange-reply p { font-size: 11px; }
   .exchange-reply-hype .exchange-hype-button { min-width: 76px; }
 
-  /* [댓글 작성 전체 화면] 제출은 보이지 않는 데스크톱 form으로 위임합니다. */
-  .mobile-comment-composer { position: fixed; z-index: 150; inset: 0; overflow-y: auto; background: var(--mobile-page); }
+  /* [댓글 작성] Figma의 전용 작성 화면을 유지하고 기존 CommentService form으로 전송합니다. */
+  .mobile-comment-composer { position: fixed; z-index: 180; inset: 0; overflow-y: auto; background: var(--mobile-page); }
   .mobile-comment-composer[hidden] { display: none; }
-  .mobile-comment-composer > header { height: 56px; display: grid; grid-template-columns: 40px 1fr 40px; align-items: center; padding: 0 14px; border-bottom: 1px solid var(--mobile-line); background: #fff; text-align: center; }
-  .mobile-comment-composer > header button { width: 38px; height: 38px; border: 0; color: #092045; background: transparent; font-size: 35px; line-height: 1; }
-  .mobile-comment-composer > header b { font-size: 16px; }
-  .mobile-comment-composer-body { padding: 45px 20px calc(32px + env(safe-area-inset-bottom)); }
-  .mobile-comment-composer-body .eyebrow { margin: 0; color: #2162ee; font-size: 12px; }
-  .mobile-comment-composer-body h1 { margin: 14px 0 12px; color: #092045; font-size: 29px; line-height: 1.3; letter-spacing: -.07em; }
-  .mobile-comment-composer-body > p:not(.eyebrow) { margin: 0; color: #71819a; font-size: 14px; }
-  #mobile-comment-form { margin-top: 37px; }
-  #mobile-comment-form label { display: block; margin-bottom: 10px; color: #365171; font-size: 13px; font-weight: 800; }
-  #mobile-comment-text { width: 100%; min-height: 150px; resize: none; border: 1px solid #cfdceb; border-radius: 15px; padding: 14px; color: #092045; background: #fff; font: inherit; font-size: 14px; line-height: 1.55; outline: 0; }
-  #mobile-comment-text:focus { border-color: #2162ee; box-shadow: 0 0 0 3px rgb(33 98 238 / 12%); }
-  #mobile-comment-form small { display: block; margin-top: 7px; color: #8492a8; font-size: 11px; text-align: right; }
-  #mobile-comment-form > button { width: 100%; height: 52px; margin-top: 24px; border: 0; border-radius: 14px; color: #fff; background: #2162ee; font-size: 15px; font-weight: 850; }
+  .mobile-comment-composer > header { height: 56px; display: grid; grid-template-columns: 36px 1fr 36px; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--mobile-line); background: #fff; }
+  .mobile-comment-composer > header button { width: 30px; height: 34px; border: 0; color: var(--mobile-blue); background: transparent; font-size: 30px; line-height: 1; }
+  .mobile-comment-composer > header b { color: var(--mobile-ink); font-size: 20px; }
+  .mobile-comment-composer-body { width: min(100%, 353px); margin: 0 auto; padding: 27px 0 calc(98px + env(safe-area-inset-bottom)); }
+  .mobile-comment-composer-body .eyebrow { margin: 0; color: var(--mobile-blue); font-size: 12px; font-weight: 800; }
+  .mobile-comment-composer-body h1 { margin: 10px 0 6px; color: var(--mobile-ink); font-size: 24px; line-height: 1.3; letter-spacing: -.06em; }
+  .mobile-comment-composer-body > p:not(.eyebrow) { margin: 0; color: var(--mobile-muted); font-size: 12px; }
+  #mobile-comment-form { margin-top: 28px; }
+  #mobile-comment-form label { margin-bottom: 8px; color: var(--mobile-ink); font-size: 13px; }
+  #mobile-comment-text { min-height: 180px; border-color: var(--mobile-line); border-radius: 16px; padding: 16px; font-size: 14px; }
+  #mobile-comment-form > button { height: 54px; margin-top: 22px; border-radius: 16px; font-size: 15px; }
 
-  /* [게시판] 가로 표 대신 제목이 읽히는 카드형 행을 유지합니다. */
-  .board-view { min-height: calc(100dvh - 56px); padding-bottom: calc(88px + env(safe-area-inset-bottom)); }
-  .board-category-nav { height: 48px; grid-template-columns: repeat(5, 96px); }
-  .board-category-nav button { font-size: 11px; }
-  .board-page { width: 100%; padding: 28px 20px 20px; }
-  .board-page-heading { padding-bottom: 20px; }
-  .board-page-heading h1 { font-size: 25px; }
-  .board-page-heading p { font-size: 12px; line-height: 1.5; }
-  .board-table-wrap { border-top-width: 1px; }
-  .board-table th { height: 35px; font-size: 10px; }
-  .board-table td { height: 58px; font-size: 12px; }
-  .board-table th:nth-child(1), .board-table td:nth-child(1) { width: 12%; }
-  .board-table th:nth-child(2), .board-table td:nth-child(2) { width: 70%; padding: 0 9px; }
-  .board-table th:nth-child(5), .board-table td:nth-child(5) { width: 18%; }
-  .board-table .board-empty-row td { height: 340px; font-size: 13px; }
-  .board-footer { min-height: 62px; }
-  .board-write-button { width: 86px; height: 40px; border-radius: 10px; font-size: 12px; }
+  /* [게시판] 제목·필터·카드형 게시글·플로팅 글쓰기 버튼의 Figma 구조입니다. */
+  .board-view { min-height: calc(100dvh - 56px); padding-bottom: calc(92px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
+  .board-category-nav { height: 40px; grid-template-columns: repeat(5, 98px); background: #fff; }
+  .board-category-nav button { font-size: 10px; }
+  .board-page { width: 100%; padding: 22px 20px 20px; }
+  .board-page-heading { padding-bottom: 12px; }
+  .board-page-heading h1 { color: var(--mobile-ink); font-size: 26px; }
+  .board-page-heading p { margin-top: 5px; font-size: 12px; line-height: 1.45; }
+  .board-table-wrap { border-top: 0; }
+  .board-table { border-collapse: separate; border-spacing: 0 8px; }
+  .board-table thead { display: none; }
+  .board-table tbody,
+  .board-table tr,
+  .board-table td { display: block; width: 100% !important; }
+  .board-table tr:not(.board-empty-row) { min-height: 72px; border: 1px solid var(--mobile-line); border-radius: var(--mobile-card-radius); padding: 12px 16px; background: #fff; }
+  .board-table td { height: auto; border: 0; padding: 0 !important; text-align: left; }
+  .board-table td:nth-child(1),
+  .board-table td:nth-child(3),
+  .board-table td:nth-child(4),
+  .board-table td:nth-child(5) { display: none; }
+  .board-table td:nth-child(2) button { color: var(--mobile-ink); font-size: 12px; line-height: 1.5; white-space: normal; }
+  .board-table .board-empty-row td { display: grid; height: 310px; place-items: center; color: var(--mobile-muted); font-size: 13px; text-align: center; }
+  .board-footer { min-height: 64px; }
+  .board-write-button { width: 112px; height: 44px; right: 0; border-radius: 16px; font-size: 13px; box-shadow: 0 8px 10px rgb(9 32 69 / 10%); }
 
-  /* [사이클 리포트] 누적된 정산 카드를 하단 탭 위에서 한 장씩 읽을 수 있게 맞춥니다. */
-  .cycle-report-view { min-height: calc(100dvh - 56px); padding: 28px 20px calc(98px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
-  .cycle-report-heading { margin-bottom: 20px; }
+  /* [사이클 리포트] 정산 결과 카드를 앱 화면에서 읽기 쉬운 한 열로 표시합니다. */
+  .cycle-report-view { min-height: calc(100dvh - 56px); padding: 24px 20px calc(94px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
+  .cycle-report-heading { margin-bottom: 16px; }
   .cycle-report-heading .eyebrow { font-size: 11px; }
-  .cycle-report-heading h1 { font-size: 26px; }
-  .cycle-report-heading > p:last-child { font-size: 13px; line-height: 1.5; }
-  .cycle-report-list { gap: 16px; }
-  .cycle-report-card { border-radius: 16px; padding: 15px; }
-  .cycle-report-card-heading { padding-bottom: 14px; }
-  .cycle-report-card-heading h2 { font-size: 21px; }
-  .cycle-report-settlement-row { grid-template-columns: 1fr; gap: 12px; margin-top: 14px; }
+  .cycle-report-heading h1 { color: var(--mobile-ink); font-size: 26px; }
+  .cycle-report-heading > p:last-child { font-size: 12px; line-height: 1.5; }
+  .cycle-report-list { gap: 12px; }
+  .cycle-report-card { border-radius: var(--mobile-card-radius); padding: 14px; }
+  .cycle-report-card-heading { padding-bottom: 12px; }
+  .cycle-report-card-heading h2 { font-size: 18px; }
+  .cycle-report-settlement-row { grid-template-columns: 1fr; gap: 10px; margin-top: 12px; }
   .cycle-report-settlement-row .settlement-subject-card { min-height: 120px; grid-template-columns: 92px 1fr; }
   .cycle-report-settlement-row .settlement-subject-card img { width: 92px; height: 92px; }
-  .cycle-report-settlement-row .settlement-result-card { min-height: 0; }
-  .cycle-report-market-summary { margin-top: 12px; }
 
-  /* [정산] 같은 정산 데이터와 타이머를 한 열 카드로 정리합니다. */
-  .market-settlement-view { width: 100%; min-height: calc(100dvh - 56px); padding: 20px 20px calc(98px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
-  .market-settlement-hero { min-height: 0; padding: 8px 0 22px; text-align: left; }
-  .market-settlement-hero > span { font-size: 11px; }
-  .market-settlement-hero h1 { margin-top: 9px; font-size: 25px; }
-  .market-settlement-hero > p { font-size: 13px; }
-  .next-market-block { width: 100%; margin-top: 17px; padding: 14px; border-radius: 16px; }
-  .next-market-block strong { font-size: 30px; }
-  .market-settlement-row { grid-template-columns: 1fr; gap: 12px; }
-  .settlement-subject-card { grid-template-columns: 96px 1fr; min-height: 122px; padding: 13px; border-radius: 16px; }
-  .settlement-subject-card img { width: 96px; height: 96px; }
-  .settlement-result-card, .market-final-summary { border-radius: 16px; padding: 18px 15px; }
-  .settlement-pnl > strong { font-size: 24px; }
+  /* [정산 결과] Figma의 상단 히어로·정산 카드·시장 비율 순서를 적용합니다. */
+  .market-settlement-view { width: 100%; min-height: calc(100dvh - 56px); padding: 22px 20px calc(96px + env(safe-area-inset-bottom)); background: var(--mobile-page); }
+  .market-settlement-hero { gap: 5px; padding: 0 0 12px; text-align: center; }
+  .market-settlement-hero > span { height: 22px; font-size: 9px; }
+  .market-settlement-hero h1 { margin-top: 2px; color: var(--mobile-ink); font-size: 20px; }
+  .market-settlement-hero > p { font-size: 10px; }
+  .next-market-block { width: 260px; gap: 5px; margin-top: 8px; }
+  .next-market-block > b { display: none; }
+  .next-market-block > strong { width: 260px; height: 44px; border-radius: 12px; font-size: 22px; }
+  .next-market-block > small { font-size: 10px; }
+  .market-settlement-row { grid-template-columns: 1fr; gap: 0; margin-top: 0; }
+  .settlement-subject-card { display: none; }
+  .settlement-result-card { min-height: 0; gap: 12px; border-radius: var(--mobile-card-radius); padding: 16px; }
+  .settlement-result-card h2 { font-size: 14px; }
+  .settlement-pnl > span { font-size: 10px; }
+  .settlement-pnl > strong { font-size: 19px; }
+  .settlement-metrics { gap: 12px; padding-top: 12px; }
+  .settlement-metrics span { font-size: 10px; }
+  .settlement-metrics b { font-size: 12px; }
+  .settlement-payout { min-height: 60px; padding: 10px 12px; }
+  .settlement-payout > strong { font-size: 18px; }
+  .market-final-summary { min-height: 86px; display: grid; gap: 8px; margin-top: 12px; border-radius: var(--mobile-card-radius); padding: 10px; }
+  .market-final-summary h2 { font-size: 13px; }
+  .market-final-summary p { font-size: 9px; }
+  .market-ratio { width: 100%; gap: 5px; margin: 0; }
 
-  /* [종목 소개] 화면을 가득 채우지 않고, 이미지와 설명을 세로로 읽을 수 있는 카드로 축소합니다. */
+  /* [종목 설명] 모바일에서는 353px 소개 카드로 좁혀서 중앙에 표시합니다. */
   .subject-intro-modal { padding: 20px; }
-  .subject-intro-dialog { width: 100%; max-width: 390px; gap: 22px; border-radius: 23px; padding: 28px 20px 22px; }
-  .subject-intro-visual { width: min(178px, 52vw); }
-  .subject-intro-copy > p:first-child { font-size: 11px; }
-  .subject-intro-copy h1 { font-size: 30px; }
-  .subject-intro-copy #subject-intro-description { font-size: 13px; line-height: 1.55; }
-  .subject-intro-copy button { width: 100%; height: 52px; border-radius: 13px; font-size: 15px; }
+  .subject-intro-dialog { width: min(100%, 353px); min-height: 0; grid-template-columns: 1fr; gap: 16px; border-radius: 20px; padding: 24px 20px 20px; }
+  .subject-intro-visual { width: 180px; justify-self: center; aspect-ratio: 180 / 210; border-radius: 18px; }
+  .subject-intro-copy { max-width: none; text-align: center; }
+  .subject-intro-copy > p:first-child { margin: 0 0 9px; font-size: 12px; }
+  .subject-intro-copy h1 { font-size: 26px; }
+  .subject-intro-copy #subject-intro-description { margin: 12px 0 20px; font-size: 14px; text-align: left; }
+  .subject-intro-copy button { width: 100%; height: 52px; border-radius: 16px; font-size: 15px; }
 
-  /* [모바일 하단 탭] app-shell 밖에 둬 어떤 거래소 하위 화면에서도 고정됩니다. */
+  /* [컨셉 소개] 같은 393px 여백과 Figma의 중앙 집중형 텍스트를 반영합니다. */
+  .concept-introduction { grid-template-rows: minmax(245px, 47dvh) auto minmax(0, 1fr); }
+  .concept-introduction:before { top: 24px; right: 20px; transform: scale(.72); transform-origin: top right; }
+  .concept-introduction-art { padding: 74px 20px 22px; }
+  .concept-introduction-copy { padding: 0 24px; }
+  .concept-introduction-copy h1 { font-size: 25px; line-height: 1.32; }
+  .concept-introduction-copy p { margin-top: 14px; font-size: 14px; }
+  .concept-introduction-next { width: min(100%, 353px); height: 52px; margin-top: 24px; border-radius: 16px; font-size: 15px; }
+  .concept-introduction-progress { margin-top: 17px; }
+  .concept-choice-pair { width: min(100%, 345px); gap: 12px; }
+  .concept-choice-pair span { min-height: 112px; border-radius: 16px; font-size: 22px; }
+  .concept-flow { width: min(100%, 345px); grid-template-columns: 1fr 24px 1fr; gap: 8px; }
+  .concept-flow span,
+  .concept-flow b { min-height: 62px; border-radius: 16px; font-size: 16px; }
+
+  /* [인게임 튜토리얼] Figma의 345px 카드와 16px 수평 여백에 맞춥니다. */
+  .ingame-tutorial-spotlight { border-radius: 12px; box-shadow: 0 0 0 100vmax rgb(8 13 26 / 62%), 0 0 0 4px rgb(20 99 242 / 20%); }
+  .ingame-tutorial-callout { width: min(345px, calc(100vw - 48px)); border-radius: 16px; padding: 18px; }
+  .ingame-tutorial-step { margin-bottom: 7px; font-size: 11px; }
+  .ingame-tutorial-callout h2 { font-size: 18px; }
+  .ingame-tutorial-callout > p:not(.ingame-tutorial-step) { margin: 8px 0 15px; font-size: 12px; }
+  .ingame-tutorial-actions button { height: 38px; border-radius: 12px; font-size: 12px; }
+
+  /* [모바일 하단 탭] 78px 고정 탐색 영역입니다. */
   .mobile-bottom-nav { display: none; }
-  .app-shell.is-exchange + .mobile-bottom-nav { position: fixed; z-index: 90; left: 0; right: 0; bottom: 0; width: min(100%, 480px); height: calc(68px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: repeat(3, 1fr); margin: 0 auto; padding: 7px 13px calc(7px + env(safe-area-inset-bottom)); border-top: 1px solid var(--mobile-line); background: rgb(255 255 255 / 96%); box-shadow: 0 -7px 18px rgb(8 31 71 / 6%); backdrop-filter: blur(12px); }
-  .mobile-bottom-nav button { display: grid; place-items: center; gap: 2px; border: 0; color: #8391a5; background: transparent; font-size: 11px; font-weight: 750; }
-  .mobile-bottom-nav button span { height: 22px; color: currentColor; font-size: 19px; line-height: 1; }
-  .mobile-bottom-nav button.is-active { color: #2162ee; font-weight: 850; }
-  .scroll-top-button { right: 17px; bottom: calc(85px + env(safe-area-inset-bottom)); }
+  .app-shell.is-exchange + .mobile-bottom-nav {
+    position: fixed;
+    z-index: 100;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: min(100%, 393px);
+    height: calc(78px + env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin: 0 auto;
+    padding: 8px 20px calc(12px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--mobile-line);
+    background: rgb(255 255 255 / 96%);
+    box-shadow: 0 -8px 18px rgb(9 32 69 / 6%);
+    backdrop-filter: blur(12px);
+  }
+  .mobile-bottom-nav button { display: grid; place-items: center; gap: 3px; border: 0; color: #adb8cc; background: transparent; font-size: 11px; font-weight: 700; }
+  .mobile-bottom-nav button span { width: 22px; height: 22px; font-size: 18px; line-height: 22px; }
+  .mobile-bottom-nav button.is-active { color: var(--mobile-blue); font-weight: 850; }
+  .scroll-top-button { right: 16px; bottom: calc(94px + env(safe-area-inset-bottom)); }
 }
 
 @media (min-width: 768px) {
-  .mobile-landing-timer, .mobile-subject-information, .mobile-community-compose, .mobile-bottom-nav, .mobile-comment-composer, .mobile-investment-sheet-trigger, .mobile-investment-sheet-handle { display: none !important; }
+  .mobile-landing-timer,
+  .mobile-subject-information,
+  .mobile-community-compose,
+  .mobile-bottom-nav,
+  .mobile-comment-composer,
+  .mobile-investment-sheet-trigger,
+  .mobile-investment-sheet-handle,
+  .mobile-investment-quick-amounts { display: none !important; }
 }

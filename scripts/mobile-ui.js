@@ -10,6 +10,9 @@
   const investmentSheetTrigger = document.querySelector('#mobile-investment-sheet-trigger');
   const investmentSheetTitle = document.querySelector('#mobile-investment-sheet-title');
   const investmentSheetHint = document.querySelector('#mobile-investment-sheet-hint');
+  const mobileQuickAmountButtons = document.querySelectorAll('[data-mobile-investment-quick]');
+  const firstInvestmentAmount = document.querySelector('#investment-amount');
+  const investmentBalance = document.querySelector('#investment-balance');
   const firstInvestmentPanel = document.querySelector('#investment-panel');
   const positionInvestmentPanel = document.querySelector('#investment-status-card');
   const additionalInvestmentPanel = document.querySelector('#additional-investment-panel');
@@ -186,6 +189,20 @@
   investmentSheet.querySelectorAll('.mobile-investment-sheet-handle').forEach((handle) => {
     handle.addEventListener('click', closeInvestmentSheet);
     bindVerticalSwipe(handle, { onSwipeDown: closeInvestmentSheet });
+  });
+
+  // [빠른 금액 선택] Figma 시트의 비율 버튼도 기존 입력창의 input 이벤트를 발생시켜
+  // InvestmentUI가 가진 잔액 한도 검증·금액 포맷을 그대로 재사용합니다.
+  mobileQuickAmountButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      if (!firstInvestmentAmount) return;
+      const ratio = Number(button.dataset.mobileInvestmentQuick);
+      const balance = Number(String(investmentBalance?.textContent || '').replace(/[^0-9]/g, ''));
+      if (!Number.isFinite(ratio) || !Number.isFinite(balance)) return;
+      firstInvestmentAmount.value = String(Math.floor(balance * ratio / 100));
+      firstInvestmentAmount.dispatchEvent(new Event('input', { bubbles: true }));
+      firstInvestmentAmount.dispatchEvent(new Event('blur', { bubbles: true }));
+    });
   });
 
   composerForm.addEventListener('submit', (event) => {
