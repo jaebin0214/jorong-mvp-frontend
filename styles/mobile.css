@@ -105,6 +105,133 @@
   .additional-side-lock, .additional-investment-balance, .additional-execution { font-size: 13px; }
   .additional-investment-actions button { height: 48px; border-radius: 12px; font-size: 14px; }
 
+  /* [접힌 투자 바텀시트] 투자 카드는 본문을 차지하지 않고 하단 도크에서 대기합니다.
+     도크 탭·위로 스와이프 시에만 기존 투자/현황/추가 투자 패널이 위로 올라옵니다. */
+  body.is-mobile-investment-sheet-open { overflow: hidden; }
+  .exchange-focus-grid .exchange-roast-card {
+    position: fixed;
+    z-index: 120;
+    left: 0;
+    right: 0;
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    width: min(100%, 480px);
+    height: 64px !important;
+    min-height: 0;
+    display: block;
+    margin: 0 auto;
+    border: 0;
+    border-radius: 20px 20px 0 0;
+    padding: 0;
+    background: transparent;
+    overflow: visible;
+    text-align: left;
+  }
+  /* 잠금 안내는 접힌 도크 문구로 통합하고, 기존 클릭 이벤트만 그대로 재사용합니다. */
+  .exchange-roast-card > .exchange-roast-cta:not([hidden]) { display: none; }
+  .mobile-investment-sheet-trigger {
+    width: 100% !important;
+    height: 64px !important;
+    display: grid !important;
+    grid-template-columns: 34px minmax(0, 1fr) 28px;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid #d8e2ee !important;
+    border-radius: 20px 20px 0 0 !important;
+    padding: 8px 18px 9px !important;
+    color: #092045 !important;
+    background: #fff !important;
+    box-shadow: 0 -5px 18px rgb(9 32 69 / 9%);
+    font: inherit !important;
+    text-align: left;
+    cursor: pointer;
+    transition: opacity .18s ease, transform .22s ease;
+  }
+  .mobile-investment-sheet-trigger > i,
+  .mobile-investment-sheet-handle > i {
+    display: block;
+    width: 28px;
+    height: 4px;
+    justify-self: center;
+    border-radius: 999px;
+    background: #bdc9d9;
+  }
+  .mobile-investment-sheet-trigger > span { min-width: 0; display: grid; gap: 2px; }
+  .mobile-investment-sheet-trigger b { color: #092045 !important; font-size: 15px !important; line-height: 1.1; letter-spacing: -.045em; }
+  .mobile-investment-sheet-trigger small { overflow: hidden; color: #71819a; font-size: 11px; font-weight: 700; line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-investment-sheet-trigger > em { color: #2162ee; font-size: 22px; font-style: normal; font-weight: 850; line-height: 1; text-align: right; }
+  .mobile-investment-sheet-trigger:focus-visible { outline: 3px solid rgb(33 98 238 / 32%); outline-offset: -3px; }
+  .exchange-roast-card.is-mobile-investment-sheet-open .mobile-investment-sheet-trigger { opacity: 0; pointer-events: none; transform: translateY(16px); }
+
+  .exchange-roast-card > .investment-panel:not([hidden]),
+  .exchange-roast-card > .additional-investment-panel:not([hidden]),
+  .exchange-roast-card > .investment-status-card:not([hidden]) {
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    right: 0;
+    bottom: calc(68px + env(safe-area-inset-bottom));
+    width: min(100%, 480px);
+    max-height: min(78dvh, 650px);
+    margin: 0 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border: 1px solid #d8e2ee;
+    border-bottom: 0;
+    border-radius: 24px 24px 0 0;
+    padding: 11px 20px 24px;
+    background: #fff;
+    box-shadow: none;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(calc(100% + 76px));
+    transition: transform .34s cubic-bezier(.22, .78, .27, 1), opacity .2s ease, visibility 0s linear .34s;
+    visibility: hidden;
+  }
+  .exchange-roast-card.is-mobile-investment-sheet-open > .investment-panel:not([hidden]),
+  .exchange-roast-card.is-mobile-investment-sheet-open > .additional-investment-panel:not([hidden]),
+  .exchange-roast-card.is-mobile-investment-sheet-open > .investment-status-card:not([hidden]) {
+    box-shadow: 0 -100vmax rgb(4 15 34 / 36%), 0 -12px 35px rgb(3 25 65 / 15%);
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+    transition: transform .38s cubic-bezier(.18, .87, .26, 1), opacity .2s ease;
+    visibility: visible;
+  }
+  .mobile-investment-sheet-handle {
+    width: 100% !important;
+    height: 22px !important;
+    display: grid !important;
+    place-items: center;
+    flex: 0 0 22px;
+    margin: -4px 0 10px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+    cursor: grab;
+  }
+  .mobile-investment-sheet-handle:active { cursor: grabbing; }
+  .mobile-investment-sheet-handle > i { width: 36px; }
+  .exchange-roast-card > .investment-panel h2 { font-size: 25px; line-height: 1.2; }
+  .exchange-roast-card > .investment-panel .investment-balance { margin-top: 7px; font-size: 16px; }
+  .exchange-roast-card > .investment-panel .investment-directions { gap: 10px; margin-top: 27px; }
+  .exchange-roast-card > .investment-panel .investment-directions button { height: 46px; border-radius: 14px; font-size: 15px; }
+  .exchange-roast-card > .investment-panel .investment-amount-control { height: 54px; margin-top: 15px; border-radius: 12px; padding: 0 14px; }
+  .exchange-roast-card > .investment-panel .investment-amount-input input { width: 140px; font-size: 19px; }
+  .investment-panel .investment-submit { height: 52px; margin-top: 20px; border-radius: 13px; font-size: 16px; }
+  .investment-status-card, .additional-investment-panel { gap: 15px; }
+  .investment-status-card > header h2, .additional-investment-panel h2 { font-size: 23px; }
+  .position-side-badge { min-width: 64px; height: 28px; font-size: 12px; }
+  .position-pnl > span { font-size: 12px; }
+  .position-pnl strong { font-size: 24px; }
+  .position-metrics { gap: 15px 18px; padding-top: 14px; }
+  .position-metrics span { font-size: 11px; }
+  .position-metrics b { font-size: 14px; }
+  .position-lock-note { padding: 10px 12px; font-size: 11px; }
+  .position-add-button { height: 48px !important; border-radius: 12px; font-size: 15px; }
+  .additional-side-lock, .additional-investment-balance, .additional-execution { font-size: 13px; }
+  .additional-investment-actions button { height: 48px; border-radius: 12px; font-size: 14px; }
+
   /* [커뮤니티] 리스트는 전체 페이지에서 자연스럽게 늘어나며, 작성은 전용 화면으로 전환합니다. */
   .exchange-community-card { margin-top: 14px; border: 1px solid var(--mobile-line); border-radius: 16px; padding: 16px 14px; box-shadow: none; }
   .exchange-community-heading { align-items: center; }
@@ -211,5 +338,5 @@
 }
 
 @media (min-width: 768px) {
-  .mobile-landing-timer, .mobile-subject-information, .mobile-community-compose, .mobile-bottom-nav, .mobile-comment-composer { display: none !important; }
+  .mobile-landing-timer, .mobile-subject-information, .mobile-community-compose, .mobile-bottom-nav, .mobile-comment-composer, .mobile-investment-sheet-trigger, .mobile-investment-sheet-handle { display: none !important; }
 }

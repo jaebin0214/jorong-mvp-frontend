@@ -6,6 +6,13 @@
   const landingTimerCard = document.querySelector('.mobile-landing-timer');
   const bottomNav = document.querySelector('#mobile-bottom-nav');
   const roastCta = document.querySelector('#exchange-roast-cta');
+  const investmentSheet = document.querySelector('.exchange-roast-card');
+  const investmentSheetTrigger = document.querySelector('#mobile-investment-sheet-trigger');
+  const investmentSheetTitle = document.querySelector('#mobile-investment-sheet-title');
+  const investmentSheetHint = document.querySelector('#mobile-investment-sheet-hint');
+  const firstInvestmentPanel = document.querySelector('#investment-panel');
+  const positionInvestmentPanel = document.querySelector('#investment-status-card');
+  const additionalInvestmentPanel = document.querySelector('#additional-investment-panel');
   const commentEmpty = document.querySelector('#exchange-comment-empty');
   const desktopCommentForm = document.querySelector('#exchange-comment-form');
   const desktopCommentInput = document.querySelector('#exchange-comment-text');
@@ -20,10 +27,79 @@
   let timerId = null;
   let priorFocus = null;
 
-  if (!landingTimer || !bottomNav || !composer || !desktopCommentForm || !desktopCommentInput || !composerForm || !composerInput) return;
+  if (!landingTimer || !bottomNav || !composer || !desktopCommentForm || !desktopCommentInput || !composerForm || !composerInput || !investmentSheet || !investmentSheetTrigger) return;
 
   function isMobile() {
     return mobileQuery.matches;
+  }
+
+  // [투자 시트 상태] 기존 투자 UI가 어떤 패널을 열었는지 읽어, 모바일 하단 도크의 문구만 동기화합니다.
+  function getInvestmentPanelState() {
+    if (!roastCta.hidden) return 'LOCKED';
+    if (additionalInvestmentPanel && !additionalInvestmentPanel.hidden) return 'ADDITIONAL_INVESTMENT';
+    if (positionInvestmentPanel && !positionInvestmentPanel.hidden) return 'POSITION';
+    if (firstInvestmentPanel && !firstInvestmentPanel.hidden) return 'FIRST_INVESTMENT';
+    return 'NONE';
+  }
+
+  function isInvestmentSheetOpen() {
+    return investmentSheet.classList.contains('is-mobile-investment-sheet-open');
+  }
+
+  function closeInvestmentSheet() {
+    investmentSheet.classList.remove('is-mobile-investment-sheet-open');
+    document.body.classList.remove('is-mobile-investment-sheet-open');
+    investmentSheetTrigger.setAttribute('aria-expanded', 'false');
+  }
+
+  function syncInvestmentSheetDock() {
+    const panelState = getInvestmentPanelState();
+    const label = {
+      LOCKED: ['조롱을 남기고 투자하기', '댓글 작성 →'],
+      FIRST_INVESTMENT: ['투자하기', '위로 올려보기'],
+      POSITION: ['내 투자 현황', '위로 올려보기'],
+      ADDITIONAL_INVESTMENT: ['추가 투자하기', '위로 올려보기'],
+      NONE: ['투자하기', '거래 정보를 확인 중입니다'],
+    }[panelState];
+    if (investmentSheetTitle) investmentSheetTitle.textContent = label[0];
+    if (investmentSheetHint) investmentSheetHint.textContent = label[1];
+    investmentSheetTrigger.setAttribute('aria-label', panelState === 'LOCKED' ? '댓글을 작성하고 투자하기' : `${label[0]} 열기`);
+    // 다른 계정으로 바뀌거나 댓글 권한이 사라져 잠금 상태가 되면 열린 시트도 즉시 접습니다.
+    if (panelState === 'LOCKED' || !isMobile()) closeInvestmentSheet();
+  }
+
+  // [하단 도크 열기] 잠긴 상태는 기존 댓글 작성 흐름으로, 열린 상태는 기존 투자 패널을 바텀시트로 표시합니다.
+  function openInvestmentSheet() {
+    if (!isMobile() || window.MarketCountdown?.isEnded?.()) return;
+    const panelState = getInvestmentPanelState();
+    if (panelState === 'LOCKED') {
+      roastCta.click();
+      return;
+    }
+    if (panelState === 'NONE') window.InvestmentUI?.open?.();
+    if (getInvestmentPanelState() === 'LOCKED') return;
+    investmentSheet.classList.add('is-mobile-investment-sheet-open');
+    document.body.classList.add('is-mobile-investment-sheet-open');
+    investmentSheetTrigger.setAttribute('aria-expanded', 'true');
+  }
+
+  function toggleInvestmentSheet() {
+    if (isInvestmentSheetOpen()) closeInvestmentSheet();
+    else openInvestmentSheet();
+  }
+
+  // [스와이프 제스처] 도크를 위로 밀면 열리고, 시트 상단 손잡이를 아래로 밀면 다시 접힙니다.
+  function bindVerticalSwipe(element, { onSwipeUp, onSwipeDown }) {
+    let startY = null;
+    element.addEventListener('touchstart', (event) => { startY = event.touches[0]?.clientY ?? null; }, { passive: true });
+    element.addEventListener('touchend', (event) => {
+      const endY = event.changedTouches[0]?.clientY;
+      if (!Number.isFinite(startY) || !Number.isFinite(endY)) return;
+      const distance = endY - startY;
+      startY = null;
+      if (distance <= -28) onSwipeUp?.();
+      if (distance >= 28) onSwipeDown?.();
+    }, { passive: true });
   }
 
   // [동일 서버 시각] 데스크톱 타이머가 가진 closeAt/nextOpenAt과 서버 보정 시각을 그대로 사용합니다.
@@ -84,12 +160,12 @@
     return Boolean(commentEmpty && !commentEmpty.hidden);
   }
 
-  // [잠긴 투자 카드] 댓글이 없으면 작성 화면, 댓글이 있으면 기존 투자 UI를 엽니다.
+  // [잠긴 투자 카드] 다른 사용자의 댓글 수와 무관하게 현재 사용자가 잠겨 있으면 작성 화면으로 보냅니다.
   function handleRoastCta(event) {
     if (!isMobile()) return;
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (shouldWriteFirstComment()) {
+    if (!roastCta.hidden || shouldWriteFirstComment()) {
       openComposer(roastCta);
     } else {
       window.InvestmentUI?.open?.();
@@ -103,6 +179,14 @@
   composerOpen?.addEventListener('click', () => openComposer(composerOpen));
   composerClose?.addEventListener('click', closeComposer);
   composerInput.addEventListener('input', () => { composerLength.textContent = String(composerInput.value.length); });
+
+  investmentSheetTrigger.addEventListener('click', toggleInvestmentSheet);
+  investmentSheetTrigger.addEventListener('wheel', (event) => { if (event.deltaY < -8) openInvestmentSheet(); }, { passive: true });
+  bindVerticalSwipe(investmentSheetTrigger, { onSwipeUp: openInvestmentSheet });
+  investmentSheet.querySelectorAll('.mobile-investment-sheet-handle').forEach((handle) => {
+    handle.addEventListener('click', closeInvestmentSheet);
+    bindVerticalSwipe(handle, { onSwipeDown: closeInvestmentSheet });
+  });
 
   composerForm.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -118,27 +202,39 @@
   });
 
   window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !composer.hidden) closeComposer();
+    if (event.key !== 'Escape') return;
+    if (!composer.hidden) closeComposer();
+    else if (isInvestmentSheetOpen()) closeInvestmentSheet();
   });
-  window.addEventListener('jorong:view-changed', (event) => syncBottomNavigation(event.detail?.viewId));
+  window.addEventListener('jorong:view-changed', (event) => {
+    const viewId = event.detail?.viewId;
+    syncBottomNavigation(viewId);
+    if (viewId !== 'exchange') closeInvestmentSheet();
+  });
   window.addEventListener('jorong:market-clock-synced', renderLandingTimer);
   window.addEventListener('jorong:market-ended', renderLandingTimer);
   window.addEventListener('jorong:market-config-updated', (event) => setMobileSubjectName(event.detail?.subject?.name));
+  window.addEventListener('jorong:investment-panel-changed', syncInvestmentSheetDock);
 
   function syncResponsiveState() {
     if (!isMobile() && !composer.hidden) closeComposer();
+    if (!isMobile()) closeInvestmentSheet();
+    syncInvestmentSheetDock();
     renderLandingTimer();
   }
 
   mobileQuery.addEventListener?.('change', syncResponsiveState);
   setMobileSubjectName();
   syncBottomNavigation(document.querySelector('.view.is-active')?.id || 'landing');
+  syncInvestmentSheetDock();
   renderLandingTimer();
   timerId = window.setInterval(renderLandingTimer, 1000);
 
   window.MobileUI = Object.freeze({
     openCommentComposer: openComposer,
     closeCommentComposer: closeComposer,
+    openInvestmentSheet,
+    closeInvestmentSheet,
     setSubjectName: setMobileSubjectName,
     stop: () => { if (timerId) window.clearInterval(timerId); },
   });

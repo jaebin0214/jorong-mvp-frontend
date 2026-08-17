@@ -165,12 +165,15 @@
                 <!-- [잠긴 투자 안내] 댓글 작성 전에는 카드 전체를 눌러 댓글 입력창으로 이동합니다. -->
                 <div class="exchange-roast-cta" id="exchange-roast-cta" role="button" tabindex="0" aria-label="투자를 위해 조롱 작성하기"><b>투자를 위해 조롱해주세요</b></div>
                 <section class="investment-panel" id="investment-panel" hidden>
+                  <!-- [모바일 시트 손잡이] 작은 화면에서는 아래로 밀거나 탭해 투자 시트를 다시 접습니다. -->
+                  <button class="mobile-investment-sheet-handle" type="button" aria-label="투자 창 접기"><i aria-hidden="true"></i></button>
                   <h2>투자하기</h2><b class="investment-balance" id="investment-balance">10,000 KRW</b>
                   <div class="investment-directions" role="group" aria-label="투자 방향 선택"><button type="button" data-investment-direction="support" aria-pressed="false">옹호</button><button type="button" data-investment-direction="mock" aria-pressed="false">조롱</button></div>
                   <div class="investment-amount-control"><label class="investment-amount-input"><input id="investment-amount" type="text" inputmode="numeric" autocomplete="off" aria-label="투자 금액" value="5,000" /><span>KRW</span></label><span><button type="button" data-investment-amount="-10" aria-label="투자 금액 10 KRW 줄이기">−</button><button type="button" data-investment-amount="10" aria-label="투자 금액 10 KRW 늘리기">＋</button></span></div>
                   <button class="investment-submit" id="investment-submit" type="button">투자</button>
                 </section>
                 <section class="investment-status-card" id="investment-status-card" hidden aria-live="polite">
+                  <button class="mobile-investment-sheet-handle" type="button" aria-label="투자 창 접기"><i aria-hidden="true"></i></button>
                   <header><h2>내 투자 현황</h2><b id="position-side-badge" class="position-side-badge">조롱</b></header>
                   <div class="position-pnl"><span>평가손익 · 현재가 <b id="position-current-price">0 KRW</b></span><strong id="position-pnl">0 KRW (0.00%)</strong></div>
                   <div class="position-metrics"><div><span>평균 단가</span><b id="position-average-price">0 KRW</b></div><div><span>총 투자금</span><b id="position-total-investment">0 KRW</b></div><div><span>보유 수량</span><b id="position-quantity">0.0000주</b></div><div><span>평가금액</span><b id="position-estimated-value">0 KRW</b></div></div>
@@ -178,6 +181,7 @@
                   <button class="position-add-button" id="position-add-investment" type="button">조롱에 추가 투자</button>
                 </section>
                 <section class="additional-investment-panel" id="additional-investment-panel" hidden aria-live="polite">
+                  <button class="mobile-investment-sheet-handle" type="button" aria-label="투자 창 접기"><i aria-hidden="true"></i></button>
                   <h2><span id="additional-investment-side">조롱</span>에 추가 투자</h2>
                   <p class="additional-side-lock">의견은 장 종료까지 변경할 수 없습니다.</p>
                   <!-- [추가 투자 잔액] 프론트에서도 현재 사용 가능한 포인트를 즉시 확인할 수 있게 표시합니다. -->
@@ -186,6 +190,10 @@
                   <div class="investment-amount-control"><label class="investment-amount-input"><input id="additional-investment-amount" type="text" inputmode="numeric" autocomplete="off" aria-label="추가 투자 금액" value="5,000" /><span>KRW</span></label><span><button type="button" data-additional-investment-amount="-10" aria-label="추가 투자 금액 10 KRW 줄이기">−</button><button type="button" data-additional-investment-amount="10" aria-label="추가 투자 금액 10 KRW 늘리기">＋</button></span></div>
                   <div class="additional-investment-actions"><button id="additional-investment-cancel" type="button">취소</button><button id="additional-investment-submit" type="button">추가 투자</button></div>
                 </section>
+                <!-- [모바일 투자 도크] 평소에는 화면 하단에서 대기하다 탭·위로 스와이프하면 시트가 열립니다. -->
+                <button class="mobile-investment-sheet-trigger" id="mobile-investment-sheet-trigger" type="button" aria-expanded="false" aria-controls="investment-panel investment-status-card additional-investment-panel">
+                  <i aria-hidden="true"></i><span><b id="mobile-investment-sheet-title">투자하기</b><small id="mobile-investment-sheet-hint">위로 올려보기</small></span><em aria-hidden="true">⌃</em>
+                </button>
               </aside>
             </div>
             <!-- [댓글 프로토타입] 서버 저장 없이 현재 브라우저 화면에서만 새 댓글을 추가합니다. -->

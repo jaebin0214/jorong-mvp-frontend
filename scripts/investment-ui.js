@@ -83,6 +83,13 @@
     statusCard.hidden = panel !== statusCard;
     additionalPanel.hidden = panel !== additionalPanel;
     statusCard.parentElement.classList.toggle('has-open-position', panel === statusCard || panel === additionalPanel);
+    // [모바일 바텀시트 동기화] 패널 종류만 알리고, 시트를 실제로 열지는 모바일 사용자의 탭·스와이프에 맡깁니다.
+    const panelName = isInvestmentLocked ? 'LOCKED'
+      : panel === firstPanel ? 'FIRST_INVESTMENT'
+        : panel === statusCard ? 'POSITION'
+          : panel === additionalPanel ? 'ADDITIONAL_INVESTMENT'
+            : 'NONE';
+    window.dispatchEvent(new CustomEvent('jorong:investment-panel-changed', { detail: { panel: panelName } }));
   }
 
   function renderFirstAmount() {
