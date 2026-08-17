@@ -8,6 +8,7 @@
   const firstAmountInput = document.querySelector('#investment-amount');
   const firstAmountButtons = document.querySelectorAll('[data-investment-amount]');
   const firstSubmitButton = document.querySelector('#investment-submit');
+  const mobileInvestmentImpact = document.querySelector('#mobile-investment-impact');
   const additionalAmountInput = document.querySelector('#additional-investment-amount');
   const additionalAmountButtons = document.querySelectorAll('[data-additional-investment-amount]');
   const additionalSubmitButton = document.querySelector('#additional-investment-submit');
@@ -95,6 +96,12 @@
   function renderFirstAmount() {
     firstAmount = clampAmountToAvailableBalance(firstAmount);
     firstAmountInput.value = firstAmount > 0 ? firstAmount.toLocaleString('ko-KR') : '';
+    // [모바일 하단 시트] Figma의 확정 버튼처럼 현재 입력 금액을 문구에 반영합니다.
+    // 데스크톱 버튼 문구는 기존 "투자"를 유지합니다.
+    if (window.matchMedia('(max-width: 767px)').matches) {
+      firstSubmitButton.textContent = `${formatInvestment(firstAmount)} 투자 확정`;
+      if (mobileInvestmentImpact) mobileInvestmentImpact.textContent = '현재 가격으로 즉시 체결됩니다.';
+    }
   }
 
   function renderAdditionalAmount() {

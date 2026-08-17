@@ -172,7 +172,9 @@
                   <div class="investment-amount-control"><label class="investment-amount-input"><input id="investment-amount" type="text" inputmode="numeric" autocomplete="off" aria-label="투자 금액" value="5,000" /><span>KRW</span></label><span><button type="button" data-investment-amount="-10" aria-label="투자 금액 10 KRW 줄이기">−</button><button type="button" data-investment-amount="10" aria-label="투자 금액 10 KRW 늘리기">＋</button></span></div>
                   <!-- [모바일 빠른 금액] Figma 하단 시트의 10%·25%·50%·최대 선택입니다. 기존 금액 입력과 같은 input 이벤트를 사용합니다. -->
                   <div class="mobile-investment-quick-amounts" role="group" aria-label="빠른 투자 금액 선택"><button type="button" data-mobile-investment-quick="10">10%</button><button type="button" data-mobile-investment-quick="25">25%</button><button type="button" data-mobile-investment-quick="50">50%</button><button type="button" data-mobile-investment-quick="100">최대</button></div>
-                  <button class="investment-submit" id="investment-submit" type="button">투자</button>
+                  <!-- [모바일 투자 확정] 하단 시트에서는 현재 입력 금액을 포함한 확정 문구와 체결 안내를 함께 보여줍니다. -->
+                  <button class="investment-submit" id="investment-submit" type="button">5,000 KRW 투자 확정</button>
+                  <small class="mobile-investment-impact" id="mobile-investment-impact">현재 가격으로 즉시 체결됩니다.</small>
                 </section>
                 <section class="investment-status-card" id="investment-status-card" hidden aria-live="polite">
                   <button class="mobile-investment-sheet-handle" type="button" aria-label="투자 창 접기"><i aria-hidden="true"></i></button>
