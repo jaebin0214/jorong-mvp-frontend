@@ -33,6 +33,11 @@
 .concept-flow b { min-height:74px; display:grid; place-items:center; border:1px solid #dbe4f0; border-radius:17px; color:var(--navy); background:#fff; font-size:clamp(18px, 1.65vw, 26px); font-weight:850; letter-spacing:-.06em; }
 .concept-flow i { color:#70809a; font-size:31px; font-style:normal; font-weight:700; text-align:center; }
 .concept-flow b { border-color:#2162ee; color:#fff; background:#2162ee; box-shadow:0 8px 15px rgb(33 98 238 / 15%); }
+/* [모바일 타이머] 세 번째 모바일 슬라이드에서만 노출하는 별도 타이머입니다. */
+.concept-mobile-timer,
+/* 마지막 장의 세분화된 타이머는 모바일 시안에서만 표시합니다. */
+.concept-final-countdown,
+.concept-final-caption { display:none; }
 /* [완료 화면] 마지막 로고와 시작 버튼을 화면 중앙에 더 가깝게 모읍니다. */
 .concept-introduction-layer.is-final .concept-introduction { grid-template-rows:minmax(300px, 59dvh) auto minmax(0, 1fr); }
 .concept-introduction-layer.is-final .concept-introduction-art { padding-bottom:16px; }
