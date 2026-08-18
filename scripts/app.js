@@ -23,6 +23,9 @@
   // 인증된 사용자는 컨셉 소개를 자동으로 보지 않으며, 비로그인 첫 방문자에게만 소개를 엽니다.
   (async () => {
     await window.AuthService?.restoreSession?.();
+    // [주소 복원] 인증 정보가 준비된 뒤 현재 URL 해시를 다시 판정합니다.
+    // 예: 비로그인 상태의 #cycle-report 직접 진입은 #login으로 안전하게 전환됩니다.
+    window.Navigation?.restoreLocation?.();
     const isLoggedIn = Boolean(window.AuthService?.getCurrentAccount?.());
     if (isLoggedIn) window.ConceptIntroduction?.complete?.();
     else window.ConceptIntroduction?.start?.();
