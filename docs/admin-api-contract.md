@@ -28,13 +28,14 @@
 | `MARKET_SCHEDULE_CONFLICT` | 409 | 예약·거래 중 시간 겹침 |
 | `LIVE_MARKET_EXISTS` | 409 | 이미 다른 LIVE 시장 존재 |
 | `MARKET_EDIT_LOCKED` | 409 | 시작된 시장의 일반 편집 시도 |
+| `MARKET_DELETE_LOCKED` | 409 | 거래가 시작됐거나 정산 이력이 있는 종목의 완전 삭제 시도 |
 | `INVALID_MARKET_TRANSITION` | 409 | 허용되지 않은 상태 전환 |
 | `MODERATION_REASON_REQUIRED` | 422 | 댓글 처리 사유 누락 |
 | `CREDIT_REASON_REQUIRED` | 422 | 크레딧 조정 사유 누락 |
 
 ## 상태 값
 
-시장 상태는 아래 전환만 허용합니다.
+시장 상태는 아래 전환만 허용합니다. `ARCHIVED`는 정산이 끝난 시장의 이력 보관 상태입니다.
 
 ```text
 DRAFT → SCHEDULED → LIVE → CLOSED → SETTLED → ARCHIVED
@@ -67,7 +68,8 @@ DRAFT → SCHEDULED → LIVE → CLOSED → SETTLED → ARCHIVED
 | `POST /admin/markets/{marketId}/start` | 거래 시작 | 시작 |
 | `POST /admin/markets/{marketId}/close` | 거래 종료 | 종료 |
 | `POST /admin/markets/{marketId}/settle` | 정산 완료 | 정산 |
-| `POST /admin/markets/{marketId}/archive` | 소프트 보관 | 보관 |
+| `POST /admin/markets/{marketId}/archive` | 정산 완료 시장 보관 | 보관 |
+| `DELETE /admin/markets/{marketId}` | 거래 전 종목 완전 삭제 | 삭제 |
 | `POST /admin/markets/{marketId}/duplicate` | 기존 종목을 새 `DRAFT`로 복제 | 생성 |
 
 생성·수정 본문:
@@ -91,6 +93,12 @@ DRAFT → SCHEDULED → LIVE → CLOSED → SETTLED → ARCHIVED
 ```
 
 `subjectName`, `imagePath`, `startAt`, `endAt`는 필수입니다. 거래가 시작된 시장의 종목명·운영 시간·기준 가격 변경은 `MARKET_EDIT_LOCKED`로 거절합니다.
+
+### 종목 완전 삭제
+
+관리자 화면의 **삭제** 버튼은 거래가 시작되지 않은 `DRAFT`, `SCHEDULED` 종목을 목록과 DB에서 완전히 삭제합니다. 현재 Supabase 어댑터는 `admin_delete_market(p_market_id)` RPC를 호출합니다. 서버는 이 RPC(또는 `DELETE /admin/markets/{marketId}`)에서 관리자 권한과 상태를 잠근 뒤, 종목·연결된 거래 전 댓글·이미지 참조를 하나의 트랜잭션으로 삭제해야 합니다.
+
+`LIVE`, `CLOSED`, `SETTLED` 또는 실제 투자·정산 이력이 있는 종목은 `409 MARKET_DELETE_LOCKED`로 거절해야 합니다. 이력 보관이 필요한 정산 완료 종목은 기존 `POST /admin/markets/{marketId}/archive`로 `ARCHIVED` 전환만 허용합니다.
 
 ### 종목 이미지 업로드
 

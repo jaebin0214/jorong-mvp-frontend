@@ -100,6 +100,22 @@ test('보관 처리된 이전 장도 정산 화면용 마지막 회차로 유지
   assert.equal(override.session.status, 'ARCHIVED');
 });
 
+test('종료·정산 이력 없는 보관 종목은 거래소나 정산 화면에 노출하지 않는다', () => {
+  const deletedScheduledStore = {
+    markets: [{
+      ...demoStore.markets[0],
+      status: 'ARCHIVED',
+      // 예약 삭제는 종료·정산 이력이 없으므로 사용자 거래소의 회차가 되면 안 됩니다.
+      closedAt: undefined,
+      settledAt: undefined,
+      updatedAt: '2026-08-15T05:30:02.000Z',
+    }],
+  };
+  const { bridge } = loadBridge({ store: deletedScheduledStore });
+  assert.equal(bridge.getExchangeMarket(), null);
+  assert.equal(bridge.getMarketConfigOverride(defaultConfig), null);
+});
+
 test('관리자 저장소의 LIVE 종목이 바뀌면 거래소를 다시 불러온다', () => {
   const { window } = loadBridge({ store: demoStore });
   const nextStore = { markets: [{ ...demoStore.markets[0], id: 'market-new', subjectName: '새 종목', updatedAt: '2026-08-16T01:00:00.000Z' }] };

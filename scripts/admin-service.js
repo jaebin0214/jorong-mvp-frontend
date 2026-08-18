@@ -9,6 +9,8 @@ window.AdminService = (() => {
   const STORE_VERSION = 3;
   const OPERATOR = { id: 'admin-local', name: '로컬 운영자', role: '관리자' };
   const MARKET_STATES = Object.freeze({ DRAFT: '초안', SCHEDULED: '예약', LIVE: '거래 중', CLOSED: '종료', SETTLED: '정산 완료', ARCHIVED: '보관' });
+  // [시장 상태] 거래 이력이 생긴 종목은 정산 후 ARCHIVED로만 보관합니다.
+  // 거래 전 종목의 완전 삭제는 상태 전환이 아니라 deleteMarket()에서 처리합니다.
   const ALLOWED_TRANSITIONS = Object.freeze({ DRAFT: ['SCHEDULED'], SCHEDULED: ['DRAFT', 'LIVE'], LIVE: ['CLOSED'], CLOSED: ['SETTLED'], SETTLED: ['ARCHIVED'], ARCHIVED: [] });
   let memoryStore = null;
 
@@ -278,7 +280,27 @@ window.AdminService = (() => {
   // [수동 종료 시각] 거래소가 같은 회차를 종료·정산 화면으로 유지할 수 있도록 실제 운영자가 닫은 시각도 기록합니다.
   function localCloseMarket(marketId) { return mutate((state) => { const market = findMarket(state, marketId); market.closedAt = nowIso(); transitionMarket(state, market, 'CLOSED', '거래 수동 종료'); if (market.autoSettle) { market.settledAt = nowIso(); transitionMarket(state, market, 'SETTLED', '자동 정산 완료'); } return clone(state); }); }
   function localSettleMarket(marketId) { return mutate((state) => { const market = findMarket(state, marketId); market.settledAt = nowIso(); transitionMarket(state, market, 'SETTLED', '정산 완료'); return clone(state); }); }
-  function localArchiveMarket(marketId) { return mutate((state) => { const market = findMarket(state, marketId); transitionMarket(state, market, 'ARCHIVED', '종목 보관'); return clone(state); }); }
+  // [보관] 정산이 끝난 거래 종목의 이력을 사용자 화면에서 감추되 DB 레코드는 유지합니다.
+  function localArchiveMarket(marketId) { return mutate((state) => { const market = findMarket(state, marketId); if (market.status !== 'SETTLED') throw createError('INVALID_MARKET_TRANSITION', '정산 완료된 종목만 보관할 수 있습니다.'); transitionMarket(state, market, 'ARCHIVED', '종목 보관'); market.archivedAt = nowIso(); return clone(state); }); }
+  // [완전 삭제] 아직 장이 열리지 않은 종목만 로컬 저장소에서 제거합니다. 종목에 연결된
+  // 로컬 댓글도 함께 지워, 다음 로드 때 삭제한 종목이 다시 보이지 않게 합니다.
+  function localDeleteMarket(marketId) {
+    return mutate((state) => {
+      const market = findMarket(state, marketId);
+      const isLegacyDeletedMarket = market.status === 'ARCHIVED' && !market.closedAt && !market.settledAt;
+      if (!['DRAFT', 'SCHEDULED'].includes(market.status) && !isLegacyDeletedMarket) throw createError('MARKET_DELETE_LOCKED', '거래가 시작되었거나 정산 이력이 있는 종목은 완전히 삭제할 수 없습니다.');
+      state.markets = state.markets.filter((item) => item.id !== market.id);
+      state.comments = state.comments.filter((comment) => comment.marketId !== market.id);
+      state.users.forEach((user) => { user.commentCount = state.comments.filter((comment) => comment.authorId === user.id).length; });
+      const commentStore = readSharedLocalData(LOCAL_COMMENT_STORE_KEY, { version: 1, markets: {} });
+      if (commentStore?.markets && Object.prototype.hasOwnProperty.call(commentStore.markets, market.id)) {
+        delete commentStore.markets[market.id];
+        writeSharedLocalData(LOCAL_COMMENT_STORE_KEY, commentStore);
+      }
+      appendAudit(state, { category: 'MARKET', action: '종목 완전 삭제', target: `${market.sequence}번 · ${market.subjectName}`, detail: '거래 시작 전 종목과 연결된 로컬 댓글 제거' });
+      return clone(state);
+    });
+  }
   function localDuplicateMarket(marketId) { return mutate((state) => { const source = findMarket(state, marketId); const sequence = Math.max(0, ...state.markets.map((market) => Number(market.sequence) || 0)) + 1; const market = { ...clone(source), id: makeId('market'), sequence, status: 'DRAFT', subjectName: `${source.subjectName} 복사본`, participantCount: 0, tradeCount: 0, commentCount: 0, createdAt: nowIso(), updatedAt: nowIso() }; state.markets.push(market); appendAudit(state, { category: 'MARKET', action: '종목 복제', target: `${sequence}번 · ${market.subjectName}`, detail: `${source.sequence}번 종목에서 복제` }); return clone(state); }); }
   function localModerateComment(commentId, { action, reason, operator = OPERATOR.name }) { return mutate((state) => { const comment = findComment(state, commentId); if (!String(reason || '').trim()) throw createError('MODERATION_REASON_REQUIRED', '댓글 처리 사유를 입력해주세요.'); const actionMap = { HIDE: ['HIDDEN', '댓글 숨김'], UNHIDE: ['PUBLIC', '댓글 숨김 해제'], DELETE: ['DELETED', '댓글 소프트 삭제'] }; const next = actionMap[action]; if (!next) throw createError('INVALID_MODERATION_ACTION', '지원하지 않는 댓글 처리입니다.'); comment.status = next[0]; comment.moderationReason = String(reason).trim(); comment.moderatedBy = operator; comment.updatedAt = nowIso(); appendAudit(state, { category: 'COMMENT', action: next[1], target: comment.authorName, detail: `${comment.content.slice(0, 38)} · 사유: ${comment.moderationReason}`, operator }); return clone(state); }); }
   function localCreateStaffComment(input) { return mutate((state) => { const market = findMarket(state, input.marketId); const content = String(input.content || '').trim(); if (!content) throw createError('COMMENT_REQUIRED', '운영진 댓글 내용을 입력해주세요.'); const comment = { id: makeId('admin_comment'), marketId: market.id, authorId: OPERATOR.id, authorName: '조롱 거래소 운영진', authorType: 'ADMIN', operatorName: OPERATOR.name, content, status: input.immediatePublished ? 'PUBLIC' : 'HIDDEN', reportCount: 0, isNotice: Boolean(input.isNotice), pinned: Boolean(input.pinned), publishedImmediately: Boolean(input.immediatePublished), createdAt: nowIso(), updatedAt: nowIso() }; state.comments.unshift(comment); market.commentCount = Number(market.commentCount || 0) + 1; appendAudit(state, { category: 'COMMENT', action: '운영진 댓글 작성', target: `${market.sequence}번 · ${market.subjectName}`, detail: `${comment.isNotice ? '공지 · ' : ''}${content.slice(0, 38)}` }); return clone(state); }); }
@@ -369,6 +391,8 @@ window.AdminService = (() => {
     closeMarket: (id) => supabaseSetMarketStatus(id, 'CLOSED'),
     settleMarket: async (id) => { await callRpc('settle_market', { p_market_id: id }); return supabaseLoad(); },
     archiveMarket: (id) => supabaseSetMarketStatus(id, 'ARCHIVED'),
+    // [DB 완전 삭제] 서버는 거래 전 DRAFT/SCHEDULED만 삭제하도록 FK·권한을 검증해야 합니다.
+    deleteMarket: async (id) => { await callRpc('admin_delete_market', { p_market_id: id }); return supabaseLoad(); },
     duplicateMarket: async (id) => { await callRpc('admin_duplicate_market', { p_market_id: id }); return supabaseLoad(); },
     // [처리 사유 필수] admin_moderate_comment()는 사유가 비어 있으면 MODERATION_REASON_REQUIRED를 반환합니다.
     moderateComment: async (id, payload) => { await callRpc('admin_moderate_comment', { p_comment_id: id, p_action: payload.action, p_reason: payload.reason }); return supabaseLoad(); },
@@ -389,8 +413,8 @@ window.AdminService = (() => {
       reader.readAsDataURL(file);
     });
   }
-  const localAdapter = { load: async () => localLoad(), uploadMarketImage: (file) => localUploadMarketImage(file), createMarket: async (input) => localCreateMarket(input), updateDraftMarket: async (id, input) => localUpdateDraftMarket(id, input), scheduleMarket: async (id) => localScheduleMarket(id), returnMarketToDraft: async (id) => localReturnMarketToDraft(id), startMarket: async (id) => localStartMarket(id), closeMarket: async (id) => localCloseMarket(id), settleMarket: async (id) => localSettleMarket(id), archiveMarket: async (id) => localArchiveMarket(id), duplicateMarket: async (id) => localDuplicateMarket(id), moderateComment: async (id, payload) => localModerateComment(id, payload), createStaffComment: async (input) => localCreateStaffComment(input), adjustCredits: async (id, payload) => localAdjustCredits(id, payload), restrictUser: async (id, payload) => localRestrictUser(id, payload) };
+  const localAdapter = { load: async () => localLoad(), uploadMarketImage: (file) => localUploadMarketImage(file), createMarket: async (input) => localCreateMarket(input), updateDraftMarket: async (id, input) => localUpdateDraftMarket(id, input), scheduleMarket: async (id) => localScheduleMarket(id), returnMarketToDraft: async (id) => localReturnMarketToDraft(id), startMarket: async (id) => localStartMarket(id), closeMarket: async (id) => localCloseMarket(id), settleMarket: async (id) => localSettleMarket(id), archiveMarket: async (id) => localArchiveMarket(id), deleteMarket: async (id) => localDeleteMarket(id), duplicateMarket: async (id) => localDuplicateMarket(id), moderateComment: async (id, payload) => localModerateComment(id, payload), createStaffComment: async (input) => localCreateStaffComment(input), adjustCredits: async (id, payload) => localAdjustCredits(id, payload), restrictUser: async (id, payload) => localRestrictUser(id, payload) };
   function activeAdapter() { return supabaseClient ? supabaseAdapter : localAdapter; }
 
-  return Object.freeze({ MARKET_STATES, canTransitionMarket, validateMarketSchedule, validateMarketInput, localDateTime, getMode: () => supabaseClient ? 'API' : 'LOCAL_DEMO', getOperator: () => clone(OPERATOR), load: () => activeAdapter().load(), uploadMarketImage: (file) => activeAdapter().uploadMarketImage(file), createMarket: (input) => activeAdapter().createMarket(input), updateDraftMarket: (id, input) => activeAdapter().updateDraftMarket(id, input), scheduleMarket: (id) => activeAdapter().scheduleMarket(id), returnMarketToDraft: (id) => activeAdapter().returnMarketToDraft(id), startMarket: (id) => activeAdapter().startMarket(id), closeMarket: (id) => activeAdapter().closeMarket(id), settleMarket: (id) => activeAdapter().settleMarket(id), archiveMarket: (id) => activeAdapter().archiveMarket(id), duplicateMarket: (id) => activeAdapter().duplicateMarket(id), moderateComment: (id, payload) => activeAdapter().moderateComment(id, payload), createStaffComment: (input) => activeAdapter().createStaffComment(input), adjustCredits: (id, payload) => activeAdapter().adjustCredits(id, payload), restrictUser: (id, payload) => activeAdapter().restrictUser(id, payload), resetDemo: () => supabaseClient ? Promise.reject(createError('ADMIN_API_MODE', 'API 연결 모드에서는 시연 데이터를 초기화할 수 없습니다.')) : Promise.resolve(localResetDemo()) });
+  return Object.freeze({ MARKET_STATES, canTransitionMarket, validateMarketSchedule, validateMarketInput, localDateTime, getMode: () => supabaseClient ? 'API' : 'LOCAL_DEMO', getOperator: () => clone(OPERATOR), load: () => activeAdapter().load(), uploadMarketImage: (file) => activeAdapter().uploadMarketImage(file), createMarket: (input) => activeAdapter().createMarket(input), updateDraftMarket: (id, input) => activeAdapter().updateDraftMarket(id, input), scheduleMarket: (id) => activeAdapter().scheduleMarket(id), returnMarketToDraft: (id) => activeAdapter().returnMarketToDraft(id), startMarket: (id) => activeAdapter().startMarket(id), closeMarket: (id) => activeAdapter().closeMarket(id), settleMarket: (id) => activeAdapter().settleMarket(id), archiveMarket: (id) => activeAdapter().archiveMarket(id), deleteMarket: (id) => activeAdapter().deleteMarket(id), duplicateMarket: (id) => activeAdapter().duplicateMarket(id), moderateComment: (id, payload) => activeAdapter().moderateComment(id, payload), createStaffComment: (input) => activeAdapter().createStaffComment(input), adjustCredits: (id, payload) => activeAdapter().adjustCredits(id, payload), restrictUser: (id, payload) => activeAdapter().restrictUser(id, payload), resetDemo: () => supabaseClient ? Promise.reject(createError('ADMIN_API_MODE', 'API 연결 모드에서는 시연 데이터를 초기화할 수 없습니다.')) : Promise.resolve(localResetDemo()) });
 })();

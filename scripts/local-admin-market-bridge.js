@@ -25,13 +25,21 @@ window.LocalAdminMarketBridge = (() => {
       .sort((left, right) => Date.parse(right.updatedAt || right.startAt || 0) - Date.parse(left.updatedAt || left.startAt || 0))[0] || null;
   }
 
+  // [삭제 종목 제외] 예약/초안 단계에서 ARCHIVED로 삭제한 종목은 종료 장이 아닙니다.
+  // 실제로 종료·정산된 뒤 보관한 종목만 closedAt 또는 settledAt을 가지므로 정산 화면에 남깁니다.
+  function isTerminalMarket(market) {
+    const status = String(market?.status || '').toUpperCase();
+    if (['CLOSED', 'SETTLED'].includes(status)) return true;
+    return status === 'ARCHIVED' && Boolean(market?.closedAt || market?.settledAt);
+  }
+
   // [종료 장 유지] 운영자가 타이머보다 먼저 장을 닫거나 정산 뒤 보관해도, 거래소는 대기 화면으로
   // 되돌아가지 않고 가장 최근 회차의 정산 결과를 유지해야 합니다.
   function getLatestTerminalMarket() {
     const store = readDemoStore();
     if (!store) return null;
     return store.markets
-      .filter((market) => ['CLOSED', 'SETTLED', 'ARCHIVED'].includes(String(market?.status || '').toUpperCase()))
+      .filter(isTerminalMarket)
       .sort((left, right) => {
         const leftTime = Date.parse(left.settledAt || left.closedAt || left.updatedAt || left.endAt || 0);
         const rightTime = Date.parse(right.settledAt || right.closedAt || right.updatedAt || right.endAt || 0);

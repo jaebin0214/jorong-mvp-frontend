@@ -1,4 +1,4 @@
-// [관리자 UI] admin.html의 대시보드·종목·댓글·사용자·감사 기록을 AdminService를 통해 렌더링합니다.
+// [관리자 UI] admin.html의 대시보드·종목·댓글·사용자 화면을 AdminService를 통해 렌더링합니다.
 (() => {
   const service = window.AdminService;
   if (!service) return;
@@ -21,7 +21,6 @@
     markets: ['종목 관리 및 예약', '종목을 준비하고 예약 순서와 거래 상태를 관리합니다.'],
     comments: ['댓글 관리', '댓글을 검토하고 숨김 처리하며 운영진 댓글을 작성합니다.'],
     users: ['사용자 관리', '사용자 상태와 크레딧·댓글 제한 상태를 확인합니다.'],
-    audit: ['운영 기록', '관리자 변경 이력과 처리 사유를 추적합니다.'],
   };
   const stateLabel = service.MARKET_STATES;
   let state = null;
@@ -100,7 +99,6 @@
     if (activeView === 'markets') renderMarkets();
     if (activeView === 'comments') renderComments();
     if (activeView === 'users') renderUsers();
-    if (activeView === 'audit') renderAudit();
     window.scrollTo({ top: 0, behavior: 'auto' });
   }
 
@@ -140,7 +138,10 @@
     if (market.status === 'SCHEDULED') buttons.unshift(`<button type="button" data-market-action="draft" data-market-id="${market.id}">예약 취소</button>`, `<button type="button" data-market-action="start" data-market-id="${market.id}">거래 시작</button>`);
     if (market.status === 'LIVE') buttons.unshift(`<button class="is-danger" type="button" data-market-action="close" data-market-id="${market.id}">거래 종료</button>`);
     if (market.status === 'CLOSED') buttons.unshift(`<button type="button" data-market-action="settle" data-market-id="${market.id}">정산 처리</button>`);
-    if (market.status === 'SETTLED') buttons.unshift(`<button type="button" data-market-action="archive" data-market-id="${market.id}">보관</button>`);
+    // [완전 삭제] 거래 전 종목만 목록·로컬 데이터에서 완전히 지웁니다. 이전 소프트 삭제 잔여
+    // 레코드는 종료/정산 이력이 없을 때만 한 번 더 삭제할 수 있습니다.
+    const canDelete = ['DRAFT', 'SCHEDULED'].includes(market.status) || (market.status === 'ARCHIVED' && !market.closedAt && !market.settledAt);
+    if (canDelete) buttons.push(`<button class="is-danger" type="button" data-market-action="delete" data-market-id="${market.id}">삭제</button>`);
     return buttons.join('');
   }
 
@@ -232,16 +233,7 @@
     $('#admin-user-list-caption').textContent = service.getMode() === 'API' ? '계정 제한·크레딧 변경은 관리자 API로 즉시 반영됩니다.' : '실제 계정 제한과 크레딧 변경은 추후 관리자 API가 최종 처리합니다.';
   }
 
-  function renderAudit() {
-    const search = $('#admin-audit-search').value.trim().toLowerCase();
-    const category = $('#admin-audit-type-filter').value || 'ALL';
-    const logs = state.auditLogs.filter((log) => { const searchable = `${log.action} ${log.target} ${log.detail} ${log.operator}`.toLowerCase(); return (!search || searchable.includes(search)) && (category === 'ALL' || log.category === category); });
-    $('#admin-audit-caption').textContent = service.getMode() === 'API' ? '관리자 API로 처리된 실제 작업 이력입니다.' : '로컬 시연 모드의 작업 이력입니다.';
-    $('#admin-audit-result-count').textContent = `${logs.length}건 표시`;
-    $('#admin-audit-table').innerHTML = logs.length ? logs.map((log) => `<tr><td>${formatDateTime(log.createdAt)}</td><td>${escapeHtml(log.category)}</td><td><strong>${escapeHtml(log.action)}</strong></td><td>${escapeHtml(log.target)}</td><td>${escapeHtml(log.operator)}</td><td>${escapeHtml(log.detail)}</td></tr>`).join('') : '<tr><td colspan="6"><div class="admin-empty">아직 기록된 운영 작업이 없습니다.</div></td></tr>';
-  }
-
-  function renderAll() { renderDashboard(); renderMarkets(); renderComments(); renderUsers(); renderAudit(); showView(activeView); }
+  function renderAll() { renderDashboard(); renderMarkets(); renderComments(); renderUsers(); showView(activeView); }
 
   // [확인 모달] 위험 작업은 공통 모달에서 사유를 확인하고, ESC·포커스 트랩을 지원합니다.
   function openModal({ eyebrow = '확인 필요', title, content, confirmLabel = '확인', danger = false, onConfirm }) {
@@ -258,6 +250,8 @@
   async function applyService(method, ...args) { state = await service[method](...args); renderAll(); }
   function openMarketPreview(market) { openModal({ eyebrow: '사용자 화면 미리보기', title: `${market.sequence}번 · ${market.subjectName}`, content: `<div class="admin-live-body"><div class="admin-market-thumb">${market.imagePath ? `<img src="${escapeHtml(market.imagePath)}" alt="" />` : ''}</div><div class="admin-live-copy"><h2>${escapeHtml(market.subjectName)}</h2><p>${escapeHtml(market.shortIntroduction)}</p><p>기준 가격 ${formatCredits(market.basePrice)} · ${formatDateTime(market.startAt)} 시작</p></div></div><p>실제 사용자 화면은 종목이 거래 중 상태가 된 뒤 서버의 현재 시장 데이터를 기준으로 표시됩니다.</p>`, confirmLabel: '확인', onConfirm: async () => {} }); }
   function openCloseMarketModal(market) { openModal({ eyebrow: '거래 종료 확인', title: `${market.subjectName} 거래를 종료할까요?`, content: `<p><strong>현재 종목: ${escapeHtml(market.subjectName)}</strong></p><p>종료 후 신규 주문과 새 댓글 작성이 잠깁니다.</p><p>자동 정산: <strong>${market.autoSettle ? '사용 · 종료 직후 정산 완료 처리' : '사용 안 함 · 정산 대기 상태 유지'}</strong></p>`, confirmLabel: '거래 종료 확인', danger: true, onConfirm: async () => { await applyService('closeMarket', market.id); showToast('거래를 종료했습니다.'); } }); }
+  // [종목 완전 삭제 확인] 거래 전 시장과 연결된 로컬 댓글을 지우며 되돌릴 수 없습니다.
+  function openDeleteMarketModal(market) { openModal({ eyebrow: '종목 완전 삭제 확인', title: `${market.subjectName} 종목을 완전히 삭제할까요?`, content: `<p><strong>${market.sequence}번 · ${escapeHtml(market.subjectName)}</strong></p><p>목록과 사용자 거래소에서 즉시 사라지며, 연결된 로컬 댓글도 함께 삭제됩니다.</p><p><strong>이 작업은 되돌릴 수 없습니다.</strong> 거래·정산 이력이 있는 종목은 삭제할 수 없습니다.</p>`, confirmLabel: '완전 삭제', danger: true, onConfirm: async () => { await applyService('deleteMarket', market.id); if (editingMarketId === market.id) closeMarketEditor(); showToast('종목을 완전히 삭제했습니다.'); } }); }
   function openCommentModal(comment) { const market = getMarket(comment.marketId); openModal({ eyebrow: '댓글 처리', title: '댓글 처리 방식을 선택해주세요.', content: `<p><strong>${escapeHtml(comment.authorName)}</strong> · ${escapeHtml(market?.subjectName || '종목')}</p><p>“${escapeHtml(comment.content)}”</p><label>처리 방식<select id="admin-modal-comment-action"><option value="HIDE">숨김 처리</option><option value="DELETE">소프트 삭제</option>${comment.status === 'HIDDEN' ? '<option value="UNHIDE">숨김 해제</option>' : ''}</select></label><label>처리 사유<textarea id="admin-modal-reason" rows="3" required placeholder="처리 사유를 입력해주세요"></textarea></label><p>삭제된 댓글도 운영 기록에는 보존됩니다.</p>`, confirmLabel: '처리 확인', danger: true, onConfirm: async () => { const action = $('#admin-modal-comment-action').value; const reason = $('#admin-modal-reason').value; await applyService('moderateComment', comment.id, { action, reason }); showToast('댓글 처리 결과를 저장했습니다.'); } }); }
   function openCreditModal(user) { openModal({ eyebrow: '크레딧 조정', title: `${user.nickname}님의 크레딧 조정`, content: `<p>현재 크레딧 <strong>${formatCredits(user.credits)}</strong></p><label>조정 값 (크레딧)<input id="admin-modal-credit-amount" type="number" step="1" placeholder="예: 1000 또는 -1000" /></label><label>처리 사유<textarea id="admin-modal-reason" rows="3" required placeholder="사유를 입력해주세요"></textarea></label><p id="admin-credit-preview">조정 후 예상 크레딧: ${formatCredits(user.credits)}</p>`, confirmLabel: '조정 적용', onConfirm: async () => { await applyService('adjustCredits', user.id, { amount: $('#admin-modal-credit-amount').value, reason: $('#admin-modal-reason').value }); showToast('크레딧 조정을 기록했습니다.'); } }); $('#admin-modal-credit-amount').addEventListener('input', (event) => { const next = Math.max(0, Number(user.credits) + Math.round(Number(event.target.value) || 0)); $('#admin-credit-preview').textContent = `조정 후 예상 크레딧: ${formatCredits(next)}`; }); }
   function openRestrictionModal(user) { const nextRestricted = !user.commentRestricted; openModal({ eyebrow: '사용자 댓글 작성 제한', title: `${user.nickname}님의 댓글 작성${nextRestricted ? '을 제한' : ' 제한을 해제'}할까요?`, content: `<p>현재 상태: <strong>${user.commentRestricted ? '댓글 작성 제한 중' : '정상'}</strong></p><label>처리 사유<textarea id="admin-modal-reason" rows="3" required placeholder="사유를 입력해주세요"></textarea></label><p>실제 이용 제한은 서버 권한과 정책 검증이 필요합니다.</p>`, confirmLabel: nextRestricted ? '댓글 제한 적용' : '제한 해제', danger: nextRestricted, onConfirm: async () => { await applyService('restrictUser', user.id, { restricted: nextRestricted, reason: $('#admin-modal-reason').value }); showToast(nextRestricted ? '댓글 작성 제한을 적용했습니다.' : '댓글 작성 제한을 해제했습니다.'); } }); }
@@ -298,7 +292,7 @@
   $('#admin-market-preview-button').addEventListener('click', () => { const pseudo = { id: 'preview', sequence: '미리보기', ...readMarketForm() }; openMarketPreview(pseudo); });
   $('#admin-market-draft-button').addEventListener('click', () => saveMarket('draft'));
   $('#admin-market-form').addEventListener('submit', (event) => { event.preventDefault(); saveMarket('schedule'); });
-  $('#admin-market-table').addEventListener('click', async (event) => { const button = event.target.closest('[data-market-action]'); if (!button) return; const market = getMarket(button.dataset.marketId); if (!market) return; try { const action = button.dataset.marketAction; if (action === 'edit') return populateMarketEditor(market); if (action === 'preview') return openMarketPreview(market); if (action === 'close') return openCloseMarketModal(market); if (action === 'schedule') { await applyService('scheduleMarket', market.id); showToast('종목을 예약했습니다.'); } if (action === 'draft') { await applyService('returnMarketToDraft', market.id); showToast('예약을 취소하고 초안으로 되돌렸습니다.'); } if (action === 'duplicate') { await applyService('duplicateMarket', market.id); showToast('종목을 초안으로 복제했습니다.'); } if (action === 'settle') { await applyService('settleMarket', market.id); showToast('정산 완료로 처리했습니다.'); } if (action === 'archive') { await applyService('archiveMarket', market.id); showToast('종목을 보관했습니다.'); } if (action === 'start') openModal({ eyebrow: '거래 시작 확인', title: `${market.subjectName} 거래를 시작할까요?`, content: '<p>거래 중인 종목은 한 번에 하나만 존재할 수 있습니다. 실제 운영 시작 판정은 서버가 담당합니다.</p>', confirmLabel: '거래 시작', onConfirm: async () => { await applyService('startMarket', market.id); showToast(service.getMode() === 'API' ? '거래를 시작했습니다.' : '로컬 시연에서 거래를 시작했습니다.'); } }); } catch (error) { showToast(error.message); } });
+  $('#admin-market-table').addEventListener('click', async (event) => { const button = event.target.closest('[data-market-action]'); if (!button) return; const market = getMarket(button.dataset.marketId); if (!market) return; try { const action = button.dataset.marketAction; if (action === 'edit') return populateMarketEditor(market); if (action === 'preview') return openMarketPreview(market); if (action === 'close') return openCloseMarketModal(market); if (action === 'delete') return openDeleteMarketModal(market); if (action === 'schedule') { await applyService('scheduleMarket', market.id); showToast('종목을 예약했습니다.'); } if (action === 'draft') { await applyService('returnMarketToDraft', market.id); showToast('예약을 취소하고 초안으로 되돌렸습니다.'); } if (action === 'duplicate') { await applyService('duplicateMarket', market.id); showToast('종목을 초안으로 복제했습니다.'); } if (action === 'settle') { await applyService('settleMarket', market.id); showToast('정산 완료로 처리했습니다.'); } if (action === 'start') openModal({ eyebrow: '거래 시작 확인', title: `${market.subjectName} 거래를 시작할까요?`, content: '<p>거래 중인 종목은 한 번에 하나만 존재할 수 있습니다. 실제 운영 시작 판정은 서버가 담당합니다.</p>', confirmLabel: '거래 시작', onConfirm: async () => { await applyService('startMarket', market.id); showToast(service.getMode() === 'API' ? '거래를 시작했습니다.' : '로컬 시연에서 거래를 시작했습니다.'); } }); } catch (error) { showToast(error.message); } });
   $('#admin-comment-search').addEventListener('input', renderComments); $('#admin-comment-market-filter').addEventListener('change', renderComments); $('#admin-comment-status-filter').addEventListener('change', renderComments);
   $('#admin-open-staff-comment').addEventListener('click', () => { $('#admin-staff-composer').hidden = false; $('#admin-staff-comment-content').focus({ preventScroll: true }); }); $('#admin-close-staff-comment').addEventListener('click', () => { $('#admin-staff-composer').hidden = true; }); $('#admin-cancel-staff-comment').addEventListener('click', () => { $('#admin-staff-composer').hidden = true; });
   $('#admin-staff-comment-form').addEventListener('submit', async (event) => { event.preventDefault(); const form = event.currentTarget; try { await applyService('createStaffComment', { marketId: $('#admin-staff-market').value, content: $('#admin-staff-comment-content').value, isNotice: $('#admin-staff-notice').checked, pinned: $('#admin-staff-pinned').checked, immediatePublished: $('#admin-staff-publish').checked }); form.reset(); $('#admin-staff-publish').checked = true; $('#admin-staff-composer').hidden = true; showToast('운영진 댓글을 등록했습니다.'); } catch (error) { showToast(error.message); } });
@@ -306,7 +300,6 @@
   $('#admin-user-search').addEventListener('input', renderUsers); $('#admin-user-status-filter').addEventListener('change', renderUsers);
   $('#admin-user-table').addEventListener('click', (event) => { const button = event.target.closest('[data-user-action]'); if (!button) return; const user = state.users.find((item) => item.id === button.dataset.userId); if (!user) return; if (button.dataset.userAction === 'adjust') return openCreditModal(user); if (button.dataset.userAction === 'restrict') return openRestrictionModal(user); const comments = state.comments.filter((comment) => comment.authorId === user.id); openModal({ eyebrow: '사용자 상세', title: `${user.nickname}님의 작성 댓글`, content: comments.length ? comments.map((comment) => `<p><strong>${escapeHtml(getMarket(comment.marketId)?.subjectName || '종목')}</strong> · ${commentStatusLabel(comment.status)}<br />${escapeHtml(comment.content)}</p>`).join('') : '<p>로컬 시연 데이터에 작성 댓글이 없습니다.</p>', confirmLabel: '확인', onConfirm: async () => {} }); });
   $('#admin-export-users').addEventListener('click', () => { downloadCsv('jorong-admin-users.csv', ['사용자 ID', '닉네임', '크레딧', '참여 거래', '작성 댓글', '상태', '댓글 제한'], state.users.map((user) => [user.id, user.nickname, user.credits, user.tradeCount, user.commentCount, user.status, user.commentRestricted ? '제한' : '가능'])); showToast('사용자 CSV를 준비했습니다.'); });
-  $('#admin-audit-search').addEventListener('input', renderAudit); $('#admin-audit-type-filter').addEventListener('change', renderAudit); $('#admin-export-audit').addEventListener('click', () => { downloadCsv('jorong-admin-audit.csv', ['시각', '유형', '작업', '대상', '처리자', '상세'], state.auditLogs.map((log) => [log.createdAt, log.category, log.action, log.target, log.operator, log.detail])); showToast('운영 기록 CSV를 준비했습니다.'); });
   modalCancel.addEventListener('click', closeModal); modalClose.addEventListener('click', closeModal); modalConfirm.addEventListener('click', confirmModal); window.addEventListener('keydown', trapModalFocus);
   // 다른 탭의 거래소가 로컬 계정·댓글을 저장하면 관리자 화면도 새로고침 없이 목록을 다시 읽습니다.
   window.addEventListener('storage', async (event) => {

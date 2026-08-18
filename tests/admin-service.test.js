@@ -41,8 +41,27 @@ test('관리자 시장 상태 전환은 허용된 순서만 통과한다', () =>
   const service = createService();
   assert.equal(service.canTransitionMarket('DRAFT', 'SCHEDULED'), true);
   assert.equal(service.canTransitionMarket('LIVE', 'CLOSED'), true);
+  assert.equal(service.canTransitionMarket('SETTLED', 'ARCHIVED'), true);
   assert.equal(service.canTransitionMarket('LIVE', 'SETTLED'), false);
   assert.equal(service.canTransitionMarket('ARCHIVED', 'DRAFT'), false);
+});
+
+test('초안 또는 예약 종목 삭제는 목록과 로컬 저장소에서 완전히 제거한다', async () => {
+  const service = createService();
+  const created = await service.createMarket(marketInput());
+  const draft = created.markets.at(-1);
+  const scheduled = await service.scheduleMarket(draft.id);
+  const deleted = await service.deleteMarket(draft.id);
+  assert.equal(scheduled.markets.find((item) => item.id === draft.id).status, 'SCHEDULED');
+  assert.equal(deleted.markets.some((item) => item.id === draft.id), false);
+  assert.equal(deleted.auditLogs[0].action, '종목 완전 삭제');
+});
+
+test('거래 중인 종목은 정산 전에 삭제할 수 없다', async () => {
+  const service = createService();
+  const state = await createLiveMarket(service);
+  const live = state.markets.find((market) => market.status === 'LIVE');
+  await assert.rejects(service.deleteMarket(live.id), (error) => error.code === 'MARKET_DELETE_LOCKED');
 });
 
 test('초기 관리자 로컬 상태는 더미 종목·사용자가 없는 빈 운영 상태로 시작한다', async () => {
