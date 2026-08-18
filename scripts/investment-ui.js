@@ -137,7 +137,7 @@
     });
   }
 
-  function renderPosition(snapshot) {
+  function renderPosition(snapshot, { preserveAdditionPanel = false } = {}) {
     const position = snapshot?.position;
     const metrics = snapshot?.positionMetrics;
     if (!position || position.status === 'SETTLED') return false;
@@ -164,9 +164,17 @@
     estimated.textContent = math.formatCreditsUnsigned(metrics?.estimatedSettlementAmount || '0');
     lockNote.innerHTML = `한 번 선택한 의견은 장 종료까지 변경할 수 없어요.<br />추가 투자는 선택한 ‘${sideLabel(side)}’에만 가능해요.`;
     addInvestmentButton.textContent = `${sideLabel(side)}에 추가 투자`;
-    setVisiblePanel(statusCard);
-    return true;
-  }
+    const isAdditionalPanelOpen = !additionalPanel.hidden;
+
+    if (preserveAdditionalPanel && isAdditionalPanelOpen) {
+      // 최신 현재가·보유금으로 예상 추가 수량만 다시 계산
+      renderAdditionalPreview();
+    } else {
+      // 일반 갱신이나 투자 완료 뒤에는 투자현황 카드 표시
+      setVisiblePanel(statusCard);
+}
+
+return true;
 
   function renderAdditionalPreview() {
     const position = activeSnapshot?.position;
@@ -308,7 +316,9 @@
       renderBalance(result.wallet?.points);
       if (result.target?.value != null) window.TargetValueUI?.update(result.target);
       // 포지션이 없는 새 계정은 이전 계정의 추가 투자 화면을 유지하지 않습니다.
-      if (!renderPosition(result)) setVisiblePanel(hasCurrentUserRootComment ? firstPanel : roastCta);
+      if (!renderPosition(result, { preserveAdditionalPanel: true })) {
+        setVisiblePanel(hasCurrentUserRootComment ? firstPanel : roastCta);
+      }
     } catch (_) {
       // 로그인 전 또는 서버 연결 전 오류는 기존 투자 시작 화면을 유지합니다.
     }
