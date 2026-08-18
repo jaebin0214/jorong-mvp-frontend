@@ -137,7 +137,9 @@
     });
   }
 
-  function renderPosition(snapshot, { preserveAdditionPanel = false } = {}) {
+  // [포지션 렌더링] 주기 갱신 중에는 사용자가 열어 둔 추가 투자 입력창을 유지합니다.
+  // 단, 첫 투자 완료·추가 투자 완료처럼 명시적으로 호출한 경우에는 투자 현황 카드로 돌아갑니다.
+  function renderPosition(snapshot, { preserveAdditionalPanel = false } = {}) {
     const position = snapshot?.position;
     const metrics = snapshot?.positionMetrics;
     if (!position || position.status === 'SETTLED') return false;
@@ -172,9 +174,10 @@
     } else {
       // 일반 갱신이나 투자 완료 뒤에는 투자현황 카드 표시
       setVisiblePanel(statusCard);
-}
+    }
 
-return true;
+    return true;
+  }
 
   function renderAdditionalPreview() {
     const position = activeSnapshot?.position;
@@ -354,7 +357,11 @@ return true;
     // CommentsUI는 댓글 목록을 새 계정 기준으로 불러올 때마다 이 값을 갱신합니다.
     setCommentUnlockState: (isUnlocked) => {
       hasCurrentUserRootComment = Boolean(isUnlocked);
-      if (!hasCurrentUserRootComment && !activeSnapshot?.position) setVisiblePanel(roastCta);
+      if (activeSnapshot?.position) return;
+
+      // [최초 투자 열기] 현재 계정이 원댓글을 등록하는 즉시 잠금 레이어를 해제합니다.
+      // CommentsUI의 목록 갱신과 비동기 순서가 달라도 최초 투자창으로 안정적으로 전환됩니다.
+      setVisiblePanel(hasCurrentUserRootComment ? firstPanel : roastCta);
     },
   });
 })();
