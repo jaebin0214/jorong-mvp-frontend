@@ -201,29 +201,50 @@ window.AdminService = (() => {
     appendAudit(state, { category: 'MARKET', action, target: `${market.sequence}번 · ${market.subjectName}`, detail: `${MARKET_STATES[previousState]} → ${MARKET_STATES[nextState]}` });
   }
 
-  // [로컬 예약 전환] 실제 운영에서는 서버 스케줄러가 책임지지만, 로컬 시연에서는
-  // 관리자 페이지가 열려 있는 동안 예약 시각이 된 다음 종목을 LIVE로 전환합니다.
+  function closeLocalMarketAtDeadline(state, market, action = '예약 시간 종료') {
+    market.closedAt = nowIso();
+    transitionMarket(state, market, 'CLOSED', action);
+    // 자동 정산이 켜진 종목(관리자 폼 기본값)은 타이머 종료와 같은 처리에서 바로 정산합니다.
+    // 실제 운영에서는 이 두 상태 전환과 정산 지급을 서버 DB 트랜잭션 하나로 처리해야 합니다.
+    if (market.autoSettle) {
+      market.settledAt = nowIso();
+      transitionMarket(state, market, 'SETTLED', '자동 정산 완료');
+    }
+  }
+
+  // [로컬 예약 전환] 관리자 화면이 닫혀도 거래소 화면의 LocalAdminMarketBridge가 이 서비스를
+  // 호출합니다. 시작 시각에는 LIVE로, 종료 시각에는 CLOSED → SETTLED로 자동 전환합니다.
   function reconcileLocalMarketSchedule(state) {
     const now = Date.now();
-    const dueMarket = state.markets
-      .filter((market) => market.status === 'SCHEDULED' && market.autoStart && Date.parse(market.startAt || '') <= now)
-      .sort((left, right) => Date.parse(left.startAt) - Date.parse(right.startAt))[0];
-    if (!dueMarket) return false;
+    let changed = false;
+    let liveMarket = state.markets.find((market) => market.status === 'LIVE');
 
-    const liveMarket = state.markets.find((market) => market.status === 'LIVE');
-    // 이전 장이 아직 유효하면 새 장을 겹쳐 열지 않습니다.
-    if (liveMarket && Date.parse(liveMarket.endAt || '') > now) return false;
-    if (liveMarket) {
-      liveMarket.closedAt = nowIso();
-      transitionMarket(state, liveMarket, 'CLOSED', '예약 시간 종료');
-      if (liveMarket.autoSettle) {
-        liveMarket.settledAt = nowIso();
-        transitionMarket(state, liveMarket, 'SETTLED', '자동 정산 완료');
-      }
+    // 다음 예약이 없어도 LIVE 종목의 종료 시각만 지나면 즉시 거래 종료·자동 정산합니다.
+    if (liveMarket && Date.parse(liveMarket.endAt || '') <= now) {
+      closeLocalMarketAtDeadline(state, liveMarket);
+      changed = true;
+      liveMarket = null;
     }
-    validateMarketSchedule({ ...dueMarket, status: 'LIVE' }, state.markets);
-    transitionMarket(state, dueMarket, 'LIVE', '예약 시간 자동 시작');
-    return true;
+    // 아직 유효한 LIVE 장이 있으면 예약된 다음 종목을 열지 않습니다.
+    if (liveMarket) return changed;
+
+    const dueMarkets = state.markets
+      .filter((market) => market.status === 'SCHEDULED' && market.autoStart && Date.parse(market.startAt || '') <= now)
+      .sort((left, right) => Date.parse(left.startAt) - Date.parse(right.startAt));
+
+    for (const dueMarket of dueMarkets) {
+      validateMarketSchedule({ ...dueMarket, status: 'LIVE' }, state.markets);
+      transitionMarket(state, dueMarket, 'LIVE', '예약 시간 자동 시작');
+      changed = true;
+      // 브라우저가 닫혀 있어 이미 종료 시각도 지난 예약 장은 잠깐 LIVE로 남기지 않고
+      // 같은 동기화에서 종료·정산까지 처리합니다.
+      if (Date.parse(dueMarket.endAt || '') <= now) {
+        closeLocalMarketAtDeadline(state, dueMarket, '예약 시간 만료');
+        continue;
+      }
+      break;
+    }
+    return changed;
   }
 
   function normalizeIsoDate(value) { const timestamp = Date.parse(value || ''); return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : ''; }
@@ -278,7 +299,7 @@ window.AdminService = (() => {
   function localReturnMarketToDraft(marketId) { return mutate((state) => { const market = findMarket(state, marketId); transitionMarket(state, market, 'DRAFT', '예약 취소'); return clone(state); }); }
   function localStartMarket(marketId) { return mutate((state) => { const market = findMarket(state, marketId); validateMarketSchedule({ ...market, status: 'LIVE' }, state.markets); transitionMarket(state, market, 'LIVE', '거래 시작'); return clone(state); }); }
   // [수동 종료 시각] 거래소가 같은 회차를 종료·정산 화면으로 유지할 수 있도록 실제 운영자가 닫은 시각도 기록합니다.
-  function localCloseMarket(marketId) { return mutate((state) => { const market = findMarket(state, marketId); market.closedAt = nowIso(); transitionMarket(state, market, 'CLOSED', '거래 수동 종료'); if (market.autoSettle) { market.settledAt = nowIso(); transitionMarket(state, market, 'SETTLED', '자동 정산 완료'); } return clone(state); }); }
+  function localCloseMarket(marketId) { return mutate((state) => { const market = findMarket(state, marketId); closeLocalMarketAtDeadline(state, market, '거래 수동 종료'); return clone(state); }); }
   function localSettleMarket(marketId) { return mutate((state) => { const market = findMarket(state, marketId); market.settledAt = nowIso(); transitionMarket(state, market, 'SETTLED', '정산 완료'); return clone(state); }); }
   // [보관] 정산이 끝난 거래 종목의 이력을 사용자 화면에서 감추되 DB 레코드는 유지합니다.
   function localArchiveMarket(marketId) { return mutate((state) => { const market = findMarket(state, marketId); if (market.status !== 'SETTLED') throw createError('INVALID_MARKET_TRANSITION', '정산 완료된 종목만 보관할 수 있습니다.'); transitionMarket(state, market, 'ARCHIVED', '종목 보관'); market.archivedAt = nowIso(); return clone(state); }); }
@@ -413,8 +434,8 @@ window.AdminService = (() => {
       reader.readAsDataURL(file);
     });
   }
-  const localAdapter = { load: async () => localLoad(), uploadMarketImage: (file) => localUploadMarketImage(file), createMarket: async (input) => localCreateMarket(input), updateDraftMarket: async (id, input) => localUpdateDraftMarket(id, input), scheduleMarket: async (id) => localScheduleMarket(id), returnMarketToDraft: async (id) => localReturnMarketToDraft(id), startMarket: async (id) => localStartMarket(id), closeMarket: async (id) => localCloseMarket(id), settleMarket: async (id) => localSettleMarket(id), archiveMarket: async (id) => localArchiveMarket(id), deleteMarket: async (id) => localDeleteMarket(id), duplicateMarket: async (id) => localDuplicateMarket(id), moderateComment: async (id, payload) => localModerateComment(id, payload), createStaffComment: async (input) => localCreateStaffComment(input), adjustCredits: async (id, payload) => localAdjustCredits(id, payload), restrictUser: async (id, payload) => localRestrictUser(id, payload) };
+  const localAdapter = { load: async () => localLoad(), syncMarketSchedule: async () => localLoad(), uploadMarketImage: (file) => localUploadMarketImage(file), createMarket: async (input) => localCreateMarket(input), updateDraftMarket: async (id, input) => localUpdateDraftMarket(id, input), scheduleMarket: async (id) => localScheduleMarket(id), returnMarketToDraft: async (id) => localReturnMarketToDraft(id), startMarket: async (id) => localStartMarket(id), closeMarket: async (id) => localCloseMarket(id), settleMarket: async (id) => localSettleMarket(id), archiveMarket: async (id) => localArchiveMarket(id), deleteMarket: async (id) => localDeleteMarket(id), duplicateMarket: async (id) => localDuplicateMarket(id), moderateComment: async (id, payload) => localModerateComment(id, payload), createStaffComment: async (input) => localCreateStaffComment(input), adjustCredits: async (id, payload) => localAdjustCredits(id, payload), restrictUser: async (id, payload) => localRestrictUser(id, payload) };
   function activeAdapter() { return supabaseClient ? supabaseAdapter : localAdapter; }
 
-  return Object.freeze({ MARKET_STATES, canTransitionMarket, validateMarketSchedule, validateMarketInput, localDateTime, getMode: () => supabaseClient ? 'API' : 'LOCAL_DEMO', getOperator: () => clone(OPERATOR), load: () => activeAdapter().load(), uploadMarketImage: (file) => activeAdapter().uploadMarketImage(file), createMarket: (input) => activeAdapter().createMarket(input), updateDraftMarket: (id, input) => activeAdapter().updateDraftMarket(id, input), scheduleMarket: (id) => activeAdapter().scheduleMarket(id), returnMarketToDraft: (id) => activeAdapter().returnMarketToDraft(id), startMarket: (id) => activeAdapter().startMarket(id), closeMarket: (id) => activeAdapter().closeMarket(id), settleMarket: (id) => activeAdapter().settleMarket(id), archiveMarket: (id) => activeAdapter().archiveMarket(id), deleteMarket: (id) => activeAdapter().deleteMarket(id), duplicateMarket: (id) => activeAdapter().duplicateMarket(id), moderateComment: (id, payload) => activeAdapter().moderateComment(id, payload), createStaffComment: (input) => activeAdapter().createStaffComment(input), adjustCredits: (id, payload) => activeAdapter().adjustCredits(id, payload), restrictUser: (id, payload) => activeAdapter().restrictUser(id, payload), resetDemo: () => supabaseClient ? Promise.reject(createError('ADMIN_API_MODE', 'API 연결 모드에서는 시연 데이터를 초기화할 수 없습니다.')) : Promise.resolve(localResetDemo()) });
+  return Object.freeze({ MARKET_STATES, canTransitionMarket, validateMarketSchedule, validateMarketInput, localDateTime, getMode: () => supabaseClient ? 'API' : 'LOCAL_DEMO', getOperator: () => clone(OPERATOR), load: () => activeAdapter().load(), syncMarketSchedule: () => activeAdapter().syncMarketSchedule?.() || activeAdapter().load(), uploadMarketImage: (file) => activeAdapter().uploadMarketImage(file), createMarket: (input) => activeAdapter().createMarket(input), updateDraftMarket: (id, input) => activeAdapter().updateDraftMarket(id, input), scheduleMarket: (id) => activeAdapter().scheduleMarket(id), returnMarketToDraft: (id) => activeAdapter().returnMarketToDraft(id), startMarket: (id) => activeAdapter().startMarket(id), closeMarket: (id) => activeAdapter().closeMarket(id), settleMarket: (id) => activeAdapter().settleMarket(id), archiveMarket: (id) => activeAdapter().archiveMarket(id), deleteMarket: (id) => activeAdapter().deleteMarket(id), duplicateMarket: (id) => activeAdapter().duplicateMarket(id), moderateComment: (id, payload) => activeAdapter().moderateComment(id, payload), createStaffComment: (input) => activeAdapter().createStaffComment(input), adjustCredits: (id, payload) => activeAdapter().adjustCredits(id, payload), restrictUser: (id, payload) => activeAdapter().restrictUser(id, payload), resetDemo: () => supabaseClient ? Promise.reject(createError('ADMIN_API_MODE', 'API 연결 모드에서는 시연 데이터를 초기화할 수 없습니다.')) : Promise.resolve(localResetDemo()) });
 })();

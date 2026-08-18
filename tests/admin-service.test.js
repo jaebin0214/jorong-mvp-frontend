@@ -146,6 +146,21 @@ test('첫 종목을 현재 시각 이전으로 예약하고 자동 시작을 켜
   assert.equal(published.markets.find((item) => item.id === market.id).status, 'LIVE');
 });
 
+test('다음 예약이 없어도 종료 시각이 지난 LIVE 종목은 즉시 종료·자동 정산된다', async () => {
+  const storage = new Map();
+  const now = Date.now();
+  storage.set('jorong_admin_demo_v1', JSON.stringify({
+    version: 3,
+    markets: [{ id: 'market-due-close', sequence: 1, status: 'LIVE', subjectName: '마감 종목', shortIntroduction: '자동 마감 검증', description: '', imagePath: './assets/hoon.png', startAt: new Date(now - 7200000).toISOString(), endAt: new Date(now - 60000).toISOString(), basePrice: 1000, minTradeUnit: 10, settlementMethod: '자동 정산', autoStart: true, autoSettle: true, commentsPublic: true }],
+    comments: [], users: [], auditLogs: [], participationTrend: [],
+  }));
+  const state = await createService(storage).syncMarketSchedule();
+  const market = state.markets[0];
+  assert.equal(market.status, 'SETTLED');
+  assert.ok(Number.isFinite(Date.parse(market.closedAt)));
+  assert.ok(Number.isFinite(Date.parse(market.settledAt)));
+});
+
 test('종목 필수값과 시작·종료 시간 검증이 작동한다', () => {
   const service = createService();
   assert.throws(

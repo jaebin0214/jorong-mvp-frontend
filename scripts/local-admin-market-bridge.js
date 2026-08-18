@@ -63,6 +63,13 @@ window.LocalAdminMarketBridge = (() => {
 
   let loadedMarketSignature = isEnabled ? getLiveMarketSignature() : '';
 
+  // [거래소에서도 스케줄 실행] 로컬 시연에서는 서버가 없으므로 관리자 페이지가 닫혀 있어도
+  // 사용자가 보고 있는 거래소 탭이 예약 시작·마감 시각을 저장소에 반영합니다.
+  async function syncLocalMarketSchedule() {
+    if (!isEnabled || typeof window.AdminService?.syncMarketSchedule !== 'function') return;
+    try { await window.AdminService.syncMarketSchedule(); } catch (_) { /* 다음 주기에서 재시도 */ }
+  }
+
   function reloadIfLiveMarketChanged() {
     if (!isEnabled) return;
     const latestSignature = getLiveMarketSignature();
@@ -150,7 +157,10 @@ window.LocalAdminMarketBridge = (() => {
       if (event.key === ADMIN_STORE_KEY) reloadIfLiveMarketChanged();
     });
     // storage 이벤트를 지원하지 않거나 미리보기 탭에서 전달하지 않는 환경을 위한 보완입니다.
-    window.setInterval?.(reloadIfLiveMarketChanged, 1500);
+    // 시장 상태를 먼저 갱신한 뒤 변경된 회차가 있을 때만 거래소를 다시 초기화합니다.
+    const syncAndReload = async () => { await syncLocalMarketSchedule(); reloadIfLiveMarketChanged(); };
+    syncAndReload();
+    window.setInterval?.(syncAndReload, 1500);
   }
 
   return Object.freeze({

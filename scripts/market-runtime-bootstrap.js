@@ -106,6 +106,12 @@
   if (!hasRuntimeSource || hasExplicitConfig) return;
 
   syncRuntimeConfig();
+  // [마감 직후 동기화] 타이머가 0이 되는 순간에는 일반 30초 폴링을 기다리지 않고 서버의
+  // CLOSED/SETTLED 상태를 즉시 다시 읽습니다. 서버 정산이 수 초 걸릴 수 있어 짧게 재확인합니다.
+  window.addEventListener?.('jorong:market-ended', () => {
+    syncRuntimeConfig();
+    [1_500, 5_000, 10_000].forEach((delay) => window.setTimeout?.(syncRuntimeConfig, delay));
+  });
   // 서버 스케줄러가 새 장을 열거나 예약을 변경한 경우에도 현재 화면 설정을 갱신합니다.
   window.setInterval(syncRuntimeConfig, 30_000);
 })();
