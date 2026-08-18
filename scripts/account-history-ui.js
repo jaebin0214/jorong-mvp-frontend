@@ -8,7 +8,7 @@
   const totalLabel = historyCard?.querySelector('.card-title-row > span');
 
   function formatPoints(value) {
-    return `${Number(value || 0).toLocaleString('ko-KR')} KRW`;
+    return `${Number(value || 0).toLocaleString('ko-KR')} 크레딧`;
   }
 
   function formatDate(value) {

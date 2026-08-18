@@ -199,7 +199,7 @@ test('크레딧 조정에는 사유가 필요하고 변경 전후 값이 운영 
   await assert.rejects(service.adjustCredits('test_user_001', { amount: 1000, reason: '' }), (error) => error.code === 'CREDIT_REASON_REQUIRED');
   const state = await service.adjustCredits('test_user_001', { amount: -400, reason: '운영 보정' });
   assert.equal(state.users.find((user) => user.id === 'test_user_001').credits, 8000);
-  assert.match(state.auditLogs[0].detail, /8,400 → 8,000 KRW/);
+  assert.match(state.auditLogs[0].detail, /8,400 → 8,000 크레딧/);
 });
 
 test('관리자 로컬 시연 데이터는 새 서비스 인스턴스에서도 복원된다', async () => {

@@ -15,11 +15,11 @@
   if (!exchangeRebuild || !settlementView || !resultCard || !math) return;
 
   function formatInvestment(value) {
-    return math.formatKrwUnsigned(String(value || '0'), 0);
+    return math.formatCreditsUnsigned(String(value || '0'), 0);
   }
 
   function formatPrice(value) {
-    try { return math.formatPrice(value); } catch (_) { return '0 KRW'; }
+    try { return math.formatPrice(value); } catch (_) { return '0 크레딧'; }
   }
 
   function setText(selector, value) {
@@ -29,7 +29,7 @@
 
   function setHeaderBalance(points) {
     const label = document.querySelector('#exchange-header-balance');
-    if (label && Number.isFinite(Number(points))) label.textContent = `${Math.round(Number(points)).toLocaleString('ko-KR')} KRW`;
+    if (label && Number.isFinite(Number(points))) label.textContent = `${Math.round(Number(points)).toLocaleString('ko-KR')} 크레딧`;
   }
 
   // [모바일 정산 앱 바] 정산 화면이 실제로 열려 있는 동안에만 공통 헤더를 ‘정산 결과’ 상태로 바꿉니다.
@@ -49,8 +49,8 @@
   // [정산 결과 공유] 모바일 Web Share를 우선 사용하고, 지원하지 않는 브라우저에서는 클립보드 복사로 보완합니다.
   async function shareSettlementResult() {
     const subjectName = document.querySelector('#settlement-subject-name')?.textContent || '오늘의 종목';
-    const realizedPnl = document.querySelector('#settlement-realized-pnl')?.textContent || '0 KRW';
-    const payout = document.querySelector('#settlement-amount')?.textContent || '0 KRW';
+    const realizedPnl = document.querySelector('#settlement-realized-pnl')?.textContent || '0 크레딧';
+    const payout = document.querySelector('#settlement-amount')?.textContent || '0 크레딧';
     const text = `${subjectName}\n최종 실현손익 ${realizedPnl}\n정산 지급액 ${payout}`;
     try {
       if (navigator.share) {
@@ -132,13 +132,13 @@
       outcomeElement.textContent = outcome;
       outcomeElement.className = isProfit ? '' : isLoss ? 'is-failure' : 'is-neutral';
       const pnlElement = document.querySelector('#settlement-realized-pnl');
-      pnlElement.textContent = `${math.formatKrw(pnl)} (${math.formatRate(rate)})`;
+      pnlElement.textContent = `${math.formatCredits(pnl)} (${math.formatRate(rate)})`;
       pnlElement.classList.toggle('is-loss', isLoss);
       setText('#settlement-total-investment', formatInvestment(position.totalInvestment));
       setText('#settlement-average-price', formatPrice(position.averagePrice));
       setText('#settlement-final-price', formatPrice(settlement.closePrice ?? market.closePrice));
       setText('#settlement-quantity', math.formatQuantity(position.quantity));
-      setText('#settlement-amount', math.formatKrwUnsigned(settlement.settlementAmount ?? '0'));
+      setText('#settlement-amount', math.formatCreditsUnsigned(settlement.settlementAmount ?? '0'));
       setText('#settlement-balance-after', `정산 후 보유 · ${formatInvestment(settlement.balanceAfterSettlement ?? snapshot.wallet?.points ?? 0)}`);
     } else {
       setText('#settlement-outcome', '투자 내역 없음');

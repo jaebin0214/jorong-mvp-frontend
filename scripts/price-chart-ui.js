@@ -6,14 +6,14 @@ window.PriceChartUI = (() => {
   const hasBackendApi = Boolean(window.JorongSupabase);
   const initialPrice = Number(config.subject.initialPrice);
   // [운영 종목 기준선] 가격 변동의 중앙 기준선은 운영자가 개설 시 정한 최초 가격입니다.
-  // 종목마다 기준 가격이 달라도 같은 방식으로 5개 눈금과 50 KRW 단위를 유지합니다.
+  // 종목마다 기준 가격이 달라도 같은 방식으로 5개 눈금과 50 크레딧 단위를 유지합니다.
   const priceBaseline = Math.max(1, Number(config.subject.initialPrice) || 1000);
   const priceGridUnit = 50;
   const gridLineCount = 5;
   // SVG의 가상 좌표계 크기는 고정합니다. 가격 범위만 매 렌더링마다 자동 보정합니다.
   const width = 900;
   const height = 400;
-  // [축 여백] 왼쪽은 실제 가격(KRW) 라벨, 위쪽은 축 제목을 위한 공간입니다.
+  // [축 여백] 왼쪽은 실제 가격(크레딧) 라벨, 위쪽은 축 제목을 위한 공간입니다.
   const padding = { top: 40, right: 10, bottom: 10, left: 70 };
   const volumeHeight = 48;
   let currentCandles = [];
@@ -36,7 +36,7 @@ window.PriceChartUI = (() => {
 
   // [Y축 자동 보정] 개설 시 설정한 최초 가격 기준선은 차트 중앙에 고정합니다.
   // 최고·최저가가 범위를 벗어날 때만 위·아래 범위를 같은 비율로 확장합니다.
-  // 화면의 가로 기준선은 언제나 5개이며, 모든 라벨은 50 KRW의 배수입니다.
+  // 화면의 가로 기준선은 언제나 5개이며, 모든 라벨은 50 크레딧의 배수입니다.
   function getPriceDomain(candles) {
     const values = candles
       .flatMap((candle) => [candle.open, candle.high, candle.low, candle.close])
@@ -99,7 +99,7 @@ window.PriceChartUI = (() => {
     const volumeBottom = height - padding.bottom;
     const candleWidth = Math.max(4, Math.min(12, plotWidth / Math.max(70, displayCandles.length * 2.8)));
 
-    // [가격 기준값] 최초 가격 기준선과 그 위·아래의 50 KRW 단위 가격만 5개 표시합니다.
+    // [가격 기준값] 최초 가격 기준선과 그 위·아래의 50 크레딧 단위 가격만 5개 표시합니다.
     const grid = domain.gridValues.map((price) => {
       const y = yForPrice(price);
       const isBaseline = price === priceBaseline;
@@ -129,7 +129,7 @@ window.PriceChartUI = (() => {
       return `<text x="${x}" y="${height - 8}" class="price-chart-x-label" text-anchor="${index === 0 ? 'start' : index === 2 ? 'end' : 'middle'}">${formatElapsedTime(timestamp, startAt)}</text>`;
     }).join('');
 
-    chartContainer.innerHTML = `<svg class="price-candle-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${config.subject.name} 실시간 캔들 차트"><text x="${plotLeft}" y="14" class="price-chart-axis-title">가격 (KRW)</text>${grid}${volumeBars}${candleMarks}${timeLabels}</svg>`;
+    chartContainer.innerHTML = `<svg class="price-candle-chart" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" role="img" aria-label="${config.subject.name} 실시간 캔들 차트"><text x="${plotLeft}" y="14" class="price-chart-axis-title">가격 (크레딧)</text>${grid}${volumeBars}${candleMarks}${timeLabels}</svg>`;
     if (chartStatus) chartStatus.textContent = candles.length ? '실시간 투자 기록 반영' : '첫 투자를 기다리고 있습니다.';
   }
 

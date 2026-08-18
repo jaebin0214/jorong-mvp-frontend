@@ -6,7 +6,7 @@ window.MarketUI = (() => {
   const orderTabs = [...document.querySelectorAll('[data-order]')];
 
   function formatAmount() {
-    amountValue.textContent = `${amount.toLocaleString('ko-KR')} KRW`;
+    amountValue.textContent = `${amount.toLocaleString('ko-KR')} 크레딧`;
   }
 
   // [방향 선택] 옹호·조롱 버튼의 활성 색상과 주문 버튼 문구를 함께 갱신합니다.
@@ -17,7 +17,7 @@ window.MarketUI = (() => {
     });
   });
 
-  // [금액 조절] 1,000 KRW 단위의 임시 주문 금액을 표시합니다.
+  // [금액 조절] 1,000 크레딧 단위의 임시 주문 금액을 표시합니다.
   document.querySelectorAll('[data-amount]').forEach((button) => {
     button.addEventListener('click', () => {
       amount = Math.max(1000, amount + Number(button.dataset.amount));

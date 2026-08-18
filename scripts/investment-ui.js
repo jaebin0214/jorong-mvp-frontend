@@ -49,7 +49,7 @@
   }
 
   function formatBalance(value) {
-    return `${Math.max(0, Math.round(Number(value) || 0)).toLocaleString('ko-KR')} KRW`;
+    return `${Math.max(0, Math.round(Number(value) || 0)).toLocaleString('ko-KR')} 크레딧`;
   }
 
   // [사용 가능 잔액] 투자 직후의 응답을 우선 사용하고, 화면 초기화 중에는 서비스의 최신 스냅샷을 보조로 사용합니다.
@@ -67,11 +67,11 @@
   }
 
   function formatInvestment(value) {
-    return math.formatKrwUnsigned(String(value || '0'), 0);
+    return math.formatCreditsUnsigned(String(value || '0'), 0);
   }
 
   function formatProfit(value) {
-    return math.formatKrw(String(value || '0'));
+    return math.formatCredits(String(value || '0'));
   }
 
   function setVisiblePanel(panel) {
@@ -161,7 +161,7 @@
     total.textContent = formatInvestment(position.totalInvestment);
     average.textContent = math.formatPrice(position.averagePrice);
     quantity.textContent = math.formatQuantity(position.quantity);
-    estimated.textContent = math.formatKrwUnsigned(metrics?.estimatedSettlementAmount || '0');
+    estimated.textContent = math.formatCreditsUnsigned(metrics?.estimatedSettlementAmount || '0');
     lockNote.innerHTML = `한 번 선택한 의견은 장 종료까지 변경할 수 없어요.<br />추가 투자는 선택한 ‘${sideLabel(side)}’에만 가능해요.`;
     addInvestmentButton.textContent = `${sideLabel(side)}에 추가 투자`;
     setVisiblePanel(statusCard);
@@ -243,7 +243,7 @@
       return;
     }
     if (!Number.isSafeInteger(amount) || amount <= 0) {
-      showToast('투자금은 1 KRW 이상의 정수로 입력해주세요.');
+      showToast('투자금은 1 크레딧 이상의 정수로 입력해주세요.');
       return;
     }
     const availableBalance = getAvailableBalance();
@@ -266,7 +266,7 @@
       window.PriceChartUI?.recordInvestment(result);
       renderPosition(result);
       window.dispatchEvent(new CustomEvent('jorong:investment-created', { detail: result }));
-      showToast(`${sideLabel(side)}에 ${amount.toLocaleString('ko-KR')} KRW를 투자했습니다.`);
+      showToast(`${sideLabel(side)}에 ${amount.toLocaleString('ko-KR')} 크레딧을 투자했습니다.`);
     } catch (error) {
       showToast(error.message || '투자 요청을 처리하지 못했습니다.');
     } finally {

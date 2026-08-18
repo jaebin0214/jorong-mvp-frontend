@@ -90,7 +90,7 @@
 
   function loadLocalLedger({ refreshFromStorage = false } = {}) {
     const isCurrentLedger = (ledger) => ledger?.version === LOCAL_STORE_VERSION && ledger?.market?.id === getMarketSessionId();
-    // localStorage 접근이 막힌 경우에도 추가 투자 때 새 10,000 KRW 원장을 만들지 않게 합니다.
+    // localStorage 접근이 막힌 경우에도 추가 투자 때 새 10,000 크레딧 원장을 만들지 않게 합니다.
     if (!refreshFromStorage && isCurrentLedger(memoryLocalLedger)) return memoryLocalLedger;
     try {
       const stored = JSON.parse(window.localStorage.getItem(LOCAL_STORE_KEY) || 'null');
@@ -251,7 +251,7 @@
     const normalizedSide = window.FinancialMath.normalizeSide(side);
     const requestedAmount = investmentAmount ?? amount;
     const integerAmount = Number(requestedAmount);
-    if (!Number.isSafeInteger(integerAmount) || integerAmount <= 0) throw createError('INVALID_AMOUNT', '투자금은 1 KRW 이상의 정수여야 합니다.');
+    if (!Number.isSafeInteger(integerAmount) || integerAmount <= 0) throw createError('INVALID_AMOUNT', '투자금은 1 크레딧 이상의 정수여야 합니다.');
     if ((marketId || marketSessionId) && String(marketId || marketSessionId) !== getMarketSessionId()) {
       throw createError('MARKET_NOT_FOUND', '현재 거래 회차와 일치하지 않습니다.');
     }

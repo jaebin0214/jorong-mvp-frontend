@@ -160,7 +160,7 @@
 .exchange-current-value #exchange-price-change.is-up { color:#2162ee; }
 .exchange-current-value #exchange-price-change.is-down { color:#f04a62; }
 
-/* [실시간 캔들 차트] X축은 거래 시간, Y축은 실제 종목 가격(KRW)을 표시합니다. */
+/* [실시간 캔들 차트] X축은 거래 시간, Y축은 실제 종목 가격(크레딧)을 표시합니다. */
 .exchange-chart { height:142px; position:relative; }
 .exchange-chart .price-candle-chart { width:100%; height:132px; display:block; overflow:visible; }
 .exchange-chart { overflow:hidden; border:1px solid #e2e8f1; border-radius:7px; background:#f8fafc; }

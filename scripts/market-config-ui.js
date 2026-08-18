@@ -32,17 +32,17 @@
   const currentPrice = document.querySelector('#exchange-current-price');
   const pricePin = document.querySelector('#exchange-price-pin');
   const priceChange = document.querySelector('#exchange-price-change');
-  if (currentPrice) currentPrice.textContent = `${formattedPrice} KRW`;
+  if (currentPrice) currentPrice.textContent = `${formattedPrice} 크레딧`;
   if (pricePin) pricePin.textContent = formattedPrice;
   if (priceChange) {
-    priceChange.textContent = '0 KRW (0.00%)';
+    priceChange.textContent = '0 크레딧 (0.00%)';
     priceChange.classList.remove('is-up', 'is-down');
   }
   const mobilePrice = document.querySelector('#mobile-current-price');
   const mobileChange = document.querySelector('#mobile-price-change');
-  if (mobilePrice) mobilePrice.textContent = `${formattedPrice} KRW`;
+  if (mobilePrice) mobilePrice.textContent = `${formattedPrice} 크레딧`;
   if (mobileChange) {
-    mobileChange.textContent = '0 KRW (0.00%)';
+    mobileChange.textContent = '0 크레딧 (0.00%)';
     mobileChange.classList.remove('is-up', 'is-down');
   }
   window.dispatchEvent(new CustomEvent('jorong:market-config-updated', { detail: config }));

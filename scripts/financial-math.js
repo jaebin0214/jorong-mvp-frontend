@@ -61,9 +61,9 @@ window.FinancialMath = (() => {
   }
 
   function parseInvestment(value) {
-    if (!/^\d+$/.test(String(value ?? '').trim())) throw createError('INVALID_AMOUNT', '투자금은 1 KRW 이상의 정수여야 합니다.');
+    if (!/^\d+$/.test(String(value ?? '').trim())) throw createError('INVALID_AMOUNT', '투자금은 1 크레딧 이상의 정수여야 합니다.');
     const amount = BigInt(String(value));
-    if (amount <= 0n) throw createError('INVALID_AMOUNT', '투자금은 1 KRW 이상이어야 합니다.');
+    if (amount <= 0n) throw createError('INVALID_AMOUNT', '투자금은 1 크레딧 이상이어야 합니다.');
     return amount;
   }
 
@@ -157,15 +157,16 @@ window.FinancialMath = (() => {
     return divideRoundHalfUp(parseDecimal(value, decimals), 10n ** BigInt(decimals));
   }
 
-  function formatKrw(value, decimals = PNL_DECIMALS) {
+  // [화면 금액 표기] 계산 값은 그대로 두고 서비스 내 통화 명칭만 크레딧으로 표시합니다.
+  function formatCredits(value, decimals = PNL_DECIMALS) {
     const rounded = roundToInteger(value, decimals);
     const sign = rounded > 0n ? '+' : rounded < 0n ? '-' : '';
-    return `${sign}${absolute(rounded).toLocaleString('ko-KR')} KRW`;
+    return `${sign}${absolute(rounded).toLocaleString('ko-KR')} 크레딧`;
   }
 
-  function formatKrwUnsigned(value, decimals = PNL_DECIMALS) {
+  function formatCreditsUnsigned(value, decimals = PNL_DECIMALS) {
     const rounded = roundToInteger(value, decimals);
-    return `${absolute(rounded).toLocaleString('ko-KR')} KRW`;
+    return `${absolute(rounded).toLocaleString('ko-KR')} 크레딧`;
   }
 
   function formatPrice(value) {
@@ -176,7 +177,7 @@ window.FinancialMath = (() => {
     const integerPart = source.slice(0, -2);
     const fractionPart = source.slice(-2).replace(/0+$/, '');
     // Number 변환 없이 BigInt 정수부를 묶어 20자리 가격도 정확히 표시합니다.
-    return `${sign}${BigInt(integerPart).toLocaleString('ko-KR')}${fractionPart ? `.${fractionPart}` : ''} KRW`;
+    return `${sign}${BigInt(integerPart).toLocaleString('ko-KR')}${fractionPart ? `.${fractionPart}` : ''} 크레딧`;
   }
 
   function formatQuantity(value) {
@@ -203,8 +204,8 @@ window.FinancialMath = (() => {
     calculatePositionAfterOrder,
     calculateMetrics,
     calculateSettlement,
-    formatKrw,
-    formatKrwUnsigned,
+    formatCredits,
+    formatCreditsUnsigned,
     formatPrice,
     formatQuantity,
     formatRate,

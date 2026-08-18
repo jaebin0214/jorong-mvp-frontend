@@ -19,9 +19,9 @@
 
   function update({ value, valueChange, previousValue }) {
     const formattedValue = value.toLocaleString('ko-KR');
-    const formattedChange = `${valueChange > 0 ? '+' : ''}${valueChange.toLocaleString('ko-KR')} KRW (${formatChangeRate(value, valueChange, previousValue)})`;
+    const formattedChange = `${valueChange > 0 ? '+' : ''}${valueChange.toLocaleString('ko-KR')} 크레딧 (${formatChangeRate(value, valueChange, previousValue)})`;
 
-    if (valueLabel) valueLabel.textContent = `${formattedValue} KRW`;
+    if (valueLabel) valueLabel.textContent = `${formattedValue} 크레딧`;
     if (valuePin) valuePin.textContent = formattedValue;
     if (changeLabel) {
       changeLabel.textContent = formattedChange;
@@ -29,7 +29,7 @@
       changeLabel.classList.toggle('is-down', valueChange < 0);
     }
     // [모바일 종목 요약] 데스크톱 차트 제목의 가격 변화와 정확히 같은 값을 표시합니다.
-    if (mobileValueLabel) mobileValueLabel.textContent = `${formattedValue} KRW`;
+    if (mobileValueLabel) mobileValueLabel.textContent = `${formattedValue} 크레딧`;
     if (mobileChangeLabel) {
       mobileChangeLabel.textContent = formattedChange;
       mobileChangeLabel.classList.toggle('is-up', valueChange > 0);

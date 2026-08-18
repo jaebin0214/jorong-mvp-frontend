@@ -18,16 +18,16 @@
     return node;
   }
 
-  function formatKrw(value) {
-    try { return math.formatKrwUnsigned(String(value ?? '0'), 0); } catch (_) { return '0 KRW'; }
+  function formatCredits(value) {
+    try { return math.formatCreditsUnsigned(String(value ?? '0'), 0); } catch (_) { return '0 크레딧'; }
   }
 
   function formatPrice(value) {
-    try { return math.formatPrice(String(value ?? '0')); } catch (_) { return '0 KRW'; }
+    try { return math.formatPrice(String(value ?? '0')); } catch (_) { return '0 크레딧'; }
   }
 
   function formatPnl(value) {
-    try { return math.formatKrw(String(value ?? '0')); } catch (_) { return '0 KRW'; }
+    try { return math.formatCredits(String(value ?? '0')); } catch (_) { return '0 크레딧'; }
   }
 
   function formatRate(value) {
@@ -116,20 +116,20 @@
     const pnlValue = element('strong', String(realizedPnl).startsWith('-') ? 'is-loss' : '', `${formatPnl(realizedPnl)} (${formatRate(settlement.pnlRate)})`);
     pnl.append(element('span', '', '최종 실현손익'), pnlValue);
     const metrics = element('div', 'settlement-metrics');
-    addMetric(metrics, '총 투자금', formatKrw(position.totalInvestment));
+    addMetric(metrics, '총 투자금', formatCredits(position.totalInvestment));
     addMetric(metrics, '평균 단가', formatPrice(position.averagePrice));
     addMetric(metrics, '최종 가격', formatPrice(settlement.closePrice ?? market.closePrice));
     addMetric(metrics, '보유 수량', math.formatQuantity(position.quantity || '0'));
     const payout = element('div', 'settlement-payout');
     const payoutCopy = element('div');
-    payoutCopy.append(element('b', '', '정산 지급액'), element('span', '', `정산 후 보유 · ${formatKrw(settlement.balanceAfterSettlement ?? report.wallet?.points)}`));
-    payout.append(payoutCopy, element('strong', '', formatKrw(settlement.settlementAmount)));
+    payoutCopy.append(element('b', '', '정산 지급액'), element('span', '', `정산 후 보유 · ${formatCredits(settlement.balanceAfterSettlement ?? report.wallet?.points)}`));
+    payout.append(payoutCopy, element('strong', '', formatCredits(settlement.settlementAmount)));
     resultCard.append(resultHeader, pnl, metrics, payout);
     row.append(subjectCard, resultCard);
 
     const finalSummary = element('article', 'market-final-summary cycle-report-market-summary');
     const summaryCopy = element('div');
-    summaryCopy.append(element('h2', '', '최종 시장 결과'), element('p', '', `총 거래량 ${formatKrw(summary.totalVolume)} · 참여 ${Number(summary.participants) || 0}명`));
+    summaryCopy.append(element('h2', '', '최종 시장 결과'), element('p', '', `총 거래량 ${formatCredits(summary.totalVolume)} · 참여 ${Number(summary.participants) || 0}명`));
     const ratio = element('div', 'market-ratio');
     const ratioLabels = element('div');
     ratioLabels.append(element('b', '', `옹호 ${supportRatio.toFixed(0)}%`), element('b', '', `조롱 ${mockRatio.toFixed(0)}%`));
