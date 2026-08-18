@@ -519,15 +519,15 @@
   .exchange-comment-empty { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; }
   .exchange-comment-list { min-height: 0; flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
 
-  /* [거래소의 투자 선택] 기본 화면은 Figma의 44px 양방향 선택 행으로 두고,
+  /* [거래소의 투자 선택] 기본 화면은 터치하기 편한 52px 양방향 선택 행으로 두고,
      실제 금액 입력은 사용자가 이 행을 탭했을 때만 하단 시트로 올립니다. */
   .exchange-roast-card {
     position: relative !important;
     inset: auto !important;
     z-index: auto;
     width: 100% !important;
-    height: 44px !important;
-    min-height: 44px !important;
+    height: 52px !important;
+    min-height: 52px !important;
     display: block;
     margin: 0;
     border: 0;
@@ -545,7 +545,7 @@
   .exchange-roast-cta > b { font-size: 13px; line-height: 1.2; }
   .mobile-investment-sheet-trigger {
     width: 100% !important;
-    height: 44px !important;
+    height: 52px !important;
     display: grid !important;
     grid-template-columns: 1fr 1fr;
     gap: 10px;
@@ -560,7 +560,7 @@
   .mobile-investment-sheet-trigger > em { display: none; }
   .mobile-investment-sheet-trigger::before,
   .mobile-investment-sheet-trigger::after {
-    height: 44px;
+    height: 52px;
     display: grid;
     place-items: center;
     border-radius: 14px;
@@ -598,8 +598,23 @@
   .mobile-investment-sheet-handle { height: 17px !important; flex-basis: 17px; margin: 0 0 10px !important; }
   .mobile-investment-sheet-handle > i { width: 57px; height: 5px; }
   .exchange-roast-card > .investment-panel .investment-directions { gap: 13px; margin-top: 16px; }
-  .exchange-roast-card > .investment-panel .investment-amount-control { margin-top: 27px; }
-  .mobile-investment-quick-amounts { gap: 10px; margin-top: 8px; }
+  /* 투자 금액 라벨부터 아래 요소를 방향 선택 영역과 조금 더 떨어뜨립니다. */
+  .exchange-roast-card > .investment-panel .investment-amount-control { margin-top: 38px; }
+  /* [빠른 금액 반응형] 4개 버튼이 좁은 화면에서도 같은 한 줄 안에서 균등하게 나뉩니다. */
+  .mobile-investment-quick-amounts {
+    width: 100%;
+    min-width: 0;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(5px, 2.5vw, 10px);
+    margin-top: 8px;
+  }
+  .mobile-investment-quick-amounts button {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0;
+    white-space: nowrap;
+  }
   .investment-panel .investment-submit { margin-top: 18px; }
   .mobile-investment-impact { display: block; margin-top: 7px; color: var(--mobile-muted); font-size: 11px; text-align: center; }
 
@@ -636,8 +651,9 @@
   /* [전용 작성·소개 레이어] 모달 자체도 화면 높이를 넘지 않도록 고정합니다. */
   .mobile-comment-composer { display: grid; grid-template-rows: 56px minmax(0, 1fr); overflow: hidden; }
   .mobile-comment-composer-body { width: 100%; min-height: 0; box-sizing: border-box; margin: 0; padding: 26px 20px 92px; overflow: hidden; }
-  #mobile-comment-form { margin-top: 20px; }
-  #mobile-comment-text { min-height: 180px; max-height: 180px; }
+  #mobile-comment-form { width: 100%; min-width: 0; margin-top: 20px; }
+  /* [댓글 입력 폭] 기본 textarea의 고정 열 너비를 제거해 작성 영역이 화면 콘텐츠 폭을 모두 사용합니다. */
+  #mobile-comment-text { width: 100%; min-height: 180px; max-height: 180px; box-sizing: border-box; resize: none; }
   #mobile-comment-form > button { position: fixed; right: 20px; bottom: calc(20px + env(safe-area-inset-bottom)); left: 20px; width: auto; margin: 0; }
   .subject-intro-modal { overflow: hidden; }
   .subject-intro-dialog { max-height: calc(100dvh - 40px); overflow: hidden; }
@@ -900,7 +916,8 @@
     --mobile-exchange-timer-height: clamp(84px, 16svh, 112px);
     --mobile-exchange-subject-height: clamp(90px, 17svh, 120px);
     --mobile-exchange-chart-height: clamp(82px, 15svh, 116px);
-    --mobile-exchange-action-height: clamp(40px, 6svh, 44px);
+    /* 옹호·조롱 선택 행은 짧은 화면에서도 최소 50px을 확보해 누르기 쉽게 합니다. */
+    --mobile-exchange-action-height: clamp(50px, 7.2svh, 54px);
     grid-template-rows:
       var(--mobile-exchange-timer-height)
       var(--mobile-exchange-subject-height)
@@ -956,6 +973,11 @@
     padding-right: var(--mobile-gutter);
     padding-bottom: calc(20px + var(--mobile-safe-bottom));
     padding-left: var(--mobile-gutter);
+  }
+  /* [첫 투자 시트 높이] 댓글 작성 직후 열리는 투자하기 시트만 덜 높게 올립니다.
+     내부 여백·버튼 순서는 유지하며, 투자 현황·추가 투자 시트에는 영향을 주지 않습니다. */
+  .exchange-roast-card > .investment-panel:not([hidden]) {
+    height: min(472px, calc(var(--mobile-viewport-height) - var(--mobile-header-height)));
   }
   .mobile-comment-composer { grid-template-rows: var(--mobile-header-height) minmax(0, 1fr); }
   .mobile-comment-composer > header {
