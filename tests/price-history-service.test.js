@@ -44,6 +44,7 @@ test('Supabase 연결 시 투자 직후에도 임시 로컬 캔들이 아닌 서
         assert.equal(args.p_interval_seconds, 60);
         return {
           data: {
+            initialPrice: 925,
             candles: [{
               started_at: new Date(startAt + 60_000).toISOString(),
               ended_at: new Date(startAt + 120_000).toISOString(),
@@ -71,4 +72,5 @@ test('Supabase 연결 시 투자 직후에도 임시 로컬 캔들이 아닌 서
   assert.equal(candles.length, 1);
   assert.equal(candles[0].close, 1040);
   assert.equal(candles[0].volume, 5000);
+  assert.equal(window.PriceHistoryService.getInitialPrice(), 925);
 });

@@ -4,10 +4,14 @@ window.PriceChartUI = (() => {
   const chartStatus = document.querySelector('#exchange-chart-status');
   const config = window.MarketConfig.get();
   const hasBackendApi = Boolean(window.JorongSupabase);
-  const initialPrice = Number(config.subject.initialPrice);
-  // [운영 종목 기준선] 가격 변동의 중앙 기준선은 운영자가 개설 시 정한 최초 가격입니다.
-  // 종목마다 기준 가격이 달라도 같은 방식으로 5개 눈금과 50 크레딧 단위를 유지합니다.
-  const priceBaseline = Math.max(1, Number(config.subject.initialPrice) || 1000);
+  // [운영 종목 기준선] 초기 화면은 market-config를 사용하고, 서버 캔들을 받은 뒤에는
+  // 응답의 initialPrice를 사용합니다. 운영 설정 캐시와 실제 장의 기준가가 달라도 축이 어긋나지 않습니다.
+  function getPriceBaseline() {
+    return Math.max(
+      1,
+      Number(window.PriceHistoryService?.getInitialPrice?.()) || Number(config.subject.initialPrice) || 1000,
+    );
+  }
   const priceGridUnit = 50;
   const gridLineCount = 5;
   // SVG의 가상 좌표계 크기는 고정합니다. 가격 범위만 매 렌더링마다 자동 보정합니다.
@@ -39,7 +43,7 @@ window.PriceChartUI = (() => {
   // [Y축 자동 보정] 개설 시 설정한 최초 가격 기준선은 차트 중앙에 고정합니다.
   // 최고·최저가가 범위를 벗어날 때만 위·아래 범위를 같은 비율로 확장합니다.
   // 화면의 가로 기준선은 언제나 5개이며, 모든 라벨은 50 크레딧의 배수입니다.
-  function getPriceDomain(candles) {
+  function getPriceDomain(candles, priceBaseline) {
     const values = candles
       .flatMap((candle) => [candle.open, candle.high, candle.low, candle.close])
       .map(Number)
@@ -86,7 +90,8 @@ window.PriceChartUI = (() => {
     const safeCandles = candles.length
       ? candles.filter((candle) => [candle.open, candle.high, candle.low, candle.close].every((value) => Number.isFinite(Number(value)) && Number(value) > 0))
       : [];
-    const fallbackCandle = { startedAt: startAt, endedAt: startAt, open: initialPrice, high: initialPrice, low: initialPrice, close: initialPrice, volume: 0 };
+    const priceBaseline = getPriceBaseline();
+    const fallbackCandle = { startedAt: startAt, endedAt: startAt, open: priceBaseline, high: priceBaseline, low: priceBaseline, close: priceBaseline, volume: 0 };
     const displayCandles = safeCandles.length ? safeCandles : [fallbackCandle];
     const plotLeft = padding.left;
     const plotRight = width - padding.right;
@@ -94,7 +99,7 @@ window.PriceChartUI = (() => {
     const priceBottom = height - padding.bottom - volumeHeight;
     const plotWidth = plotRight - plotLeft;
     const priceHeight = priceBottom - priceTop;
-    const domain = getPriceDomain(displayCandles);
+    const domain = getPriceDomain(displayCandles, priceBaseline);
     const yForPrice = (price) => priceTop + ((domain.max - Number(price)) / (domain.max - domain.min)) * priceHeight;
     const xPositions = getCandleXPositions(displayCandles, startAt, endAt, plotLeft, plotWidth);
     const maxVolume = Math.max(1, ...displayCandles.map((candle) => Number(candle.volume) || 0));

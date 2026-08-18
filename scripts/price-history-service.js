@@ -4,6 +4,9 @@ window.PriceHistoryService = (() => {
   const marketConfig = window.MarketConfig.get();
   const { session, subject } = marketConfig;
   const localEvents = [];
+  // 서버가 반환한 시장 최초 가격을 보관합니다. 차트는 이 값을 Y축 기준선으로 사용해야
+  // 운영 설정 캐시가 오래되었을 때도 실제 장의 기준가와 맞춰서 그려집니다.
+  let latestInitialPrice = Number(subject.initialPrice);
 
   // [현재 시장 ID] 서버 시계가 다른 라운드를 지정해도 해당 라운드의 모든 투자 기록으로 캔들을 조회합니다.
   function getMarketSessionId() {
@@ -98,6 +101,10 @@ window.PriceHistoryService = (() => {
     if (!Array.isArray(body.candles)) {
       throw new Error('가격 이력 응답 형식이 올바르지 않습니다.');
     }
+    const responseInitialPrice = Number(body.initialPrice);
+    if (Number.isFinite(responseInitialPrice) && responseInitialPrice > 0) {
+      latestInitialPrice = responseInitialPrice;
+    }
     return body.candles
       .map(normalizeCandle)
       .filter(Boolean)
@@ -136,5 +143,11 @@ window.PriceHistoryService = (() => {
     return buildLocalCandles();
   }
 
-  return Object.freeze({ getSessionRange, loadCandles, recordInvestment });
+  return Object.freeze({
+    getSessionRange,
+    // [차트 기준가] API 응답이 있으면 서버값을, 로컬 시연이면 market-config의 최초 가격을 반환합니다.
+    getInitialPrice: () => latestInitialPrice,
+    loadCandles,
+    recordInvestment,
+  });
 })();
