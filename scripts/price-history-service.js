@@ -21,8 +21,10 @@ window.PriceHistoryService = (() => {
   // [캔들 보정] 백엔드 응답의 가격·시각 필드를 안전한 숫자로 통일합니다.
   function normalizeCandle(candle) {
     const { startAt, endAt } = getSessionRange();
-    const startedAt = Date.parse(candle.startedAt || candle.openedAt || candle.timestamp) || startAt;
-    const endedAt = Date.parse(candle.endedAt) || Math.min(endAt, startedAt + 60_000);
+    // Supabase RPC는 camelCase를 기본 계약으로 사용합니다. 다만 SQL 행을 그대로 반환하는
+    // 구현도 안전하게 처리할 수 있도록 snake_case 시각 필드도 허용합니다.
+    const startedAt = Date.parse(candle.startedAt || candle.started_at || candle.openedAt || candle.timestamp) || startAt;
+    const endedAt = Date.parse(candle.endedAt || candle.ended_at) || Math.min(endAt, startedAt + 60_000);
     const open = Number(candle.open);
     const high = Number(candle.high);
     const low = Number(candle.low);
@@ -91,7 +93,12 @@ window.PriceHistoryService = (() => {
     if (error) throw new Error(error.message || '가격 이력을 불러오지 못했습니다.');
 
     const body = data || {};
-    return (body.candles || [])
+    // 응답 필드가 없는데 빈 배열처럼 처리하면, 이미 표시 중인 그래프가 기준가 한 개짜리
+    // 화면으로 되돌아갑니다. 서버 계약 오류는 차트 UI가 기존 그래프를 유지할 수 있게 명시적으로 알립니다.
+    if (!Array.isArray(body.candles)) {
+      throw new Error('가격 이력 응답 형식이 올바르지 않습니다.');
+    }
+    return body.candles
       .map(normalizeCandle)
       .filter(Boolean)
       // 서버 응답 순서와 상관없이 시간축에 맞춰 캔들을 그립니다.
@@ -100,6 +107,11 @@ window.PriceHistoryService = (() => {
 
   // [투자 반영] Supabase 미연결에서는 즉시 로컬 캔들을 추가하고, 연결 시에는 서버 집계값을 다시 조회합니다.
   async function recordInvestment(result) {
+    // [서버 우선] 배포 환경에서는 프론트가 만든 "내 주문만의 임시 캔들"을 그리지 않습니다.
+    // 주문 트랜잭션으로 확정된 모든 참여자의 서버 집계 캔들만 사용해야, 잠깐 보였다가
+    // 다음 폴링에서 모양이 바뀌는 현상을 막을 수 있습니다.
+    if (supabaseClient) return loadCandles();
+
     // [즉시 반영] 첫 투자와 추가 투자 모두 주문 응답의 최신 가격으로 임시 캔들을 만들고, 서버 응답 전에도 화면에 표시합니다.
     const price = Number(
       result.target?.value

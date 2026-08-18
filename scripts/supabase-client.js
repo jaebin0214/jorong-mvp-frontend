@@ -3,6 +3,10 @@
 // auth-service.js 등 이 클라이언트를 사용하는 모든 서비스 파일보다 먼저 로드되어야 합니다.
 // (index.html / admin.html의 <script> 순서를 그대로 유지해주세요.)
 window.JorongSupabase = (() => {
+  // [로컬 시연 우선] api-config.js가 localhost·?demo=1에서 설정한 시연 모드에서는
+  // 연결 정보가 남아 있어도 클라이언트를 만들지 않아 모든 서비스가 localStorage 모드로 동작합니다.
+  if (window.JORONG_DEMO_MODE) return null;
+
   const url = (window.JORONG_SUPABASE_URL || '').trim();
   const anonKey = (window.JORONG_SUPABASE_ANON_KEY || '').trim();
 

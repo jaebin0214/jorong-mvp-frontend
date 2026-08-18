@@ -29,3 +29,46 @@ test('로컬 캔들은 현재 사용자뿐 아니라 같은 시장의 모든 투
   assert.equal(candles[1].volume, 3000);
   assert.equal(candles[2].volume, 2000);
 });
+
+test('Supabase 연결 시 투자 직후에도 임시 로컬 캔들이 아닌 서버 집계 캔들을 사용한다', async () => {
+  const startAt = Date.parse('2026-08-16T00:00:00.000Z');
+  const endAt = startAt + (6 * 60 * 60 * 1000);
+  let rpcCalls = 0;
+  const window = {
+    JorongSupabase: {
+      rpc: async (name, args) => {
+        rpcCalls += 1;
+        assert.equal(name, 'get_market_candles');
+        // VM 내부에서 생성된 객체는 프로토타입이 달라 deepEqual 대신 요청 필드를 개별 검증합니다.
+        assert.equal(args.p_market_id, 'market-server');
+        assert.equal(args.p_interval_seconds, 60);
+        return {
+          data: {
+            candles: [{
+              started_at: new Date(startAt + 60_000).toISOString(),
+              ended_at: new Date(startAt + 120_000).toISOString(),
+              open: 1000,
+              high: 1060,
+              low: 990,
+              close: 1040,
+              volume: 5000,
+            }],
+          },
+          error: null,
+        };
+      },
+    },
+    MarketConfig: { get: () => ({ session: { id: 'market-server', startsAt: new Date(startAt).toISOString(), durationHours: 6 }, subject: { id: 'subject-01', initialPrice: 1000 } }) },
+    MarketCountdown: { getSessionId: () => 'market-server', getEndAt: () => endAt },
+  };
+  vm.runInNewContext(source, { window, Date, JSON, Math, String, Number, Object, Array, URLSearchParams });
+
+  const candles = await window.PriceHistoryService.recordInvestment({
+    order: { id: 'order-1', resultingPrice: '9999', investmentAmount: '3000', side: 'SUPPORT' },
+  });
+
+  assert.equal(rpcCalls, 1);
+  assert.equal(candles.length, 1);
+  assert.equal(candles[0].close, 1040);
+  assert.equal(candles[0].volume, 5000);
+});

@@ -17,6 +17,8 @@ window.PriceChartUI = (() => {
   const padding = { top: 40, right: 10, bottom: 10, left: 70 };
   const volumeHeight = 48;
   let currentCandles = [];
+  // 폴링·주문 직후 재조회가 겹쳐도 가장 마지막 요청의 응답만 차트에 반영합니다.
+  let latestRefreshId = 0;
 
   function formatElapsedTime(timestamp, startAt) {
     const totalMinutes = Math.max(0, Math.round((timestamp - startAt) / 60_000));
@@ -133,23 +135,43 @@ window.PriceChartUI = (() => {
     if (chartStatus) chartStatus.textContent = candles.length ? '실시간 투자 기록 반영' : '첫 투자를 기다리고 있습니다.';
   }
 
-  async function refresh() {
+  function applyCandles(nextCandles, { preserveCurrentOnEmpty = false } = {}) {
+    // 주문 직후 서버의 캔들 집계가 아직 반영되지 않은 경우, 직전 차트를 빈 기준가 차트로
+    // 덮어쓰지 않습니다. 다음 폴링에서 서버의 확정 데이터가 도착하면 그때 교체합니다.
+    if (preserveCurrentOnEmpty && hasBackendApi && nextCandles.length === 0 && currentCandles.length > 0) {
+      if (chartStatus) chartStatus.textContent = '최신 투자 기록을 동기화하고 있습니다.';
+      return false;
+    }
+    currentCandles = nextCandles;
+    render(currentCandles);
+    return true;
+  }
+
+  async function refresh({ preserveCurrentOnEmpty = true } = {}) {
+    const refreshId = ++latestRefreshId;
     try {
-      currentCandles = await window.PriceHistoryService.loadCandles();
-      render(currentCandles);
+      const nextCandles = await window.PriceHistoryService.loadCandles();
+      // 네트워크가 느려 먼저 시작한 요청이 나중에 도착한 경우에는 최신 화면을 되돌리지 않습니다.
+      if (refreshId !== latestRefreshId) return;
+      applyCandles(nextCandles, { preserveCurrentOnEmpty });
     } catch (error) {
+      if (refreshId !== latestRefreshId) return;
       render(currentCandles);
       if (chartStatus) chartStatus.textContent = error.message || '가격 이력을 불러오지 못했습니다.';
     }
   }
 
   async function recordInvestment(result) {
+    const refreshId = ++latestRefreshId;
     try {
-      currentCandles = await window.PriceHistoryService.recordInvestment(result);
-      render(currentCandles);
-      // 서버 모드에서는 즉시 표시 후, 서버 집계 데이터로 한 번 더 동기화합니다.
-      if (hasBackendApi) window.setTimeout(refresh, 1_000);
+      const nextCandles = await window.PriceHistoryService.recordInvestment(result);
+      if (refreshId !== latestRefreshId) return;
+      applyCandles(nextCandles, { preserveCurrentOnEmpty: hasBackendApi });
+      // 캔들 집계가 주문 트랜잭션 직후에 늦게 반영되는 백엔드도 있으므로 한 번 더 확인합니다.
+      // 이 재조회도 기존 그래프를 지우지 않고 서버의 확정값이 도착할 때만 교체합니다.
+      if (hasBackendApi) window.setTimeout(() => refresh({ preserveCurrentOnEmpty: true }), 1_500);
     } catch (error) {
+      if (refreshId !== latestRefreshId) return;
       if (chartStatus) chartStatus.textContent = error.message || '가격 차트를 갱신하지 못했습니다.';
     }
   }
