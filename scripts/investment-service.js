@@ -151,11 +151,20 @@
   function toTarget(market) {
     const value = Number(market.currentPrice);
     const previousValue = Number(market.previousPrice ?? market.currentPrice);
+    const initialPrice = Number(
+      market.initialPrice
+      ?? market.initial_price
+      ?? market.basePrice
+      ?? market.base_price
+      ?? config.subject.initialPrice,
+    );
     return {
       id: TARGET_ID,
       previousValue,
       value,
       valueChange: value - previousValue,
+      // [최초가격 전달] 화면은 직전 가격과 무관하게 이 값을 기준으로 누적 변동률을 표시합니다.
+      initialPrice,
     };
   }
 

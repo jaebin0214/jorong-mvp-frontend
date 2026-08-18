@@ -38,6 +38,17 @@ test('OPEN 시장 응답은 종목·기준가·다음 예약을 MarketConfig 구
   assert.equal(config.subject.initialPrice, 1250);
 });
 
+test('Supabase base_price 원본 컬럼도 최초가격으로 정규화한다', () => {
+  const bootstrap = loadBootstrap();
+  const config = bootstrap.normalizeRuntimeConfig({
+    displayMarket: {
+      id: 'market-base-price', status: 'OPEN', openAt: '2026-08-17T13:00:00+09:00', closeAt: '2026-08-17T19:00:00+09:00',
+      subject: { id: 'hoon', name: '훈이' }, base_price: 1350,
+    },
+  });
+  assert.equal(config.subject.initialPrice, 1350);
+});
+
 test('종료 시장도 displayMarket으로 받으면 정산 화면용 회차를 유지한다', () => {
   const bootstrap = loadBootstrap();
   const config = bootstrap.normalizeRuntimeConfig({

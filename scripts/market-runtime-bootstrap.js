@@ -62,7 +62,17 @@
         name: String(subject.name || subject.subjectName || market.subjectName || market.targetName || '오늘의 종목'),
         imagePath: String(subject.imageUrl || subject.imagePath || market.targetImageUrl || market.imageUrl || market.imagePath || ''),
         description: String(subject.description || market.description || market.shortIntroduction || ''),
-        initialPrice: Math.max(1, Math.round(Number(subject.initialPrice ?? market.initialPrice ?? market.basePrice) || 1000)),
+        // Supabase 원본 컬럼(base_price)과 RPC 별칭(initialPrice)을 모두 지원해 최초가격 기준이 바뀌지 않게 합니다.
+        initialPrice: Math.max(1, Math.round(Number(
+          subject.initialPrice
+          ?? subject.initial_price
+          ?? subject.basePrice
+          ?? subject.base_price
+          ?? market.initialPrice
+          ?? market.initial_price
+          ?? market.basePrice
+          ?? market.base_price
+        ) || 1000)),
       },
     };
   }

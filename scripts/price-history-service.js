@@ -124,7 +124,8 @@ window.PriceHistoryService = (() => {
       if (!Array.isArray(body.candles)) {
         throw new Error('가격 이력 응답 형식이 올바르지 않습니다.');
       }
-      const responseInitialPrice = Number(body.initialPrice);
+      // 캔들 RPC도 base_price 원본 컬럼 또는 initialPrice 별칭 중 어느 쪽이든 최초가격으로 읽습니다.
+      const responseInitialPrice = Number(body.initialPrice ?? body.initial_price ?? body.basePrice ?? body.base_price);
       if (Number.isFinite(responseInitialPrice) && responseInitialPrice > 0) {
         latestInitialPrice = responseInitialPrice;
       }
