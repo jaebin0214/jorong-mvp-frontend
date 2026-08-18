@@ -60,7 +60,17 @@
   .app-shell.is-exchange .exchange-header-actions { gap: 8px; }
   .header-login,
   .exchange-header-actions > button { min-width: 0; height: 32px; border-radius: 10px; padding: 0 11px; font-size: 12px; }
-  .exchange-header-actions > b { margin-right: 0; color: var(--mobile-muted); font-size: 12px; white-space: nowrap; }
+  /* [모바일 보유 금액] 데스크톱과 동일하게 거래소 헤더에서 현재 포인트를 확인합니다. */
+  .app-shell.is-exchange .exchange-header-actions > b {
+    display: inline-flex;
+    align-items: center;
+    height: 30px;
+    margin-right: 0;
+    color: var(--mobile-muted);
+    font-size: 11px;
+    line-height: 1;
+    white-space: nowrap;
+  }
   .header-profile { display: inline-flex; align-items: center; gap: 4px; }
   .exchange-header-actions .header-member-name,
   .landing-header-actions .header-member-name { min-height: 30px; padding: 0 4px; color: var(--mobile-ink); background: transparent; font-size: 11px; }
@@ -963,6 +973,183 @@
     padding-left: var(--mobile-gutter);
   }
   .scroll-top-button { bottom: calc(var(--mobile-bottom-nav-height) + 16px); }
+
+  /* [모바일 정산 화면] 데스크톱 정산 데이터를 그대로 사용하되, 작은 화면에서는
+     종목·개인 결과를 하나의 카드로 묶어 Figma의 결과 화면처럼 한눈에 읽습니다. */
+  .app-shell.is-market-settlement .app-header {
+    gap: 8px;
+    padding-right: var(--mobile-gutter);
+    padding-left: var(--mobile-gutter);
+  }
+  .app-shell.is-market-settlement .wordmark,
+  .app-shell.is-market-settlement .header-actions { display: none; }
+  .mobile-settlement-back,
+  .mobile-settlement-title { display: none; }
+  .app-shell.is-market-settlement .mobile-settlement-back {
+    width: 24px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    padding: 0;
+    color: var(--mobile-blue);
+    background: transparent;
+    font-size: 28px;
+    font-weight: 500;
+    line-height: 1;
+  }
+  .app-shell.is-market-settlement .mobile-settlement-title {
+    display: block;
+    color: var(--mobile-ink);
+    font-size: 15px;
+    font-weight: 850;
+    letter-spacing: -.04em;
+  }
+  .market-settlement-view {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    gap: 15px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 18px var(--mobile-gutter) calc(var(--mobile-bottom-nav-height) + 20px);
+  }
+  /* 긴 모바일 화면은 결과 카드 사이에 여유를 배분해 마지막 동작 버튼까지 화면 아래에 균형 있게 배치합니다. */
+  @media (min-height: 720px) { .market-settlement-view { justify-content: space-between; } }
+  .market-settlement-hero { flex: 0 0 auto; gap: 6px; }
+  .market-settlement-hero > span { height: 22px; padding: 0 10px; font-size: 9px; }
+  .market-settlement-hero h1 { font-size: clamp(21px, 5.7vw, 24px); line-height: 1.28; }
+  .market-settlement-hero > p { font-size: 11px; line-height: 1.5; }
+  .next-market-block { width: min(100%, 280px); gap: 5px; margin-top: 8px; }
+  .next-market-block > strong { width: 100%; height: 50px; border-radius: 12px; font-size: 25px; }
+  .next-market-block > small { font-size: 10px; }
+  .market-settlement-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--mobile-line);
+    border-radius: var(--mobile-card-radius);
+    background: var(--mobile-surface);
+  }
+  .market-settlement-row .settlement-subject-card {
+    min-height: 110px;
+    display: grid;
+    grid-template-columns: 82px minmax(0, 1fr);
+    align-items: center;
+    justify-items: start;
+    gap: 12px;
+    border: 0;
+    border-bottom: 1px solid var(--mobile-line);
+    border-radius: 0;
+    padding: 14px;
+  }
+  .market-settlement-row .settlement-subject-card img {
+    width: 82px;
+    height: 82px;
+    border: 1px solid #94a3b8;
+    border-radius: 9px;
+    object-position: 15% 67%;
+  }
+  .market-settlement-row .settlement-subject-copy { width:100%; justify-items:start; gap:5px; text-align:left; }
+  .market-settlement-row .settlement-subject-copy > b { font-size: 15px; }
+  .market-settlement-row .settlement-subject-copy > span { font-size: 12px; }
+  .market-settlement-row .settlement-subject-copy > p { display:-webkit-box; overflow:hidden; margin:0; font-size:11px; line-height:1.45; text-align:left; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+  .market-settlement-row .settlement-result-card {
+    min-height: 0;
+    height: auto;
+    gap: 11px;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    padding: 15px;
+  }
+  .market-settlement-row .settlement-result-card h2 { font-size: 16px; }
+  .market-settlement-row .settlement-result-card > header b { min-width: 66px; height: 26px; font-size: 10px; }
+  .market-settlement-row .settlement-pnl > span { font-size: 11px; }
+  .market-settlement-row .settlement-pnl > strong { font-size: 21px; }
+  .market-settlement-row .settlement-metrics { gap: 10px 14px; padding-top: 11px; }
+  .market-settlement-row .settlement-metrics span { font-size: 10px; }
+  .market-settlement-row .settlement-metrics b { font-size: 12px; }
+  .market-settlement-row .settlement-payout { min-height: 52px; margin-top: 2px; padding: 10px 12px; }
+  .market-settlement-row .settlement-payout div > b { font-size: 11px; }
+  .market-settlement-row .settlement-payout div > span { font-size: 9px; }
+  .market-settlement-row .settlement-payout > strong { font-size: 22px; }
+  .market-final-summary {
+    min-height: 0;
+    flex: 0 0 auto;
+    gap: 9px;
+    margin: 0;
+    border-radius: var(--mobile-card-radius);
+    padding: 13px 14px;
+  }
+  .market-final-summary h2 { font-size: 14px; }
+  .market-final-summary p { margin-top: 4px; font-size: 10px; }
+  .market-ratio { gap: 7px; }
+  .market-ratio b { font-size: 11px; }
+  .market-ratio > span { height: 9px; }
+  .mobile-settlement-actions { display: grid; grid-template-columns: 1fr 1.12fr; flex: 0 0 auto; gap: 8px; }
+  .mobile-settlement-actions button { height: 44px; border: 0; border-radius: 11px; color: var(--mobile-blue); background: var(--mobile-blue-soft); font-size: 12px; font-weight: 850; }
+  .mobile-settlement-actions button:last-child { color: #fff; background: var(--mobile-blue); }
+
+  /* [모바일 사이클 리포트] 리포트 카드에서도 종목 이미지·정산·시장 비율·내 댓글을 모두 유지합니다.
+     카드 목록만 화면 안에서 스크롤되므로 과거 회차가 많아져도 하단 탐색을 가리지 않습니다. */
+  .cycle-report-view { padding: 18px var(--mobile-gutter) calc(var(--mobile-bottom-nav-height) + 12px); }
+  .cycle-report-heading { margin-bottom: 12px; }
+  .cycle-report-heading .eyebrow { font-size: 10px; }
+  .cycle-report-heading h1 { font-size: 23px; }
+  .cycle-report-heading > p:last-child { margin-top: 6px; font-size: 11px; }
+  .cycle-report-list { width: 100%; gap: 12px; padding-bottom: 4px; }
+  .cycle-report-card { border-radius: var(--mobile-card-radius); padding: 13px; }
+  .cycle-report-card-heading { gap: 10px; padding-bottom: 11px; }
+  .cycle-report-card-heading h2 { font-size: 17px; }
+  .cycle-report-settlement-row { grid-template-columns: 1fr; gap: 0; margin-top: 11px; overflow: hidden; border: 1px solid var(--mobile-line); border-radius: 12px; }
+  .cycle-report-settlement-row .settlement-subject-card {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: 54px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    justify-items: start;
+    gap: 3px 10px;
+    border: 0;
+    border-bottom: 1px solid var(--mobile-line);
+    border-radius: 0;
+    padding: 10px;
+  }
+  .cycle-report-settlement-row .settlement-subject-card img {
+    grid-row: 1 / 3;
+    width: 54px;
+    height: 54px;
+    border: 1px solid #94a3b8;
+    border-radius: 8px;
+  }
+  .cycle-report-settlement-row .settlement-subject-copy { width:100%; justify-items:start; gap:4px; text-align:left; }
+  .cycle-report-settlement-row .settlement-subject-copy > b { font-size: 12px; }
+  .cycle-report-settlement-row .settlement-subject-copy > span { font-size: 10px; }
+  .cycle-report-settlement-row .settlement-subject-copy > p { display:-webkit-box; overflow:hidden; margin:0; font-size:9px; line-height:1.4; text-align:left; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+  .cycle-report-settlement-row .settlement-result-card {
+    min-height: 0;
+    height: auto;
+    gap: 8px;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    padding: 11px;
+  }
+  .cycle-report-settlement-row .settlement-result-card h2 { font-size: 13px; }
+  .cycle-report-settlement-row .settlement-pnl > strong { font-size: 16px; }
+  .cycle-report-settlement-row .settlement-metrics { gap: 8px 10px; padding-top: 9px; }
+  .cycle-report-settlement-row .settlement-metrics span { font-size: 9px; }
+  .cycle-report-settlement-row .settlement-metrics b { font-size: 10px; }
+  .cycle-report-settlement-row .settlement-payout { min-height: 44px; padding: 8px 10px; }
+  .cycle-report-settlement-row .settlement-payout > strong { font-size: 17px; }
+  .cycle-report-market-summary { min-height: 0; margin-top: 11px; padding: 10px; }
+  .cycle-report-comments { margin-top: 12px; padding-top: 12px; }
+  .cycle-report-comments h3 { font-size: 13px; }
+  .cycle-report-comment-list { gap: 6px; margin-top: 9px; }
+  .cycle-report-comment-list li { padding: 8px 9px; font-size: 11px; }
 
   /* 바텀 시트와 전용 작성 화면도 같은 안전 영역/동적 높이를 사용합니다. */
   .exchange-roast-card > .investment-panel:not([hidden]),

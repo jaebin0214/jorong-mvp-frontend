@@ -143,7 +143,8 @@
 
   // [댓글 작성 레이어] 모바일 입력값을 기존 form으로 전달하므로 API/로컬 시연 저장 방식이 완전히 동일합니다.
   function openComposer(opener = document.activeElement) {
-    if (!isMobile() || window.MarketCountdown?.isEnded?.()) return;
+    const state = window.CommentService?.getCommentingState?.();
+    if (!isMobile() || (state && !state.isOpen) || window.MarketCountdown?.isEnded?.()) return;
     priorFocus = opener instanceof HTMLElement ? opener : null;
     setMobileSubjectName();
     composer.hidden = false;
@@ -207,6 +208,11 @@
 
   composerForm.addEventListener('submit', (event) => {
     event.preventDefault();
+    const state = window.CommentService?.getCommentingState?.();
+    if (state && !state.isOpen) {
+      closeComposer();
+      return;
+    }
     const content = composerInput.value.trim();
     if (!content) {
       composerInput.focus();

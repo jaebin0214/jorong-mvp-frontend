@@ -23,6 +23,12 @@
     toastTimer = window.setTimeout(() => toast.classList.remove('is-visible'), 3000);
   }
 
+  // [댓글 작성 상태] 서비스의 시장 상태 판정을 UI에서도 재사용해 입력 진입과 저장 결과가 어긋나지 않게 합니다.
+  function getCommentingState() {
+    return service.getCommentingState?.()
+      || { isOpen: !window.MarketCountdown?.isEnded?.(), message: '거래가 종료되어 새 댓글을 작성할 수 없습니다.' };
+  }
+
   function getAvatarText(nickname) {
     return String(nickname || '나').slice(0, 1);
   }
@@ -229,14 +235,21 @@
       replyButton.addEventListener('click', () => {
         replyArea.hidden = false;
         replyButton.setAttribute('aria-expanded', 'true');
-        if (!window.MarketCountdown?.isEnded()) replyInput.focus();
+        const state = getCommentingState();
+        if (!state.isOpen) {
+          replyArea.hidden = true;
+          showToast(state.message);
+          return;
+        }
+        replyInput.focus();
       });
     }
 
     replyForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      if (!allowReply || window.MarketCountdown?.isEnded()) {
-        showToast('거래가 종료되어 새 답글을 작성할 수 없습니다.');
+      const state = getCommentingState();
+      if (!allowReply || !state.isOpen) {
+        showToast(state.message);
         return;
       }
       const content = replyInput.value.trim();
@@ -311,13 +324,14 @@
     updateCommentCount();
     // 계정별 댓글 작성 여부를 투자 UI에 전달해 다른 사용자의 댓글로 잠금이 풀리지 않게 합니다.
     window.InvestmentUI?.setCommentUnlockState?.(hasCurrentUserRootComment);
-    if (window.MarketCountdown?.isEnded()) window.CommentCloseUI?.closeCommenting?.();
+    window.CommentCloseUI?.syncCommentingState?.();
   }
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (window.MarketCountdown?.isEnded()) {
-      showToast('거래가 종료되어 새 댓글을 작성할 수 없습니다.');
+    const state = getCommentingState();
+    if (!state.isOpen) {
+      showToast(state.message);
       return;
     }
     const content = input.value.trim();
@@ -342,6 +356,11 @@
   });
 
   function activateRoastCta() {
+    const state = getCommentingState();
+    if (!state.isOpen) {
+      showToast(state.message);
+      return;
+    }
     // 다른 사용자가 작성한 댓글이 있어도 현재 계정이 댓글을 쓰기 전에는 입력창으로 안내합니다.
     if (!hasCurrentUserRootComment) return focusCommentComposer();
     window.InvestmentUI.open(roastCta);

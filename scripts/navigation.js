@@ -9,6 +9,10 @@ window.Navigation = (() => {
     views.forEach((view) => view.classList.toggle('is-active', view === target));
     // 거래소 화면에서만 전용 상단 메뉴와 계정 영역을 표시합니다.
     appShell.classList.toggle('is-exchange', exchangeViewIds.has(target.id));
+    // [정산 전용 모바일 헤더] 정산 결과는 exchange 화면 안에서만 표시되므로,
+    // 리포트·게시판 등으로 이동한 뒤에도 정산 헤더가 남지 않게 여기서 함께 동기화합니다.
+    const settlementView = document.querySelector('#market-settlement-view');
+    appShell.classList.toggle('is-market-settlement', target.id === 'exchange' && settlementView && !settlementView.hidden);
     // [거래소 상단 탭] 현재 화면과 연결된 탭만 활성 색상으로 표시합니다.
     document.querySelectorAll('.exchange-header-nav [data-view]').forEach((button) => {
       button.classList.toggle('is-active', button.dataset.view === target.id);

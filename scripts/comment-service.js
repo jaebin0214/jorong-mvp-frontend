@@ -22,11 +22,32 @@
     return window.AuthService?.getRequestHeaders?.() || {};
   }
 
-  function assertCommentingIsOpen() {
-    if (window.MarketCountdown?.requiresServerClock?.() && !window.MarketCountdown.isReady()) {
-      throw new Error('거래 시간을 확인 중입니다. 잠시 후 다시 시도해주세요.');
+  // [작성 가능 여부] 화면의 입력 잠금과 실제 저장 요청이 같은 시장 상태를 보도록 한 곳에서 판정합니다.
+  // 서버 연결 뒤에도 API가 최종 검증하지만, 프런트에서는 존재하지 않거나 닫힌 장에 작성 UI를 열지 않습니다.
+  function getCommentingState() {
+    const config = window.MarketConfig?.get?.() || marketConfig;
+    const countdown = window.MarketCountdown;
+    // marketAvailable/status가 없던 이전 API 응답은 기존처럼 OPEN으로 해석해 호환성을 유지합니다.
+    const status = String(countdown?.getStatus?.() || config.session?.status || 'OPEN').toUpperCase();
+
+    if (config.marketAvailable === false) {
+      return { isOpen: false, message: '현재 거래 중인 장이 없어 새 댓글을 작성할 수 없습니다.' };
     }
-    if (window.MarketCountdown?.isEnded()) throw new Error('거래가 종료되어 새 댓글을 작성할 수 없습니다.');
+    if (countdown?.requiresServerClock?.() && !countdown.isReady?.()) {
+      return { isOpen: false, message: '거래 시간을 확인 중입니다. 잠시 후 다시 시도해주세요.' };
+    }
+    if (countdown?.isEnded?.() || ['CLOSED', 'SETTLED', 'ARCHIVED'].includes(status)) {
+      return { isOpen: false, message: '거래가 종료되어 새 댓글을 작성할 수 없습니다.' };
+    }
+    if (!['OPEN', 'LIVE'].includes(status)) {
+      return { isOpen: false, message: '거래가 시작되면 새 댓글을 작성할 수 있습니다.' };
+    }
+    return { isOpen: true, message: '' };
+  }
+
+  function assertCommentingIsOpen() {
+    const state = getCommentingState();
+    if (!state.isOpen) throw new Error(state.message);
   }
 
   // [트리 탐색] 답글까지 포함한 ID 탐색/HYPE 집계를 하나의 재귀 함수로 처리합니다.
@@ -293,6 +314,7 @@
     TARGET_ID,
     MARKET_SESSION_ID: marketConfig.session.id,
     getMarketSessionId,
+    getCommentingState,
     loadComments,
     createComment,
     deleteComment,

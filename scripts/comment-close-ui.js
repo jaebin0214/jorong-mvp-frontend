@@ -2,31 +2,58 @@
 (() => {
   const commentForm = document.querySelector('#exchange-comment-form');
   const commentInput = document.querySelector('#exchange-comment-text');
+  const commentSubmitButton = commentForm?.querySelector('button[type="submit"]');
+  const mobileComposeButton = document.querySelector('#mobile-community-compose');
+  const originalPlaceholder = commentInput?.placeholder || '';
+  const originalMobileLabel = mobileComposeButton?.textContent || '조롱 남기기';
 
-  // [작성 기능 잠금] 댓글 입력창과 답글 작성 폼을 비활성화하되, 답글 목록을 여는 버튼은 유지합니다.
-  function closeCommenting() {
-    if (!commentForm || commentForm.classList.contains('is-market-ended')) return;
+  function getCommentingState() {
+    return window.CommentService?.getCommentingState?.()
+      || { isOpen: !window.MarketCountdown?.isEnded?.(), message: '거래가 종료되어 새 댓글을 작성할 수 없습니다.' };
+  }
 
-    commentForm.classList.add('is-market-ended');
+  // [작성 기능 동기화] 장이 없거나 시작 전·종료 후에는 새 댓글과 답글만 잠그고, 기존 댓글 탐색은 그대로 둡니다.
+  function syncCommentingState() {
+    if (!commentForm) return;
+    const state = getCommentingState();
+    const isClosed = !state.isOpen;
+
+    commentForm.classList.toggle('is-market-ended', isClosed);
     if (commentInput) {
-      commentInput.value = '';
-      commentInput.placeholder = '거래가 종료되어 새 댓글을 작성할 수 없습니다.';
-      commentInput.disabled = true;
+      if (isClosed) commentInput.value = '';
+      commentInput.placeholder = isClosed ? state.message : originalPlaceholder;
+      commentInput.disabled = isClosed;
     }
-    commentForm.querySelector('button[type="submit"]')?.setAttribute('disabled', '');
+    if (commentSubmitButton) commentSubmitButton.disabled = isClosed;
 
-    document.querySelectorAll('.exchange-reply-form').forEach((replyForm) => {
-      replyForm.hidden = true;
-    });
+    if (mobileComposeButton) {
+      mobileComposeButton.disabled = isClosed;
+      mobileComposeButton.textContent = isClosed ? '댓글 작성 불가' : originalMobileLabel;
+      mobileComposeButton.title = isClosed ? state.message : '';
+    }
+
     document.querySelectorAll('.exchange-reply-toggle').forEach((replyToggle) => {
-      replyToggle.textContent = '답글 보기';
+      replyToggle.disabled = isClosed;
+      if (isClosed) replyToggle.textContent = '답글 보기';
     });
+    if (isClosed) {
+      document.querySelectorAll('.exchange-reply-form').forEach((replyForm) => {
+        replyForm.hidden = true;
+      });
+    }
+  }
+
+  // 기존 종료 이벤트에서 사용하던 공개 함수명은 유지합니다.
+  function closeCommenting() {
+    syncCommentingState();
   }
 
   window.addEventListener('jorong:market-ended', closeCommenting);
+  window.addEventListener('jorong:market-clock-synced', syncCommentingState);
+  window.addEventListener('jorong:market-config-updated', syncCommentingState);
 
-  // 재접속 시 이미 종료된 회차라면 댓글 작성 영역도 즉시 종료 상태로 맞춥니다.
-  if (window.MarketCountdown?.isEnded()) closeCommenting();
+  // 재접속 시 장이 없거나 이미 종료된 회차라면 즉시 작성 영역을 잠급니다.
+  syncCommentingState();
 
-  window.CommentCloseUI = Object.freeze({ closeCommenting });
+  window.CommentCloseUI = Object.freeze({ closeCommenting, syncCommentingState });
 })();

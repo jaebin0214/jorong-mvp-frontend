@@ -100,7 +100,13 @@
     const image = element('img');
     image.src = report.subject?.imagePath || './assets/jorong_logo.png';
     image.alt = `${report.subject?.name || '종목'} 이미지`;
-    subjectCard.append(image, element('b', '', `오늘의 종목 · ${report.subject?.name || '종목'}`), element('span', '', `마감 가격 ${formatPrice(market.closePrice ?? settlement.closePrice)}`));
+    const subjectCopy = element('div', 'settlement-subject-copy');
+    subjectCopy.append(
+      element('b', '', `오늘의 종목 · ${report.subject?.name || '종목'}`),
+      element('span', '', `마감 가격 ${formatPrice(market.closePrice ?? settlement.closePrice)}`),
+    );
+    if (report.subject?.description) subjectCopy.append(element('p', '', report.subject.description));
+    subjectCard.append(image, subjectCopy);
 
     const resultCard = element('section', 'settlement-result-card');
     const resultHeader = element('header');

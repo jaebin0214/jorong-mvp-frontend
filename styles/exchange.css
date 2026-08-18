@@ -14,6 +14,9 @@
 .exchange-view { min-height:calc(100dvh - 51px); padding:0; background:#f6f8fc; }
 .legacy-exchange { display:none; }
 .exchange-rebuild { width:min(1120px, 100%); min-height:calc(100dvh - 51px); margin:0 auto; padding:39px 35px 34px; background:#f6f8fc; }
+/* [정산 화면 전환] 모바일 전용 레이아웃이 .exchange-rebuild에 display:grid를 지정하더라도
+   장 종료 뒤 hidden 처리된 거래 본문이 다시 나타나 정산 결과를 아래로 밀지 않도록 합니다. */
+.exchange-rebuild[hidden] { display:none !important; }
 .exchange-hero-bar { height:111px; position:relative; display:grid; place-items:start center; }
 .exchange-countdown-block { display:grid; justify-items:center; gap:8px; }
 .exchange-countdown-block > span { color:#6e7d99; font-size:11px; font-weight:700; }

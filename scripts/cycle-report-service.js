@@ -43,6 +43,8 @@ window.CycleReportService = (() => {
       id: marketSubject.id || configSubject.id || '',
       name: marketSubject.name || marketSubject.subjectName || snapshot.targetName || configSubject.name || '오늘의 종목',
       imagePath: marketSubject.imagePath || marketSubject.imageUrl || snapshot.imagePath || configSubject.imagePath || './assets/jorong_logo.png',
+      // [종목 설명 보관] 종료 화면에서 보던 종목 소개를 사이클 리포트에서도 그대로 재현합니다.
+      description: marketSubject.description || snapshot.description || configSubject.description || '',
     };
   }
 
@@ -157,6 +159,12 @@ window.CycleReportService = (() => {
     memoryHistory = [];
     if (!API_BASE_URL && event.detail?.account) archiveCurrentSettlementWhenClosed().catch(() => {});
   });
+
+  // [새로고침 복원] 종료 이벤트가 페이지 초기화보다 먼저 지나간 경우에도, 로그인 세션이 이미
+  // 복원되어 있다면 현재 종료 장의 정산 스냅샷을 즉시 개인 리포트에 보관합니다.
+  if (!API_BASE_URL && getAccount()) {
+    window.queueMicrotask?.(() => archiveCurrentSettlementWhenClosed().catch(() => {}));
+  }
 
   return Object.freeze({ loadReports, archiveSnapshot, normalizeReport });
 })();

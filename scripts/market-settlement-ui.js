@@ -3,6 +3,10 @@
   const exchangeRebuild = document.querySelector('.exchange-rebuild');
   const settlementView = document.querySelector('#market-settlement-view');
   const resultCard = document.querySelector('#settlement-result-card');
+  const exchangeView = document.querySelector('#exchange');
+  const appShell = document.querySelector('.app-shell');
+  const shareButton = document.querySelector('#settlement-share-button');
+  const toast = document.querySelector('#toast');
   const math = window.FinancialMath;
   let activeMarket = null;
   let nextMarketTimerId = null;
@@ -26,6 +30,43 @@
   function setHeaderBalance(points) {
     const label = document.querySelector('#exchange-header-balance');
     if (label && Number.isFinite(Number(points))) label.textContent = `${Math.round(Number(points)).toLocaleString('ko-KR')} KRW`;
+  }
+
+  // [모바일 정산 앱 바] 정산 화면이 실제로 열려 있는 동안에만 공통 헤더를 ‘정산 결과’ 상태로 바꿉니다.
+  // 리포트·랜딩으로 이동하면 즉시 원래 헤더로 복원해 다른 화면의 탐색을 가리지 않습니다.
+  function syncSettlementShellState() {
+    const isVisibleInExchange = exchangeView?.classList.contains('is-active') && settlementView && !settlementView.hidden;
+    appShell?.classList.toggle('is-market-settlement', Boolean(isVisibleInExchange));
+  }
+
+  function showToast(message) {
+    if (!toast) return;
+    toast.textContent = message;
+    toast.classList.add('is-visible');
+    window.setTimeout(() => toast.classList.remove('is-visible'), 2400);
+  }
+
+  // [정산 결과 공유] 모바일 Web Share를 우선 사용하고, 지원하지 않는 브라우저에서는 클립보드 복사로 보완합니다.
+  async function shareSettlementResult() {
+    const subjectName = document.querySelector('#settlement-subject-name')?.textContent || '오늘의 종목';
+    const realizedPnl = document.querySelector('#settlement-realized-pnl')?.textContent || '0 KRW';
+    const payout = document.querySelector('#settlement-amount')?.textContent || '0 KRW';
+    const text = `${subjectName}\n최종 실현손익 ${realizedPnl}\n정산 지급액 ${payout}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: '조롱 거래소 정산 결과', text });
+        return;
+      }
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        showToast('정산 결과를 클립보드에 복사했습니다.');
+        return;
+      }
+      showToast('이 브라우저에서는 결과 공유를 지원하지 않습니다.');
+    } catch (error) {
+      // 사용자가 공유 창을 닫은 경우에는 실패 메시지를 다시 표시하지 않습니다.
+      if (error?.name !== 'AbortError') showToast('정산 결과를 공유하지 못했습니다.');
+    }
   }
 
   function renderNextMarketCountdown() {
@@ -73,6 +114,9 @@
     document.querySelector('#settlement-subject-image').alt = `오늘의 종목 ${subject.name}`;
     setText('#settlement-subject-name', `오늘의 종목 · ${subject.name}`);
     setText('#settlement-close-price', `마감 가격 ${formatPrice(market.closePrice ?? settlement?.closePrice ?? snapshot.target?.value)}`);
+    // [종목 설명] 운영자가 등록한 상세 설명을 정산 결과에서도 함께 보여, 종료된 뒤에도
+    // 어떤 종목이었는지 이미지·이름만으로 판단해야 하는 상황을 없앱니다.
+    setText('#settlement-subject-description', subject.description || '등록된 종목 설명이 없습니다.');
     setHeaderBalance(snapshot.wallet?.points);
 
     const hasSettlement = Boolean(settlement && position);
@@ -109,6 +153,7 @@
   function showPending() {
     exchangeRebuild.hidden = true;
     settlementView.hidden = false;
+    syncSettlementShellState();
     activeMarket = { nextOpenAt: window.MarketCountdown?.getNextOpenAt?.() };
     resultCard.classList.add('is-empty');
     setText('#settlement-outcome', '정산 처리 중');
@@ -118,12 +163,20 @@
     renderNextMarketCountdown();
   }
 
+  // [정산 화면 노출] 타이머 종료·운영자 수동 종료·서버 정산 완료가 어떤 순서로 오더라도
+  // 거래 본문을 확실히 숨기고 같은 정산 화면으로 수렴시키는 공통 진입 처리입니다.
+  function revealSettlementView() {
+    exchangeRebuild.hidden = true;
+    settlementView.hidden = false;
+    syncSettlementShellState();
+    if (!nextMarketTimerId) nextMarketTimerId = window.setInterval(renderNextMarketCountdown, 1000);
+  }
+
   // [정산 진입] API 연결 시에는 서버 결과를 읽고, 정적 MVP에서는 InvestmentService의 멱등 로컬 정산 결과를 읽습니다.
   async function show() {
     // 이 함수가 정산 화면을 여는 유일한 진입점입니다. 어떤 종료 경로(타이머·운영자 수동 종료·새로고침)에서도
     // 거래소 본문 대신 정산 화면만 보여줍니다.
-    exchangeRebuild.hidden = true;
-    settlementView.hidden = false;
+    revealSettlementView();
     try {
       const snapshot = await window.InvestmentService.loadSettlement();
       renderSettlement(snapshot);
@@ -145,15 +198,24 @@
         }, 5_000);
       }
     }
-    if (!nextMarketTimerId) nextMarketTimerId = window.setInterval(renderNextMarketCountdown, 1000);
   }
 
   // [재접속 복원] 종료된 장을 새로고침해도 market-ended 이벤트를 기다리지 않고 즉시 정산창을 엽니다.
   // 첫 운영 전의 SCHEDULED 빈 상태에는 실행되지 않아 기존 대기 화면을 유지합니다.
   const configuredStatus = String(window.MarketConfig?.get?.().session?.status || '').toUpperCase();
-  if (['CLOSED', 'SETTLED', 'ARCHIVED'].includes(configuredStatus)) {
+  if (['CLOSED', 'SETTLED', 'ARCHIVED'].includes(configuredStatus) || window.MarketCountdown?.isEnded?.()) {
     window.queueMicrotask ? window.queueMicrotask(show) : window.setTimeout(show, 0);
   }
+
+  // [종료 이벤트 직접 수신] 기존 종료 오버레이 모듈의 로딩 순서에 의존하지 않습니다.
+  // 로컬 시연은 InvestmentService가 market-settled와 함께 스냅샷을 보내고,
+  // API 연결 환경은 market-ended 이후 서버 정산 결과를 show()에서 조회합니다.
+  window.addEventListener('jorong:market-ended', () => { show(); });
+  window.addEventListener('jorong:market-settled', (event) => {
+    revealSettlementView();
+    if (event.detail) renderSettlement(event.detail);
+    else show();
+  });
 
   // 운영자 페이지에서 다음 종목을 예약한 직후, 새로고침 전에도 정산창의 타이머를 최신 예약으로 교체합니다.
   // 같은 사이트 주소의 다른 탭에서 변경될 때만 storage 이벤트가 전달되며, 그 외 환경은 브리지의 폴링 새로고침이 보완합니다.
@@ -170,5 +232,9 @@
     show();
   });
 
-  window.MarketSettlementUI = Object.freeze({ show, renderSettlement });
+  // 하단 리포트 탭으로 이동했을 때는 정산 전용 헤더를 제거하고, 다시 거래소로 돌아오면 복원합니다.
+  window.addEventListener('jorong:view-changed', syncSettlementShellState);
+  shareButton?.addEventListener('click', shareSettlementResult);
+
+  window.MarketSettlementUI = Object.freeze({ show, renderSettlement, revealSettlementView, syncSettlementShellState });
 })();

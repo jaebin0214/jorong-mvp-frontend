@@ -25,6 +25,8 @@
     <div class="app-shell">
       <!-- [공통 헤더] 모든 MVP 화면에서 같은 탐색 메뉴와 계정 진입점을 제공합니다. -->
       <header class="app-header">
+        <!-- [모바일 정산 헤더] 장 종료 화면에서만 노출되며 다음 장 대기 화면으로 안전하게 돌아갑니다. -->
+        <button class="mobile-settlement-back" type="button" data-view="landing" aria-label="다음 장 대기 화면으로 돌아가기">‹</button><strong class="mobile-settlement-title">정산 결과</strong>
         <button class="wordmark" type="button" data-view="landing" aria-label="조롱 거래소 홈">
           <img class="brand-logo" src="./assets/jorong_logo.png" alt="" />
           <span>조롱 거래소</span>
@@ -172,8 +174,8 @@
                   <div class="investment-amount-control"><label class="investment-amount-input"><input id="investment-amount" type="text" inputmode="numeric" autocomplete="off" aria-label="투자 금액" value="5,000" /><span>KRW</span></label><span><button type="button" data-investment-amount="-10" aria-label="투자 금액 10 KRW 줄이기">−</button><button type="button" data-investment-amount="10" aria-label="투자 금액 10 KRW 늘리기">＋</button></span></div>
                   <!-- [모바일 빠른 금액] Figma 하단 시트의 10%·25%·50%·최대 선택입니다. 기존 금액 입력과 같은 input 이벤트를 사용합니다. -->
                   <div class="mobile-investment-quick-amounts" role="group" aria-label="빠른 투자 금액 선택"><button type="button" data-mobile-investment-quick="10">10%</button><button type="button" data-mobile-investment-quick="25">25%</button><button type="button" data-mobile-investment-quick="50">50%</button><button type="button" data-mobile-investment-quick="100">최대</button></div>
-                  <!-- [모바일 투자 확정] 하단 시트에서는 현재 입력 금액을 포함한 확정 문구와 체결 안내를 함께 보여줍니다. -->
-                  <button class="investment-submit" id="investment-submit" type="button">5,000 KRW 투자 확정</button>
+                  <!-- [투자 실행] 금액은 입력란에서 확인하고, 실행 버튼은 모든 화면에서 같은 문구를 사용합니다. -->
+                  <button class="investment-submit" id="investment-submit" type="button">투자하기</button>
                   <small class="mobile-investment-impact" id="mobile-investment-impact">현재 가격으로 즉시 체결됩니다.</small>
                 </section>
                 <section class="investment-status-card" id="investment-status-card" hidden aria-live="polite">
@@ -206,8 +208,10 @@
           <!-- [장 종료 정산] 서버가 확정한 마감 가격·정산 결과를 거래 화면 대신 표시합니다. -->
           <section class="market-settlement-view" id="market-settlement-view" hidden aria-live="polite">
             <div class="market-settlement-hero"><span>MARKET CLOSED</span><h1>장 종료! 정산이 완료됐어요</h1><p>마감 가격을 기준으로 투자 결과를 계산했습니다.</p><div class="next-market-block"><b>다음 장 시작까지</b><strong id="next-market-countdown">--:--:--</strong><small id="next-market-open-label">다음 장 오픈 시간을 확인 중입니다.</small></div></div>
-            <div class="market-settlement-row"><article class="settlement-subject-card"><img id="settlement-subject-image" src="./assets/jorong_logo.png" alt="오늘의 종목" /><b id="settlement-subject-name">오늘의 종목</b><span id="settlement-close-price">마감 가격 0 KRW</span></article><article class="settlement-result-card" id="settlement-result-card"><header><h2>내 정산 결과</h2><b id="settlement-outcome">변동 없음</b></header><div class="settlement-pnl"><span>최종 실현손익</span><strong id="settlement-realized-pnl">0 KRW (0.00%)</strong></div><div class="settlement-metrics"><div><span>총 투자금</span><b id="settlement-total-investment">0 KRW</b></div><div><span>평균 단가</span><b id="settlement-average-price">0 KRW</b></div><div><span>최종 가격</span><b id="settlement-final-price">0 KRW</b></div><div><span>보유 수량</span><b id="settlement-quantity">0.0000주</b></div></div><div class="settlement-payout"><div><b>정산 지급액</b><span id="settlement-balance-after">정산 후 보유 · 0 KRW</span></div><strong id="settlement-amount">0 KRW</strong></div><p class="settlement-empty" id="settlement-empty" hidden>이번 장에 투자한 내역이 없습니다.</p></article></div>
+            <div class="market-settlement-row"><article class="settlement-subject-card"><img id="settlement-subject-image" src="./assets/jorong_logo.png" alt="오늘의 종목" /><div class="settlement-subject-copy"><b id="settlement-subject-name">오늘의 종목</b><span id="settlement-close-price">마감 가격 0 KRW</span><p id="settlement-subject-description">오늘의 종목 설명을 불러오고 있습니다.</p></div></article><article class="settlement-result-card" id="settlement-result-card"><header><h2>내 정산 결과</h2><b id="settlement-outcome">변동 없음</b></header><div class="settlement-pnl"><span>최종 실현손익</span><strong id="settlement-realized-pnl">0 KRW (0.00%)</strong></div><div class="settlement-metrics"><div><span>총 투자금</span><b id="settlement-total-investment">0 KRW</b></div><div><span>평균 단가</span><b id="settlement-average-price">0 KRW</b></div><div><span>최종 가격</span><b id="settlement-final-price">0 KRW</b></div><div><span>보유 수량</span><b id="settlement-quantity">0.0000주</b></div></div><div class="settlement-payout"><div><b>정산 지급액</b><span id="settlement-balance-after">정산 후 보유 · 0 KRW</span></div><strong id="settlement-amount">0 KRW</strong></div><p class="settlement-empty" id="settlement-empty" hidden>이번 장에 투자한 내역이 없습니다.</p></article></div>
             <article class="market-final-summary"><div><h2>최종 시장 결과</h2><p id="settlement-market-volume">총 거래량 0 KRW · 참여 0명</p></div><div class="market-ratio"><div><b id="settlement-support-ratio">옹호 0%</b><b id="settlement-mock-ratio">조롱 0%</b></div><span><i id="settlement-support-bar"></i><i id="settlement-mock-bar"></i></span></div></article>
+            <!-- [모바일 정산 동작] 작은 화면에서는 결과 공유와 다음 장 대기 화면 이동을 카드 아래에 배치합니다. -->
+            <div class="mobile-settlement-actions" aria-label="정산 결과 동작"><button id="settlement-share-button" type="button">결과 공유</button><button type="button" data-view="landing">다음 종목 보기</button></div>
           </section>
           <div class="legacy-exchange" aria-hidden="true">
           <div class="page-intro exchange-intro"><div><p class="eyebrow">TODAY'S MARKET</p><h1 id="exchange-title">거래소</h1><p>지금 열려 있는 종목을 살펴보고, 원하는 흐름에 참여하세요.</p></div><label class="market-search"><span>⌕</span><input type="search" placeholder="종목 또는 키워드 검색" aria-label="종목 검색" /></label></div>
