@@ -1,10 +1,10 @@
-// [투자·포지션 서비스] 주문, 가중평균 포지션, 잔액, 장 종료 정산을 API 우선으로 다룹니다.
-// API 주소가 비어 있는 현재 정적 MVP에서는 동일한 계약의 로컬 영속 시뮬레이터를 사용합니다.
+// [투자·포지션 서비스] 주문, 가중평균 포지션, 잔액, 장 종료 정산을 Supabase 연결 시 RPC로 다룹니다.
+// Supabase 미연결인 정적 MVP에서는 동일한 계약의 로컬 영속 시뮬레이터를 사용합니다.
 (() => {
-  const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
+  const supabaseClient = window.JorongSupabase;
   const config = window.MarketConfig.get();
   const TARGET_ID = config.subject.id;
-  const PRICE_IMPACT_RATE = 0.01; // 기존 MVP의 가격 반영 규칙을 유지합니다. 실제 운영의 가격 산식은 서버에서 확정합니다.
+  const PRICE_IMPACT_RATE = 0.01; // 로컬 시연 전용 가격 반영 규칙입니다. 서버 연결 시의 가격 산식은 place_order RPC(app_settings.price.sensitivity)가 확정합니다.
   const LOCAL_STORE_VERSION = 2;
   const LOCAL_STORE_KEY = `jorong:investment-ledger:${config.session.id}`;
   const INITIAL_POINTS = 10000;
@@ -28,12 +28,25 @@
     return error;
   }
 
-  function getMarketSessionId() {
-    return window.MarketCountdown?.getSessionId?.() || config.session.id;
+  // [RPC 오류 변환] place_order 등의 함수는 Postgres RAISE EXCEPTION으로 'CODE: 설명' 형태의
+  // 메시지를 던집니다. 콜론 앞을 에러 코드로, 뒤를 화면에 보여줄 메시지로 분리합니다.
+  // (콜론이 없는 'MARKET_NOT_FOUND' 같은 코드만 있는 경우 fallback 문구를 화면에 보여줍니다.)
+  function parseRpcError(error, fallback) {
+    const raw = String(error?.message || '').trim();
+    const withDetail = raw.match(/^([A-Z][A-Z0-9_]*)\s*:\s*([\s\S]+)$/);
+    if (withDetail) return createError(withDetail[1], withDetail[2].trim());
+    if (/^[A-Z][A-Z0-9_]*$/.test(raw)) return createError(raw, fallback);
+    return createError(undefined, raw || fallback);
   }
 
-  function getAuthHeaders() {
-    return window.AuthService?.getRequestHeaders?.() || {};
+  async function callRpc(name, args) {
+    const { data, error } = await supabaseClient.rpc(name, args);
+    if (error) throw parseRpcError(error, '요청을 처리하지 못했습니다.');
+    return data || {};
+  }
+
+  function getMarketSessionId() {
+    return window.MarketCountdown?.getSessionId?.() || config.session.id;
   }
 
   function getCurrentUserKey() {
@@ -178,8 +191,8 @@
 
     if (Number.isFinite(walletPoints)) {
       state.walletPoints = Math.round(walletPoints);
-      // [로컬 운영 연동] 사용자의 투자 후 잔액을 관리자 사용자 목록의 로컬 계정 요약에도 반영합니다.
-      if (!API_BASE_URL) window.AuthService?.updateLocalWalletPoints?.(state.walletPoints);
+      // [로컬 운영 연동] Supabase 미연결일 때만, 투자 후 잔액을 관리자 사용자 목록의 로컬 계정 요약에도 반영합니다.
+      if (!supabaseClient) window.AuthService?.updateLocalWalletPoints?.(state.walletPoints);
     }
     if (Number.isFinite(Number(target.value ?? market.currentPrice))) {
       state.targetValue = Number(target.value ?? market.currentPrice);
@@ -339,24 +352,7 @@
     return snapshot;
   }
 
-  function backendError(payload, fallback) {
-    const error = createError(payload?.code || 'REQUEST_FAILED', payload?.message || fallback);
-    error.details = payload?.details;
-    return error;
-  }
-
-  async function request(path, options = {}) {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      credentials: 'include',
-      headers: { Accept: 'application/json', ...getAuthHeaders(), ...(options.headers || {}) },
-      ...options,
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw backendError(body, '요청을 처리하지 못했습니다.');
-    return body;
-  }
-
-  // [주문 API] 서버는 잔액 차감·주문 생성·포지션 가중평균 갱신을 하나의 DB 트랜잭션으로 처리해야 합니다.
+  // [주문 RPC] place_order가 잔액 차감·주문 생성·포지션 가중평균·가격 갱신을 하나의 DB 트랜잭션으로 처리합니다.
   async function createInvestment(payload) {
     assertMarketOpen();
     const requestPayload = {
@@ -366,44 +362,48 @@
       investmentAmount: Number(payload.investmentAmount ?? payload.amount),
       idempotencyKey: payload.idempotencyKey || makeIdempotencyKey(),
     };
-    if (!API_BASE_URL) return createLocalInvestment(requestPayload);
+    if (!supabaseClient) return createLocalInvestment(requestPayload);
 
-    const body = await request(`/markets/${encodeURIComponent(requestPayload.marketId)}/orders`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Idempotency-Key': requestPayload.idempotencyKey },
-      body: JSON.stringify(requestPayload),
+    const body = await callRpc('place_order', {
+      p_market_id: requestPayload.marketId,
+      p_side: requestPayload.side,
+      p_investment_amount: requestPayload.investmentAmount,
+      p_idempotency_key: requestPayload.idempotencyKey,
     });
     return applySnapshot(body);
   }
 
-  // [포지션 조회] 새로고침·재로그인 후에도 서버가 보관한 현재 포지션과 잔액을 그대로 복원합니다.
+  // [포지션 조회] 새로고침·재로그인 후에도 서버(get_my_position)가 보관한 현재 포지션과 잔액을 그대로 복원합니다.
   async function loadPortfolio() {
-    if (!API_BASE_URL) {
+    if (!supabaseClient) {
       const ledger = loadLocalLedger({ refreshFromStorage: true });
       if (readMarketStatus(ledger) !== 'OPEN') return settleLocalMarket();
       return applyLocalSnapshot(buildLocalSnapshot(ledger));
     }
-    const body = await request(`/markets/${encodeURIComponent(getMarketSessionId())}/me/position`);
+    const body = await callRpc('get_my_position', { p_market_id: getMarketSessionId() });
     return applySnapshot(body);
   }
 
-  // [정산 조회] 서버 정산 작업이 완료한 결과만 읽습니다. 클라이언트는 API 연결 시 지갑에 직접 지급하지 않습니다.
+  // [정산 조회] get_my_settlement는 시장이 아직 SETTLED가 아니면 settlement:null을 정상 응답으로 반환하므로,
+  // 여기서 명시적으로 실패시켜 market-settlement-ui.js가 "정산 처리 중" 대기·폴링 화면으로 전환하게 합니다.
+  // 클라이언트는 API 연결 시 지갑에 직접 지급하지 않습니다 — 정산은 항상 서버(settle_market)가 확정합니다.
   async function loadSettlement() {
-    if (!API_BASE_URL) return settleLocalMarket();
-    const body = await request(`/markets/${encodeURIComponent(getMarketSessionId())}/me/settlement`);
+    if (!supabaseClient) return settleLocalMarket();
+    const body = await callRpc('get_my_settlement', { p_market_id: getMarketSessionId() });
+    if (!body.settlement) throw createError('SETTLEMENT_PENDING', '아직 정산이 완료되지 않았습니다. 잠시 후 다시 확인해주세요.');
     return applySnapshot(body);
   }
 
   // [이전 화면 호환] 기존 마이페이지가 투자 로그를 요청할 때도 현재 포지션 응답을 사용합니다.
   async function loadMyInvestments() {
     // 로컬 시연에서는 현재 회차 원장이 투자 로그 역할을 합니다.
-    if (!API_BASE_URL) return loadPortfolio();
-    // API 환경에서는 종료된 장을 포함한 전체 개인 투자 이력을 별도 엔드포인트에서 받습니다.
-    const body = await request('/me/investments');
+    if (!supabaseClient) return loadPortfolio();
+    // Supabase 연결 시에는 종료된 장을 포함한 전체 개인 투자 이력을 get_my_investments()에서 받습니다.
+    const body = await callRpc('get_my_investments', {});
     return {
       ...body,
       wallet: body.wallet || { points: state.walletPoints },
-      investments: Array.isArray(body.investments) ? body.investments : (Array.isArray(body.investmentLogs) ? body.investmentLogs : []),
+      investments: Array.isArray(body.investments) ? body.investments : [],
     };
   }
 
@@ -413,7 +413,7 @@
 
   // [시장 전체 주문] 로컬 시연에서는 한 회차 원장 안의 모든 계정 주문을 반환합니다.
   // 가격 차트는 내 주문만이 아니라 같은 시장에 참여한 모든 사용자의 시간순 주문을 그립니다.
-  // API 연결 시에는 PriceHistoryService가 서버의 /candles 집계 API를 사용합니다.
+  // Supabase 연결 시에는 PriceHistoryService가 서버의 get_market_candles() RPC를 사용합니다.
   function getLocalMarketOrders() {
     // 다른 브라우저 탭/로컬 계정이 남긴 주문까지 읽기 위해 차트 조회 시에는 저장소를 다시 확인합니다.
     const ledger = loadLocalLedger({ refreshFromStorage: true });
@@ -428,16 +428,16 @@
     if (Number.isFinite(points)) state.walletPoints = Math.round(points);
   });
 
-  // 장 종료 이벤트는 로컬 시연 원장을 정산하고, API 연결 환경에서는 MarketSettlementUI가 서버 정산 결과를 조회하도록 둡니다.
+  // 장 종료 이벤트는 로컬 시연 원장을 정산하고, Supabase 연결 환경에서는 MarketSettlementUI가 서버 정산 결과를 조회하도록 둡니다.
   window.addEventListener('jorong:market-ended', () => {
-    if (!API_BASE_URL) settleLocalMarket();
+    if (!supabaseClient) settleLocalMarket();
   });
 
   // [관리자 자동 전환 보완] 관리자가 이전 장을 종료하면서 다음 예약 장을 바로 LIVE로 전환하면
   // 거래소 페이지는 새 회차로 새로고침됩니다. 그 직전에 현재 회차가 관리자 저장소에서 종료 상태인지
-  // 확인해 정산·사이클 리포트 보관 이벤트를 먼저 발생시킵니다.
+  // 확인해 정산·사이클 리포트 보관 이벤트를 먼저 발생시킵니다. (Supabase 연결 시에는 로컬 저장소를 쓰지 않으므로 무시)
   window.addEventListener('jorong:admin-market-updated', () => {
-    if (API_BASE_URL) return;
+    if (supabaseClient) return;
     const terminalMarket = window.LocalAdminMarketBridge?.getLatestTerminalMarket?.();
     if (!terminalMarket || String(terminalMarket.id) !== String(getMarketSessionId())) return;
     settleLocalMarket();
@@ -451,7 +451,7 @@
     loadMyInvestments,
     loadSettlement,
     getSnapshot,
-    getMarketOrders: () => API_BASE_URL ? [] : getLocalMarketOrders(),
+    getMarketOrders: () => supabaseClient ? [] : getLocalMarketOrders(),
     getLocalStoreKey: () => LOCAL_STORE_KEY,
     getMarketSummary: () => state.marketSummary,
   });

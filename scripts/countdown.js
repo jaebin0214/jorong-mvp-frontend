@@ -1,11 +1,10 @@
 // [서버 기준 타이머] 거래 중에는 closeAt, 종료 뒤에는 nextOpenAt을 서버 시각 보정값으로 표시합니다.
 window.MarketCountdown = (() => {
   const config = window.MarketConfig.get();
-  const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
-  const useBackendClock = Boolean(API_BASE_URL);
+  const supabaseClient = window.JorongSupabase;
+  const useBackendClock = Boolean(supabaseClient);
   const marketAvailable = config.marketAvailable === true;
   const hasNextMarket = config.session.hasNextMarket === true;
-  const clockUrl = window.JORONG_MARKET_CLOCK_URL || `${API_BASE_URL}/markets/current/clock`;
   const durationMs = config.session.durationHours * 60 * 60 * 1000;
   const safeSessionId = config.session.id.replace(/[^a-zA-Z0-9_-]/g, '-');
   const storageKey = `jorong-market-end-at:${config.session.id}`;
@@ -95,9 +94,9 @@ window.MarketCountdown = (() => {
   async function syncFromServer() {
     if (!useBackendClock) return;
     try {
-      const response = await fetch(clockUrl, { headers: { Accept: 'application/json' }, cache: 'no-store' });
-      if (!response.ok) throw new Error('거래 시간을 불러오지 못했습니다.');
-      const payload = await response.json();
+      const { data, error } = await supabaseClient.rpc('get_market_clock');
+      if (error) throw error;
+      const payload = data || {};
       const remoteEndAt = getRemoteEndAt(payload);
       const remoteServerNow = Date.parse(payload.serverNow || payload.now || '');
       const remoteNextOpenAt = getRemoteNextOpenAt(payload);

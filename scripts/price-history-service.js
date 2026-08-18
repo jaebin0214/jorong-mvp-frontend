@@ -1,6 +1,6 @@
-// [가격 이력 서비스] 현재 회차의 투자 기록을 캔들 데이터로 읽어오며, API 미연결 때는 로컬 투자 결과로 즉시 갱신합니다.
+// [가격 이력 서비스] 현재 회차의 투자 기록을 캔들 데이터로 읽어오며, Supabase 미연결 때는 로컬 투자 결과로 즉시 갱신합니다.
 window.PriceHistoryService = (() => {
-  const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
+  const supabaseClient = window.JorongSupabase;
   const marketConfig = window.MarketConfig.get();
   const { session, subject } = marketConfig;
   const localEvents = [];
@@ -8,10 +8,6 @@ window.PriceHistoryService = (() => {
   // [현재 시장 ID] 서버 시계가 다른 라운드를 지정해도 해당 라운드의 모든 투자 기록으로 캔들을 조회합니다.
   function getMarketSessionId() {
     return window.MarketCountdown?.getSessionId?.() || session.id;
-  }
-
-  function getAuthHeaders() {
-    return window.AuthService?.getRequestHeaders?.() || {};
   }
 
   // [회차 범위] X축은 시작부터 종료까지 고정해, 캔들이 적어도 설정된 거래 시간 전체를 기준으로 보입니다.
@@ -43,7 +39,7 @@ window.PriceHistoryService = (() => {
     const priorEvents = [baseCandle];
 
     // 새로고침 뒤에는 같은 회차 원장에 저장된 모든 사용자 주문으로 캔들을 다시 만듭니다.
-    // 서버 연결 시에는 아래 loadCandles()가 DB 집계 캔들을 반환하므로 이 로직을 사용하지 않습니다.
+    // Supabase 연결 시에는 아래 loadCandles()가 DB 집계 캔들을 반환하므로 이 로직을 사용하지 않습니다.
     const persistedOrders = window.InvestmentService?.getMarketOrders?.()
       || window.InvestmentService?.getSnapshot?.().orders
       || [];
@@ -83,21 +79,18 @@ window.PriceHistoryService = (() => {
     return priorEvents;
   }
 
-  // [캔들 조회] API가 있으면 DB의 모든 사용자 투자 기록으로 집계된 캔들을 받고, 없으면 같은 브라우저의 공유 로컬 원장을 사용합니다.
+  // [캔들 조회] Supabase 연결 시 DB의 모든 사용자 투자 기록으로 집계된 캔들(get_market_candles RPC)을 받고,
+  // 없으면 같은 브라우저의 공유 로컬 원장을 사용합니다. 로그인 여부와 무관하게 누구나 조회할 수 있습니다.
   async function loadCandles() {
-    if (!API_BASE_URL) return buildLocalCandles();
+    if (!supabaseClient) return buildLocalCandles();
 
-    const params = new URLSearchParams({ targetId: subject.id, intervalSeconds: '60' });
-    const response = await fetch(`${API_BASE_URL}/markets/${encodeURIComponent(getMarketSessionId())}/candles?${params}`, {
-      credentials: 'include',
-      headers: { Accept: 'application/json', ...getAuthHeaders() },
+    const { data, error } = await supabaseClient.rpc('get_market_candles', {
+      p_market_id: getMarketSessionId(),
+      p_interval_seconds: 60,
     });
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({}));
-      throw new Error(error.message || '가격 이력을 불러오지 못했습니다.');
-    }
+    if (error) throw new Error(error.message || '가격 이력을 불러오지 못했습니다.');
 
-    const body = await response.json();
+    const body = data || {};
     return (body.candles || [])
       .map(normalizeCandle)
       .filter(Boolean)
@@ -105,7 +98,7 @@ window.PriceHistoryService = (() => {
       .sort((left, right) => left.startedAt - right.startedAt);
   }
 
-  // [투자 반영] API 미연결에서는 즉시 로컬 캔들을 추가하고, API 연결 시에는 서버 집계값을 다시 조회합니다.
+  // [투자 반영] Supabase 미연결에서는 즉시 로컬 캔들을 추가하고, 연결 시에는 서버 집계값을 다시 조회합니다.
   async function recordInvestment(result) {
     // [즉시 반영] 첫 투자와 추가 투자 모두 주문 응답의 최신 가격으로 임시 캔들을 만들고, 서버 응답 전에도 화면에 표시합니다.
     const price = Number(

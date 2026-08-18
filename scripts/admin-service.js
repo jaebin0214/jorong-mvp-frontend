@@ -1,7 +1,6 @@
-// [관리자 데이터 서비스] 사용자용 서비스와 분리된 관리자 로컬 시연 저장소·상태 전환·API 어댑터 경계입니다.
+// [관리자 데이터 서비스] 사용자용 서비스와 분리된 관리자 로컬 시연 저장소·상태 전환·Supabase 어댑터 경계입니다.
 window.AdminService = (() => {
-  const API_BASE_URL = (window.JORONG_API_BASE_URL || '').replace(/\/$/, '');
-  const ADMIN_API_ENABLED = Boolean(API_BASE_URL && window.JORONG_ADMIN_API_ENABLED === true);
+  const supabaseClient = window.JorongSupabase;
   const STORAGE_KEY = 'jorong_admin_demo_v1';
   // [사용자 화면 로컬 연동] API 미연결 시 가입자·댓글은 사용자용 저장소에서 읽고, 관리자 조작 기록은 별도 저장소에 유지합니다.
   const LOCAL_ACCOUNT_DIRECTORY_KEY = 'jorong-mvp-local-accounts-v1';
@@ -287,29 +286,100 @@ window.AdminService = (() => {
   function localRestrictUser(userId, { restricted, reason, operator = OPERATOR.name }) { return mutate((state) => { const user = findUser(state, userId); if (!String(reason || '').trim()) throw createError('RESTRICTION_REASON_REQUIRED', '댓글 작성 제한 사유를 입력해주세요.'); user.commentRestricted = Boolean(restricted); user.status = restricted ? 'RESTRICTED' : 'ACTIVE'; appendAudit(state, { category: 'USER', action: restricted ? '댓글 작성 제한' : '댓글 작성 제한 해제', target: `${user.nickname} (${user.id})`, detail: `사유: ${String(reason).trim()}`, operator }); return clone(state); }); }
   function localResetDemo() { const seed = createSeed(); writeStore(seed); return clone(seed); }
 
-  // [HTTP 어댑터] window.JORONG_ADMIN_API_ENABLED=true일 때만 실제 관리자 API로 바뀝니다.
-  async function request(path, options = {}) {
-    let token = '';
-    try { token = window.sessionStorage.getItem('jorong-mvp-access-token') || ''; } catch (_) { /* no-op */ }
-    // [파일 업로드] FormData는 브라우저가 boundary가 포함된 Content-Type을 직접 설정해야 합니다.
-    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
-    const response = await fetch(`${API_BASE_URL}${path}`, { credentials: 'include', ...options, headers: { Accept: 'application/json', ...(options.body && !isFormData ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(options.headers || {}) } });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      if (response.status === 401) throw createError('ADMIN_AUTH_REQUIRED', '관리자 로그인 세션이 필요합니다.');
-      if (response.status === 403) throw createError('ADMIN_FORBIDDEN', '이 계정에는 관리자 권한이 없습니다.');
-      throw createError(body.code || 'ADMIN_API_ERROR', body.message || '관리자 요청을 처리하지 못했습니다.');
-    }
-    return body;
+  // [RPC 오류 변환] Postgres RAISE EXCEPTION의 'CODE: 설명' 형태 메시지를 코드/한국어 메시지로 분리합니다.
+  // 다른 서비스 파일(investment-service.js 등)과 동일한 패턴입니다.
+  function parseRpcError(error, fallback) {
+    const raw = String(error?.message || '').trim();
+    const withDetail = raw.match(/^([A-Z][A-Z0-9_]*)\s*:\s*([\s\S]+)$/);
+    if (withDetail) return createError(withDetail[1], withDetail[2].trim());
+    if (/^[A-Z][A-Z0-9_]*$/.test(raw)) return createError(raw, fallback);
+    return createError(undefined, raw || fallback);
   }
-  const httpAdapter = {
-    async load() { const [dashboard, markets, comments, users, auditLogs] = await Promise.all([request('/admin/dashboard'), request('/admin/markets'), request('/admin/comments'), request('/admin/users'), request('/admin/audit-logs')]); return { ...dashboard, markets: markets.markets || markets.data || [], comments: comments.comments || comments.data || [], users: users.users || users.data || [], auditLogs: auditLogs.logs || auditLogs.data || [], participationTrend: dashboard.participationTrend || [] }; },
-    // [Supabase Storage 연결 지점] 파일은 서버가 검사·저장하고, 프론트는 반환 URL만 시장 데이터에 저장합니다.
-    async uploadMarketImage(file) { const form = new FormData(); form.append('file', file); const body = await request('/admin/market-images', { method: 'POST', body: form }); const imagePath = body.imageUrl || body.imagePath || body.url || body.data?.imageUrl; if (!imagePath) throw createError('MARKET_IMAGE_UPLOAD_FAILED', '이미지 업로드 응답에 이미지 URL이 없습니다.'); return { imagePath: String(imagePath) }; },
-    async createMarket(input) { await request('/admin/markets', { method: 'POST', body: JSON.stringify(input) }); return this.load(); }, async updateDraftMarket(id, input) { await request(`/admin/markets/${id}`, { method: 'PATCH', body: JSON.stringify(input) }); return this.load(); }, async scheduleMarket(id) { await request(`/admin/markets/${id}/schedule`, { method: 'POST', headers: { 'Idempotency-Key': makeId('schedule') } }); return this.load(); }, async returnMarketToDraft(id) { await request(`/admin/markets/${id}`, { method: 'PATCH', body: JSON.stringify({ status: 'DRAFT' }) }); return this.load(); }, async startMarket(id) { await request(`/admin/markets/${id}/start`, { method: 'POST', headers: { 'Idempotency-Key': makeId('start') } }); return this.load(); }, async closeMarket(id) { await request(`/admin/markets/${id}/close`, { method: 'POST', headers: { 'Idempotency-Key': makeId('close') } }); return this.load(); }, async settleMarket(id) { await request(`/admin/markets/${id}/settle`, { method: 'POST', headers: { 'Idempotency-Key': makeId('settle') } }); return this.load(); }, async archiveMarket(id) { await request(`/admin/markets/${id}/archive`, { method: 'POST', headers: { 'Idempotency-Key': makeId('archive') } }); return this.load(); }, async duplicateMarket(id) { await request(`/admin/markets/${id}/duplicate`, { method: 'POST', headers: { 'Idempotency-Key': makeId('duplicate') } }); return this.load(); }, async moderateComment(id, payload) { await request(`/admin/comments/${id}/moderation`, { method: 'PATCH', body: JSON.stringify(payload), headers: { 'Idempotency-Key': makeId('comment') } }); return this.load(); }, async createStaffComment(input) { await request('/admin/comments', { method: 'POST', body: JSON.stringify(input) }); return this.load(); }, async adjustCredits(id, payload) { await request(`/admin/users/${id}/wallet-adjustments`, { method: 'POST', body: JSON.stringify(payload), headers: { 'Idempotency-Key': makeId('wallet') } }); return this.load(); }, async restrictUser(id, payload) { await request(`/admin/users/${id}/restrictions`, { method: 'PATCH', body: JSON.stringify(payload), headers: { 'Idempotency-Key': makeId('restriction') } }); return this.load(); },
+
+  async function callRpc(name, args) {
+    const { data, error } = await supabaseClient.rpc(name, args);
+    if (error) throw parseRpcError(error, '관리자 요청을 처리하지 못했습니다.');
+    return data || {};
+  }
+
+  // [종목 입력 → RPC 페이로드] operationDate/settlementMethod는 DB에 대응 컬럼이 없어 보내지 않습니다.
+  // operationDate는 startAt에서, settlementMethod는 autoSettle에서 파생해 화면에 표시합니다
+  // (아래 supabaseLoad 참고). 즉 "정산 방식" 선택은 화면 표시만 하고 실제 동작은 "종료 후 자동 정산"
+  // 체크박스가 결정합니다 — 두 입력이 다른 값을 가리키면 체크박스 쪽이 우선합니다.
+  // [시각 정규화 주의] admin-ui.js의 saveMarket()은 service.validateMarketInput(data)의 반환값을
+  // 버리고 원본 폼 입력(readMarketForm())을 그대로 넘깁니다. startAt/endAt은 <input type="datetime-local">
+  // 값이라 "2026-08-20T00:00"처럼 타임존이 없는 문자열입니다. 그대로 RPC에 보내면 Postgres가
+  // 이를 세션 타임존(UTC) 기준으로 해석해 버려, 관리자의 브라우저 시각과 어긋난 시간이 저장됩니다.
+  // 로컬 어댑터는 내부적으로 validateMarketInput()을 다시 호출해 정규화하므로 이 문제가 없고,
+  // 여기서도 같은 normalizeIsoDate()로 브라우저 로컬 시각 기준 ISO 문자열로 바꿔서 보냅니다.
+  function toMarketPayload(input) {
+    return {
+      subjectName: input.subjectName,
+      shortIntroduction: input.shortIntroduction,
+      description: input.description,
+      imagePath: input.imagePath,
+      startAt: normalizeIsoDate(input.startAt),
+      endAt: normalizeIsoDate(input.endAt),
+      basePrice: Math.round(Number(input.basePrice)),
+      minTradeUnit: Math.round(Number(input.minTradeUnit)),
+      autoStart: Boolean(input.autoStart),
+      autoSettle: Boolean(input.autoSettle),
+      commentsPublic: Boolean(input.commentsPublic),
+    };
+  }
+
+  async function supabaseLoad() {
+    const [marketsBody, commentsBody, usersBody, auditBody] = await Promise.all([
+      callRpc('admin_list_markets', {}),
+      callRpc('admin_list_comments', {}),
+      callRpc('admin_list_users', {}),
+      callRpc('admin_list_audit_logs', {}),
+    ]);
+    const markets = (marketsBody.markets || []).map((market) => ({
+      ...market,
+      operationDate: market.startAt ? localDate(market.startAt) : '',
+      settlementMethod: market.autoSettle ? '자동 정산' : '운영자 확인 후 정산',
+    }));
+    return { markets, comments: commentsBody.comments || [], users: usersBody.users || [], auditLogs: auditBody.auditLogs || [], participationTrend: [] };
+  }
+
+  async function supabaseSetMarketStatus(marketId, nextStatus) { await callRpc('admin_set_market_status', { p_market_id: marketId, p_new_status: nextStatus }); return supabaseLoad(); }
+  async function supabaseRestrictUser(userId, { restricted, reason }) {
+    if (restricted) await callRpc('admin_restrict_user', { p_user_id: userId, p_type: 'mute', p_reason: reason, p_ends_at: null });
+    // 008에는 제한을 해제하는 함수가 없어 013에서 admin_lift_user_restriction()을 추가했습니다.
+    else await callRpc('admin_lift_user_restriction', { p_user_id: userId, p_reason: reason });
+    return supabaseLoad();
+  }
+
+  const supabaseAdapter = {
+    load: () => supabaseLoad(),
+    // [이미지 업로드] Supabase Storage 버킷을 아직 연결하지 않아 로컬 시연과 동일하게 Data URL로
+    // 저장합니다(markets.image_url은 URL 문자열이면 무엇이든 받는 단순 텍스트 컬럼). 요청 본문
+    // 크기 제한을 피하기 위해 1.5MB보다 큰 파일은 미리 막습니다. 운영 규모가 커지면 Storage
+    // 버킷 + 전용 업로드 절차로 교체하는 것을 권장합니다.
+    uploadMarketImage: (file) => {
+      if (file && file.size > 1.5 * 1024 * 1024) return Promise.reject(createError('MARKET_IMAGE_TOO_LARGE', '이미지 파일이 너무 큽니다. 1.5MB 이하 이미지를 사용해주세요.'));
+      return localUploadMarketImage(file);
+    },
+    createMarket: async (input) => { await callRpc('admin_create_market', { p_payload: toMarketPayload(input) }); return supabaseLoad(); },
+    updateDraftMarket: async (id, input) => { await callRpc('admin_update_market', { p_market_id: id, p_payload: toMarketPayload(input) }); return supabaseLoad(); },
+    scheduleMarket: (id) => supabaseSetMarketStatus(id, 'SCHEDULED'),
+    returnMarketToDraft: (id) => supabaseSetMarketStatus(id, 'DRAFT'),
+    startMarket: (id) => supabaseSetMarketStatus(id, 'LIVE'),
+    closeMarket: (id) => supabaseSetMarketStatus(id, 'CLOSED'),
+    settleMarket: async (id) => { await callRpc('settle_market', { p_market_id: id }); return supabaseLoad(); },
+    archiveMarket: (id) => supabaseSetMarketStatus(id, 'ARCHIVED'),
+    duplicateMarket: async (id) => { await callRpc('admin_duplicate_market', { p_market_id: id }); return supabaseLoad(); },
+    // [처리 사유 필수] admin_moderate_comment()는 사유가 비어 있으면 MODERATION_REASON_REQUIRED를 반환합니다.
+    moderateComment: async (id, payload) => { await callRpc('admin_moderate_comment', { p_comment_id: id, p_action: payload.action, p_reason: payload.reason }); return supabaseLoad(); },
+    // [즉시 게시 안내] admin_create_staff_comment()는 항상 공개 상태로 작성합니다. "즉시 게시" 체크를
+    // 해제해도 초안으로 남겨둘 방법이 서버에 없어, 이 값은 현재 무시되고 항상 즉시 게시됩니다.
+    createStaffComment: async (input) => { await callRpc('admin_create_staff_comment', { p_market_id: input.marketId, p_content: input.content, p_is_notice: Boolean(input.isNotice), p_pinned: Boolean(input.pinned) }); return supabaseLoad(); },
+    adjustCredits: async (id, payload) => { await callRpc('admin_adjust_wallet', { p_user_id: id, p_amount: Math.round(Number(payload.amount)), p_reason: payload.reason, p_idempotency_key: makeId('wallet') }); return supabaseLoad(); },
+    restrictUser: (id, payload) => supabaseRestrictUser(id, payload),
   };
 
-  // [로컬 이미지] 시연에서는 Data URL만 보관하되 API 응답과 동일하게 imagePath를 반환합니다.
+  // [로컬 이미지] 시연에서는 Data URL만 보관하되 Supabase 연결 모드와 동일하게 imagePath를 반환합니다.
   function localUploadMarketImage(file) {
     return new Promise((resolve, reject) => {
       if (!file || typeof FileReader === 'undefined') return reject(createError('MARKET_IMAGE_UPLOAD_FAILED', '이미지 파일을 읽을 수 없습니다.'));
@@ -320,7 +390,7 @@ window.AdminService = (() => {
     });
   }
   const localAdapter = { load: async () => localLoad(), uploadMarketImage: (file) => localUploadMarketImage(file), createMarket: async (input) => localCreateMarket(input), updateDraftMarket: async (id, input) => localUpdateDraftMarket(id, input), scheduleMarket: async (id) => localScheduleMarket(id), returnMarketToDraft: async (id) => localReturnMarketToDraft(id), startMarket: async (id) => localStartMarket(id), closeMarket: async (id) => localCloseMarket(id), settleMarket: async (id) => localSettleMarket(id), archiveMarket: async (id) => localArchiveMarket(id), duplicateMarket: async (id) => localDuplicateMarket(id), moderateComment: async (id, payload) => localModerateComment(id, payload), createStaffComment: async (input) => localCreateStaffComment(input), adjustCredits: async (id, payload) => localAdjustCredits(id, payload), restrictUser: async (id, payload) => localRestrictUser(id, payload) };
-  function activeAdapter() { return ADMIN_API_ENABLED ? httpAdapter : localAdapter; }
+  function activeAdapter() { return supabaseClient ? supabaseAdapter : localAdapter; }
 
-  return Object.freeze({ MARKET_STATES, canTransitionMarket, validateMarketSchedule, validateMarketInput, localDateTime, getMode: () => ADMIN_API_ENABLED ? 'API' : 'LOCAL_DEMO', getOperator: () => clone(OPERATOR), load: () => activeAdapter().load(), uploadMarketImage: (file) => activeAdapter().uploadMarketImage(file), createMarket: (input) => activeAdapter().createMarket(input), updateDraftMarket: (id, input) => activeAdapter().updateDraftMarket(id, input), scheduleMarket: (id) => activeAdapter().scheduleMarket(id), returnMarketToDraft: (id) => activeAdapter().returnMarketToDraft(id), startMarket: (id) => activeAdapter().startMarket(id), closeMarket: (id) => activeAdapter().closeMarket(id), settleMarket: (id) => activeAdapter().settleMarket(id), archiveMarket: (id) => activeAdapter().archiveMarket(id), duplicateMarket: (id) => activeAdapter().duplicateMarket(id), moderateComment: (id, payload) => activeAdapter().moderateComment(id, payload), createStaffComment: (input) => activeAdapter().createStaffComment(input), adjustCredits: (id, payload) => activeAdapter().adjustCredits(id, payload), restrictUser: (id, payload) => activeAdapter().restrictUser(id, payload), resetDemo: () => ADMIN_API_ENABLED ? Promise.reject(createError('ADMIN_API_MODE', 'API 연결 모드에서는 시연 데이터를 초기화할 수 없습니다.')) : Promise.resolve(localResetDemo()) });
+  return Object.freeze({ MARKET_STATES, canTransitionMarket, validateMarketSchedule, validateMarketInput, localDateTime, getMode: () => supabaseClient ? 'API' : 'LOCAL_DEMO', getOperator: () => clone(OPERATOR), load: () => activeAdapter().load(), uploadMarketImage: (file) => activeAdapter().uploadMarketImage(file), createMarket: (input) => activeAdapter().createMarket(input), updateDraftMarket: (id, input) => activeAdapter().updateDraftMarket(id, input), scheduleMarket: (id) => activeAdapter().scheduleMarket(id), returnMarketToDraft: (id) => activeAdapter().returnMarketToDraft(id), startMarket: (id) => activeAdapter().startMarket(id), closeMarket: (id) => activeAdapter().closeMarket(id), settleMarket: (id) => activeAdapter().settleMarket(id), archiveMarket: (id) => activeAdapter().archiveMarket(id), duplicateMarket: (id) => activeAdapter().duplicateMarket(id), moderateComment: (id, payload) => activeAdapter().moderateComment(id, payload), createStaffComment: (input) => activeAdapter().createStaffComment(input), adjustCredits: (id, payload) => activeAdapter().adjustCredits(id, payload), restrictUser: (id, payload) => activeAdapter().restrictUser(id, payload), resetDemo: () => supabaseClient ? Promise.reject(createError('ADMIN_API_MODE', 'API 연결 모드에서는 시연 데이터를 초기화할 수 없습니다.')) : Promise.resolve(localResetDemo()) });
 })();

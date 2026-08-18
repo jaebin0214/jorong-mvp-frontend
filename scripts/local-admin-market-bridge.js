@@ -1,9 +1,10 @@
-// [로컬 운영 연동] API 미연결 개발 환경에서만 관리자 시연 저장소의 LIVE/종료 종목을 사용자 거래소 설정으로 변환합니다.
-// 실제 API 주소가 있으면 이 파일은 아무 데이터도 반환하지 않으므로, 배포 환경에서는 서버/DB 데이터가 항상 우선입니다.
+// [로컬 운영 연동] Supabase 미연결 개발 환경에서만 관리자 시연 저장소의 LIVE/종료 종목을 사용자 거래소 설정으로 변환합니다.
+// 실제 Supabase 프로젝트에 연결되어 있으면 이 파일은 아무 데이터도 반환하지 않으므로, 배포 환경에서는 서버/DB 데이터가 항상 우선입니다.
 window.LocalAdminMarketBridge = (() => {
   const ADMIN_STORE_KEY = 'jorong_admin_demo_v1';
-  const API_BASE_URL = (window.JORONG_API_BASE_URL || '').trim();
-  const isEnabled = !API_BASE_URL && window.JORONG_LOCAL_ADMIN_BRIDGE_ENABLED !== false;
+  // [이전 REST 호환] Supabase 전환 전의 API 주소가 주입된 환경도 로컬 시연 데이터를 섞지 않습니다.
+  const legacyApiBaseUrl = (window.JORONG_API_BASE_URL || '').trim();
+  const isEnabled = !window.JorongSupabase && !legacyApiBaseUrl && window.JORONG_LOCAL_ADMIN_BRIDGE_ENABLED !== false;
 
   function readDemoStore() {
     if (!isEnabled) return null;
