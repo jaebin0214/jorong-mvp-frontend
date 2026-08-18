@@ -217,7 +217,9 @@
       if (!parent) throw new Error('답글을 달 원댓글을 찾지 못했습니다.');
       parent.replies.push(comment);
     } else {
-      localRoots.unshift(comment);
+      // [원댓글 저장 순서] 로컬 시연 데이터도 작성 시각 순서(오래된 → 최신)를 유지합니다.
+      // 화면에서는 HYPE 상위 2개만 별도로 위에 고정합니다.
+      localRoots.push(comment);
     }
     saveLocalBucket(bucket);
     return { comment };

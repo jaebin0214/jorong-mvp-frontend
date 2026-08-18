@@ -15,7 +15,9 @@
   // 확정(2026-08-17): HYPE는 "라운드당 1회"가 아니라 "댓글당 1회"만 제한됩니다.
   // 그래서 선택한 댓글 하나가 아니라, 이번 라운드에 내가 HYPE한 모든 댓글 ID를 집합으로 관리합니다.
   let hypedCommentIds = new Set();
-  let bestCommentId = null;
+  // [댓글 정렬] HYPE 상위 원댓글 2개만 목록 위에 고정하고, 나머지는 오래된 댓글부터 보여줍니다.
+  // 답글은 부모 댓글 안에서 기존 작성·더보기 흐름을 유지합니다.
+  let topHypeCommentIds = [];
   let toastTimer;
 
   function showToast(message) {
@@ -45,17 +47,33 @@
     emptyMessage.hidden = commentCount > 0;
   }
 
-  // [최고 HYPE 계산] 목록 응답에 bestCommentId가 없더라도 화면에서 가장 많은 HYPE의 댓글을 표시할 수 있게 보완합니다.
-  function findBestCommentId(comments) {
-    let best = null;
-    function inspect(items) {
-      items.forEach((comment) => {
-        if (!isDeletedComment(comment) && (!best || Number(comment.hypeCount || 0) > Number(best.hypeCount || 0))) best = comment;
-        inspect(comment.replies || []);
-      });
-    }
-    inspect(comments || []);
-    return Number(best?.hypeCount || 0) > 0 ? best.id : null;
+  function getCreatedAtTime(comment) {
+    const timestamp = Date.parse(comment?.createdAt || '');
+    return Number.isFinite(timestamp) ? timestamp : 0;
+  }
+
+  // [원댓글 표시 순서] 저장소·RPC가 최신순으로 응답하더라도 화면에서는 같은 규칙으로 다시 정렬합니다.
+  // 동률이면 먼저 작성된 댓글을 우선해 새로고침할 때마다 순서가 바뀌지 않게 합니다.
+  function orderRootComments(comments) {
+    const roots = Array.isArray(comments) ? [...comments] : [];
+    const byOldest = (left, right) => (
+      getCreatedAtTime(left) - getCreatedAtTime(right)
+      || String(left.id || '').localeCompare(String(right.id || ''))
+    );
+    const topHype = roots
+      .filter((comment) => !isDeletedComment(comment) && Number(comment.hypeCount || 0) > 0)
+      .sort((left, right) => (
+        Number(right.hypeCount || 0) - Number(left.hypeCount || 0)
+        || byOldest(left, right)
+      ))
+      .slice(0, 2);
+    const topHypeIds = topHype.map((comment) => comment.id);
+    const topHypeIdSet = new Set(topHypeIds);
+
+    return {
+      comments: [...topHype, ...roots.filter((comment) => !topHypeIdSet.has(comment.id)).sort(byOldest)],
+      topHypeIds,
+    };
   }
 
   // [내 HYPE 전부 수집] 서버 응답에 currentUserHypedCommentIds가 없는 경우(예: 구버전 캐시)를 대비해
@@ -121,7 +139,6 @@
       try {
         const result = await service.hypeComment(comment.id);
         hypedCommentIds.add(comment.id);
-        bestCommentId = result.bestCommentId || bestCommentId;
         await refreshComments();
       } catch (error) {
         showToast(error.message || 'HYPE를 저장하지 못했습니다.');
@@ -152,10 +169,11 @@
   }
 
   function createBestBadge(comment) {
-    if (bestCommentId !== comment.id) return null;
+    const rank = topHypeCommentIds.indexOf(comment.id);
+    if (rank < 0) return null;
     const badge = document.createElement('span');
     badge.className = 'exchange-best-hype';
-    badge.textContent = '베스트 HYPE';
+    badge.textContent = rank === 0 ? '베스트 HYPE' : 'HYPE TOP 2';
     return badge;
   }
 
@@ -322,13 +340,14 @@
   async function refreshComments() {
     const result = await service.loadComments();
     const comments = result.comments || [];
+    const ordered = orderRootComments(comments);
     hypedCommentIds = Array.isArray(result.currentUserHypedCommentIds)
       ? new Set(result.currentUserHypedCommentIds)
       : collectCurrentUserHypeIds(comments);
-    bestCommentId = result.bestCommentId || findBestCommentId(comments);
+    topHypeCommentIds = ordered.topHypeIds;
     hasCurrentUserRootComment = findCurrentUsersRootComment(comments);
     commentList.replaceChildren();
-    comments.forEach(appendComment);
+    ordered.comments.forEach(appendComment);
     updateCommentCount();
     // 계정별 댓글 작성 여부를 투자 UI에 전달해 다른 사용자의 댓글로 잠금이 풀리지 않게 합니다.
     window.InvestmentUI?.setCommentUnlockState?.(hasCurrentUserRootComment);
