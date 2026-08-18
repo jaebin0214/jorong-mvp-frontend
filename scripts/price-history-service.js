@@ -4,9 +4,14 @@ window.PriceHistoryService = (() => {
   const marketConfig = window.MarketConfig.get();
   const { session, subject } = marketConfig;
   const localEvents = [];
+  // [적응형 캔들 단위] 시장 전체 시간을 약 720개 구간으로 나눠, 짧은 장에서는 더 촘촘하게
+  // 주문 흐름을 보여주고 긴 장에서는 불필요하게 많은 캔들이 쌓이지 않도록 합니다.
+  const CANDLE_INTERVAL_STEPS = [5, 10, 15, 30, 60];
+  const TARGET_CANDLE_SLOTS = 720;
   // 서버가 반환한 시장 최초 가격을 보관합니다. 차트는 이 값을 Y축 기준선으로 사용해야
   // 운영 설정 캐시가 오래되었을 때도 실제 장의 기준가와 맞춰서 그려집니다.
   let latestInitialPrice = Number(subject.initialPrice);
+  let latestCandleIntervalSeconds = 60;
 
   // [현재 시장 ID] 서버 시계가 다른 라운드를 지정해도 해당 라운드의 모든 투자 기록으로 캔들을 조회합니다.
   function getMarketSessionId() {
@@ -19,6 +24,18 @@ window.PriceHistoryService = (() => {
     const endAt = window.MarketCountdown.getEndAt() || (Date.now() + (session.durationHours * 60 * 60 * 1000));
     const startAt = session.startsAt ? Date.parse(session.startsAt) : endAt - (session.durationHours * 60 * 60 * 1000);
     return { startAt, endAt };
+  }
+
+  // [캔들 단위 선택] 운영 설정에서 명시하면 그 값을 우선하고, 없으면 시장 개방 시간을 기준으로
+  // 5·10·15·30·60초 중 하나를 선택합니다. 예: 3시간 장은 15초, 6시간 장은 30초 단위입니다.
+  function getPreferredCandleIntervalSeconds() {
+    const configured = Number(session.candleIntervalSeconds);
+    if (CANDLE_INTERVAL_STEPS.includes(configured)) return configured;
+
+    const durationSeconds = Math.max(1, Math.round(Number(session.durationHours) * 60 * 60));
+    const desiredInterval = Math.ceil(durationSeconds / TARGET_CANDLE_SLOTS);
+    return CANDLE_INTERVAL_STEPS.find((interval) => interval >= desiredInterval)
+      || CANDLE_INTERVAL_STEPS.at(-1);
   }
 
   // [캔들 보정] 백엔드 응답의 가격·시각 필드를 안전한 숫자로 통일합니다.
@@ -87,29 +104,46 @@ window.PriceHistoryService = (() => {
   // [캔들 조회] Supabase 연결 시 DB의 모든 사용자 투자 기록으로 집계된 캔들(get_market_candles RPC)을 받고,
   // 없으면 같은 브라우저의 공유 로컬 원장을 사용합니다. 로그인 여부와 무관하게 누구나 조회할 수 있습니다.
   async function loadCandles() {
-    if (!supabaseClient) return buildLocalCandles();
-
-    const { data, error } = await supabaseClient.rpc('get_market_candles', {
-      p_market_id: getMarketSessionId(),
-      p_interval_seconds: 60,
-    });
-    if (error) throw new Error(error.message || '가격 이력을 불러오지 못했습니다.');
-
-    const body = data || {};
-    // 응답 필드가 없는데 빈 배열처럼 처리하면, 이미 표시 중인 그래프가 기준가 한 개짜리
-    // 화면으로 되돌아갑니다. 서버 계약 오류는 차트 UI가 기존 그래프를 유지할 수 있게 명시적으로 알립니다.
-    if (!Array.isArray(body.candles)) {
-      throw new Error('가격 이력 응답 형식이 올바르지 않습니다.');
+    if (!supabaseClient) {
+      latestCandleIntervalSeconds = getPreferredCandleIntervalSeconds();
+      return buildLocalCandles();
     }
-    const responseInitialPrice = Number(body.initialPrice);
-    if (Number.isFinite(responseInitialPrice) && responseInitialPrice > 0) {
-      latestInitialPrice = responseInitialPrice;
+
+    const preferredInterval = getPreferredCandleIntervalSeconds();
+
+    async function requestCandles(intervalSeconds) {
+      const { data, error } = await supabaseClient.rpc('get_market_candles', {
+        p_market_id: getMarketSessionId(),
+        p_interval_seconds: intervalSeconds,
+      });
+      if (error) throw new Error(error.message || '가격 이력을 불러오지 못했습니다.');
+
+      const body = data || {};
+      // 응답 필드가 없는데 빈 배열처럼 처리하면, 이미 표시 중인 그래프가 기준가 한 개짜리
+      // 화면으로 되돌아갑니다. 서버 계약 오류는 차트 UI가 기존 그래프를 유지할 수 있게 명시적으로 알립니다.
+      if (!Array.isArray(body.candles)) {
+        throw new Error('가격 이력 응답 형식이 올바르지 않습니다.');
+      }
+      const responseInitialPrice = Number(body.initialPrice);
+      if (Number.isFinite(responseInitialPrice) && responseInitialPrice > 0) {
+        latestInitialPrice = responseInitialPrice;
+      }
+      latestCandleIntervalSeconds = intervalSeconds;
+      return body.candles
+        .map(normalizeCandle)
+        .filter(Boolean)
+        // 서버 응답 순서와 상관없이 시간축에 맞춰 캔들을 그립니다.
+        .sort((left, right) => left.startedAt - right.startedAt);
     }
-    return body.candles
-      .map(normalizeCandle)
-      .filter(Boolean)
-      // 서버 응답 순서와 상관없이 시간축에 맞춰 캔들을 그립니다.
-      .sort((left, right) => left.startedAt - right.startedAt);
+
+    try {
+      return await requestCandles(preferredInterval);
+    } catch (error) {
+      // 기존 백엔드가 60초 단위만 지원하는 상태에서도 그래프 자체가 멈추지 않도록 호환 요청을 합니다.
+      // 짧은 단위가 지원되기 시작하면 첫 요청이 성공하므로 이 경로는 실행되지 않습니다.
+      if (preferredInterval === 60) throw error;
+      return requestCandles(60);
+    }
   }
 
   // [투자 반영] Supabase 미연결에서는 즉시 로컬 캔들을 추가하고, 연결 시에는 서버 집계값을 다시 조회합니다.
@@ -147,6 +181,8 @@ window.PriceHistoryService = (() => {
     getSessionRange,
     // [차트 기준가] API 응답이 있으면 서버값을, 로컬 시연이면 market-config의 최초 가격을 반환합니다.
     getInitialPrice: () => latestInitialPrice,
+    // [차트 시간 단위] 실제 서버가 응답한 단위를 UI가 읽어 캔들 폭을 실제 시간 비율에 맞춥니다.
+    getCandleIntervalSeconds: () => latestCandleIntervalSeconds,
     loadCandles,
     recordInvestment,
   });

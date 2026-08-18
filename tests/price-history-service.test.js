@@ -41,7 +41,7 @@ test('Supabase 연결 시 투자 직후에도 임시 로컬 캔들이 아닌 서
         assert.equal(name, 'get_market_candles');
         // VM 내부에서 생성된 객체는 프로토타입이 달라 deepEqual 대신 요청 필드를 개별 검증합니다.
         assert.equal(args.p_market_id, 'market-server');
-        assert.equal(args.p_interval_seconds, 60);
+        assert.equal(args.p_interval_seconds, 30);
         return {
           data: {
             initialPrice: 925,
@@ -73,4 +73,5 @@ test('Supabase 연결 시 투자 직후에도 임시 로컬 캔들이 아닌 서
   assert.equal(candles[0].close, 1040);
   assert.equal(candles[0].volume, 5000);
   assert.equal(window.PriceHistoryService.getInitialPrice(), 925);
+  assert.equal(window.PriceHistoryService.getCandleIntervalSeconds(), 30);
 });

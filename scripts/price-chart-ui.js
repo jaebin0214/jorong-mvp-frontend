@@ -64,24 +64,15 @@ window.PriceChartUI = (() => {
     return { min, max, gridValues, gridStep };
   }
 
-  // [X축 최소 간격] 같은 분에 발생한 추가 투자도 서로 가려지지 않도록 시간 순서를 유지한 채 간격을 보장합니다.
+  // [X축 실제 시간 위치] 캔들은 시장의 시작·종료 시간 사이 실제 발생 시각에 배치합니다.
+  // 데이터가 많아도 균등 간격으로 재배치하지 않아, 짧은 시간의 여러 투자가 시간축에서 왜곡되지 않습니다.
   function getCandleXPositions(candles, startAt, endAt, plotLeft, plotWidth) {
     const duration = Math.max(1, endAt - startAt);
     const plotRight = plotLeft + plotWidth;
-    const minimumGap = Math.min(13, Math.max(5, plotWidth / Math.max(48, candles.length * 2.6)));
-    const positions = [];
-
-    candles.forEach((candle, index) => {
+    return candles.map((candle) => {
       const timeX = plotLeft + ((clamp(candle.startedAt, startAt, endAt) - startAt) / duration) * plotWidth;
-      const previousX = positions[index - 1];
-      positions.push(index === 0 ? timeX : Math.max(timeX, previousX + minimumGap));
+      return clamp(timeX, plotLeft, plotRight);
     });
-
-    // 장 마감 근처의 주문이 많아 영역 밖으로 밀린 경우에는 순서를 유지한 채 차트 너비에 다시 배치합니다.
-    if (positions.length > 1 && positions.at(-1) > plotRight) {
-      return candles.map((_, index) => plotLeft + ((index + 1) / (candles.length + 1)) * plotWidth);
-    }
-    return positions.map((position) => clamp(position, plotLeft, plotRight));
   }
 
   function render(candles) {
@@ -99,12 +90,16 @@ window.PriceChartUI = (() => {
     const priceBottom = height - padding.bottom - volumeHeight;
     const plotWidth = plotRight - plotLeft;
     const priceHeight = priceBottom - priceTop;
+    const marketDurationMs = Math.max(1, endAt - startAt);
+    const candleIntervalSeconds = Math.max(1, Number(window.PriceHistoryService.getCandleIntervalSeconds?.()) || 60);
     const domain = getPriceDomain(displayCandles, priceBaseline);
     const yForPrice = (price) => priceTop + ((domain.max - Number(price)) / (domain.max - domain.min)) * priceHeight;
     const xPositions = getCandleXPositions(displayCandles, startAt, endAt, plotLeft, plotWidth);
     const maxVolume = Math.max(1, ...displayCandles.map((candle) => Number(candle.volume) || 0));
     const volumeBottom = height - padding.bottom;
-    const candleWidth = Math.max(4, Math.min(12, plotWidth / Math.max(70, displayCandles.length * 2.8)));
+    // [캔들 폭] 선택된 시간 단위가 짧아질수록 폭도 함께 줄여, 장 전체 시간 비율을 유지합니다.
+    const timeSlotWidth = plotWidth * ((candleIntervalSeconds * 1000) / marketDurationMs);
+    const candleWidth = Math.max(1, Math.min(12, timeSlotWidth * 0.72));
 
     // [가격 기준값] 최초 가격 기준선과 그 위·아래의 50 크레딧 단위 가격만 5개 표시합니다.
     const grid = domain.gridValues.map((price) => {
