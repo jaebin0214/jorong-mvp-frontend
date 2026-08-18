@@ -11,6 +11,9 @@ window.AuthService = (() => {
   const INITIAL_POINTS = 10000;
   const localAccounts = new Map();
   let currentAccount = null;
+  // [세션 복원 상태] 라우팅이 Supabase 세션 확인보다 먼저 로그인 화면으로 이동시키지 않도록,
+  // 최초 restoreSession() 완료 여부를 별도로 보관합니다.
+  let hasRestoredSession = false;
 
   // [안전한 탭 저장소] 브라우저 정책으로 sessionStorage가 막혀도 인증 화면 전체가 멈추지 않게 합니다.
   function readSessionStorage(key) {
@@ -217,12 +220,12 @@ window.AuthService = (() => {
   // (profiles는 전체 공개 SELECT, wallets는 본인 행만 SELECT 가능하도록 RLS가 이미 열려 있습니다)
   // 로컬 시연에서는 비밀번호를 제외한 탭 세션으로 로그인 상태를 복원합니다.
   async function restoreSession() {
-    if (!supabaseClient) {
-      if (currentAccount) return currentAccount;
-      const savedAccount = getPersistedLocalSession();
-      return savedAccount ? applySession({ account: savedAccount, wallet: { points: savedAccount.points }, investmentLogs: savedAccount.investmentLogs }) : null;
-    }
     try {
+      if (!supabaseClient) {
+        if (currentAccount) return currentAccount;
+        const savedAccount = getPersistedLocalSession();
+        return savedAccount ? applySession({ account: savedAccount, wallet: { points: savedAccount.points }, investmentLogs: savedAccount.investmentLogs }) : null;
+      }
       const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
       if (sessionError || !session) {
         currentAccount = null;
@@ -244,6 +247,9 @@ window.AuthService = (() => {
     } catch (_) {
       currentAccount = null;
       return null;
+    } finally {
+      // 실패·비로그인도 "복원 확인 완료" 상태로 처리해야 보호 화면이 무한 대기하지 않습니다.
+      hasRestoredSession = true;
     }
   }
 
@@ -265,6 +271,7 @@ window.AuthService = (() => {
     logout,
     getRequestHeaders,
     getCurrentAccount: () => currentAccount,
+    isSessionRestored: () => hasRestoredSession,
     // [로컬 지갑 동기화] 투자 시연이 바꾼 잔액을 관리자 목록에도 반영합니다. (Supabase 연결 시에는 서버가 잔액을 관리하므로 no-op)
     updateLocalWalletPoints: (points) => {
       if (supabaseClient || !currentAccount || !Number.isFinite(Number(points))) return;

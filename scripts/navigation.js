@@ -27,7 +27,10 @@ window.Navigation = (() => {
   function resolveAccessibleViewId(viewId) {
     const safeViewId = normaliseViewId(viewId);
     const account = window.AuthService?.getCurrentAccount?.();
-    if (protectedViewIds.has(safeViewId) && window.AuthService && !account) return 'login';
+    // Supabase의 getSession()은 비동기이므로 완료 전에는 현재 계정이 일시적으로 비어 있습니다.
+    // 이 순간 #cycle-report를 #login으로 바꾸면 세션 복원 뒤에도 원래 주소를 알 수 없게 됩니다.
+    const isSessionRestored = window.AuthService?.isSessionRestored?.() === true;
+    if (protectedViewIds.has(safeViewId) && window.AuthService && isSessionRestored && !account) return 'login';
     return safeViewId;
   }
 

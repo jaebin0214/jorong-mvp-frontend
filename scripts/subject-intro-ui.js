@@ -8,18 +8,60 @@
   const startButton = document.querySelector('#subject-intro-start');
   const subjectImage = document.querySelector('.exchange-subject-image');
   const config = window.MarketConfig.get();
-  let hasShownOnFirstExchangeEntry = false;
+  const autoShownStoragePrefix = 'jorong:subject-intro:auto-shown:v1';
+  let hasOpenedInCurrentPage = false;
   let lastFocusedElement = null;
 
   if (!modal || !dialog || !startButton || !subjectImage) return;
 
-  // [장 종료 예외] 정산 화면에서는 거래 전 안내가 필요 없으므로, 서버 기준 거래 종료 상태면 모달을 열지 않습니다.
+  // [개장 중 전용] 예약·마감·정산 회차에는 종목 소개를 자동으로 띄우지 않습니다.
+  // 서버 시계를 쓸 때는 타이머 동기화가 끝난 뒤에만 판정해, 이전 캐시 상태로 팝업이 열리는 것을 막습니다.
   function canShowSubjectIntro() {
     if (config.marketAvailable !== true) return false;
-    const configuredStatus = String(config.session.status || 'OPEN').toUpperCase();
+    // 로그인 세션을 복원하는 짧은 동안에는 guest 키로 "이미 봄"을 기록하지 않습니다.
+    // 복원 완료 뒤 실제 계정 기준으로 해당 장의 첫 입장을 판정합니다.
+    if (window.AuthService && window.AuthService.isSessionRestored?.() === false) return false;
+    const configuredStatus = String(config.session.status || '').toUpperCase();
+    if (!['OPEN', 'LIVE'].includes(configuredStatus)) return false;
+    if (window.MarketCountdown?.isReady?.() === false) return false;
+
+    const startAt = Date.parse(config.session.startsAt || '');
+    const endAt = Number.isFinite(startAt)
+      ? startAt + (Number(config.session.durationHours) * 60 * 60 * 1000)
+      : NaN;
+    const now = window.MarketCountdown?.getServerNow?.() || Date.now();
+    if (!Number.isFinite(startAt) || !Number.isFinite(endAt) || now < startAt || now >= endAt) return false;
+
     const isMarketEnded = window.MarketCountdown?.isEnded?.() === true;
     const settlementView = document.querySelector('#market-settlement-view');
-    return !['CLOSED', 'SETTLED', 'ARCHIVED'].includes(configuredStatus) && !isMarketEnded && Boolean(settlementView?.hidden ?? true);
+    return !isMarketEnded && Boolean(settlementView?.hidden ?? true);
+  }
+
+  // [회차별 최초 진입] 같은 사용자가 같은 장을 새로고침하거나 다른 탭으로 돌아와도
+  // 이미 본 소개를 다시 열지 않습니다. 다음 시장은 ID가 달라 자동으로 새 안내 대상이 됩니다.
+  function getAutoShownStorageKey() {
+    const marketId = String(config.session?.id || 'unknown-market');
+    const accountId = String(window.AuthService?.getCurrentAccount?.()?.id || 'guest');
+    return `${autoShownStoragePrefix}:${marketId}:${accountId}`;
+  }
+
+  function hasSeenCurrentMarketIntro() {
+    try { return window.localStorage.getItem(getAutoShownStorageKey()) === 'true'; } catch (_) { return false; }
+  }
+
+  function markCurrentMarketIntroSeen() {
+    try { window.localStorage.setItem(getAutoShownStorageKey(), 'true'); } catch (_) { /* no-op */ }
+  }
+
+  function isExchangeActive() {
+    return document.querySelector('#exchange')?.classList.contains('is-active') === true;
+  }
+
+  function openOnFirstMarketEntry() {
+    if (hasOpenedInCurrentPage || hasSeenCurrentMarketIntro() || !canShowSubjectIntro()) return;
+    hasOpenedInCurrentPage = true;
+    markCurrentMarketIntroSeen();
+    open();
   }
 
   // [설정값 반영] 운영자가 market-config.js에서 바꾼 종목 이름·이미지·소개문을 모달에도 동일하게 표시합니다.
@@ -50,12 +92,14 @@
     window.dispatchEvent(new CustomEvent('jorong:subject-intro-closed'));
   }
 
-  // [첫 거래소 진입] 새로고침 기준 한 번만 자동 안내를 띄우며, 이후에는 종목 이미지 클릭으로 다시 확인합니다.
+  // [첫 거래소 진입] 실제 개장 회차에서만 자동 안내를 열며, 이후에는 종목 이미지 클릭으로 다시 확인합니다.
   window.addEventListener('jorong:view-changed', (event) => {
-    if (event.detail?.viewId !== 'exchange' || hasShownOnFirstExchangeEntry || !canShowSubjectIntro()) return;
-    hasShownOnFirstExchangeEntry = true;
-    open();
+    if (event.detail?.viewId === 'exchange') openOnFirstMarketEntry();
   });
+
+  // 인증·서버 시계가 늦게 준비되는 경우에도, 거래소에 머무르는 동안 최초 안내를 정확히 한 번만 확인합니다.
+  window.addEventListener('jorong:auth-session', () => { if (isExchangeActive()) openOnFirstMarketEntry(); });
+  window.addEventListener('jorong:market-clock-synced', () => { if (isExchangeActive()) openOnFirstMarketEntry(); });
 
   // [다시 보기] 기존 종목 이미지는 그대로 유지하고, 클릭 가능한 UI라는 점을 키보드와 마우스 모두에서 알립니다.
   subjectImage.tabIndex = 0;
