@@ -28,6 +28,7 @@
   let hasCurrentUserRootComment = false;
   let isSubmitting = false;
   let toastTimer;
+  let positionPnlFitFrame = null;
   // 계정 전환 중 이전 계정의 비동기 포트폴리오 응답이 늦게 돌아와 화면을 덮지 않게 합니다.
   let refreshSequence = 0;
 
@@ -72,6 +73,34 @@
 
   function formatProfit(value) {
     return math.formatCredits(String(value || '0'));
+  }
+
+  // [손익 문구 맞춤] 카드 높이는 고정하고, 긴 손익·수익률 문자열만 한 줄 안에서 줄입니다.
+  // CSS 기본 크기를 시작점으로 사용하므로 데스크톱·모바일 각각의 원래 글자 크기는 유지됩니다.
+  function fitPositionPnlText() {
+    const pnl = document.querySelector('#position-pnl');
+    if (!pnl || statusCard.hidden || pnl.clientWidth <= 0) return;
+
+    pnl.style.removeProperty('font-size');
+    const maximumSize = Number.parseFloat(window.getComputedStyle(pnl).fontSize) || 20;
+    const minimumSize = Math.min(12, maximumSize);
+    let nextSize = maximumSize;
+
+    // 0.5px 단위로 축소해, 숫자가 길어져도 버튼·카드를 밀어내지 않게 합니다.
+    while (pnl.scrollWidth > pnl.clientWidth && nextSize > minimumSize) {
+      nextSize = Math.max(minimumSize, nextSize - 0.5);
+      pnl.style.fontSize = `${nextSize}px`;
+    }
+
+    pnl.classList.toggle('is-compact', nextSize < maximumSize);
+  }
+
+  function schedulePositionPnlFit() {
+    if (positionPnlFitFrame != null) window.cancelAnimationFrame(positionPnlFitFrame);
+    positionPnlFitFrame = window.requestAnimationFrame(() => {
+      positionPnlFitFrame = null;
+      fitPositionPnlText();
+    });
   }
 
   function setVisiblePanel(panel) {
@@ -174,6 +203,7 @@
     } else {
       // 일반 갱신이나 투자 완료 뒤에는 투자현황 카드 표시
       setVisiblePanel(statusCard);
+      schedulePositionPnlFit();
     }
 
     return true;
@@ -341,6 +371,8 @@
     activeSnapshot = event.detail;
     renderBalance(event.detail?.wallet?.points);
   });
+  // 창 너비가 바뀌어도 손익 문구가 다시 카드 폭에 맞도록 보정합니다.
+  window.addEventListener('resize', schedulePositionPnlFit);
 
   renderFirstAmount();
   renderAdditionalAmount();

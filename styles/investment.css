@@ -32,24 +32,24 @@
 
 /* [내 투자 현황] 첫 체결 뒤에는 방향 선택 대신 가중평균 포지션과 평가손익을 같은 카드에서 보여줍니다. */
 .exchange-roast-card.has-open-position { height:305px; align-content:stretch; justify-items:stretch; padding:0; }
-.investment-status-card, .additional-investment-panel { width:100%; height:100%; display:flex; flex-direction:column; gap:10px; padding:16px; text-align:left; }
+.investment-status-card, .additional-investment-panel { width:100%; height:100%; min-height:0; display:flex; flex-direction:column; gap:10px; overflow:hidden; padding:16px; text-align:left; }
 .investment-status-card[hidden], .additional-investment-panel[hidden] { display:none; }
 .investment-status-card > header { display:flex; align-items:center; gap:8px; }
 .investment-status-card h2, .additional-investment-panel h2 { margin:0; color:#092045; font-size:18px; line-height:1.25; letter-spacing:-.045em; }
 .position-side-badge { min-width:55px; height:25px; display:grid; place-items:center; margin-left:auto; border-radius:13px; font-size:11px; font-weight:850; }
 .position-side-badge.is-support { color:#1463f2; background:#e0f2ff; }
 .position-side-badge.is-mock { color:#f5425c; background:#ffedf2; }
-.position-pnl { display:grid; gap:2px; }
+.position-pnl { min-width:0; display:grid; gap:2px; }
 .position-pnl > span { color:#6e7d99; font-size:11px; }
 .position-pnl > span b { color:inherit; font-weight:800; }
-.position-pnl strong { color:#1463f2; font-size:21px; letter-spacing:-.045em; }
+.position-pnl strong { width:100%; display:block; overflow:hidden; color:#1463f2; font-size:21px; letter-spacing:-.045em; line-height:1.18; text-overflow:clip; white-space:nowrap; }
 .position-pnl strong.is-loss { color:#f5425c; }
 .position-metrics { display:grid; grid-template-columns:1fr 1fr; gap:9px 14px; border-top:1px solid #dbe3f0; padding-top:10px; }
 .position-metrics div { display:grid; gap:3px; }
 .position-metrics span { color:#6e7d99; font-size:10px; }
 .position-metrics b { color:#092045; font-size:13px; letter-spacing:-.025em; white-space:nowrap; }
 .position-lock-note { margin:0; border-radius:7px; padding:8px 10px; color:#1463f2; background:#e0f2ff; font-size:10px; line-height:1.4; word-break:keep-all; }
-.position-add-button { width:100% !important; height:38px !important; margin-top:3px; border:0; border-radius:7px !important; color:#fff; background:#1463f2 !important; font:inherit; font-size:12px !important; font-weight:850; cursor:pointer; }
+.position-add-button { width:100% !important; height:38px !important; flex:0 0 auto; margin-top:auto; border:0; border-radius:7px !important; color:#fff; background:#1463f2 !important; font:inherit; font-size:12px !important; font-weight:850; cursor:pointer; }
 .position-add-button:hover { background:#0d56dd !important; }
 
 /* [추가 투자] 기존 의견은 읽기 전용으로 두고, 현재 체결가와 예상 수량을 즉시 계산해 안내합니다. */
