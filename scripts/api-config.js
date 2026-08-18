@@ -4,8 +4,8 @@
 //   - anon public key : eyJhbGciOi... 로 시작하는 긴 문자열
 // 주의: 여기에는 반드시 "anon public" 키만 넣어야 합니다. service_role 키를 여기 넣으면
 // 관리자 권한이 브라우저에 그대로 노출되므로 절대 넣지 마세요.
-window.JORONG_SUPABASE_URL = window.JORONG_SUPABASE_URL || 'https://ehvkybqecjwqyhminzcj.supabase.co';
-window.JORONG_SUPABASE_ANON_KEY = window.JORONG_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVodmt5YnFlY2p3cXlobWluemNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NzI3NjcsImV4cCI6MjEwMjU0ODc2N30.07YzVy0qYz2I2c3J73aeM8i--twzoTmSoZyq1ecXysw';
+window.JORONG_SUPABASE_URL = window.JORONG_SUPABASE_URL || 'https://esjgfxswvtbdbtahlmov.supabase.co';
+window.JORONG_SUPABASE_ANON_KEY = window.JORONG_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVzamdmeHN3dnRiZGJ0YWhsbW92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODYzODkyMDAsImV4cCI6MjEwMTk2NTIwMH0.MXmsvdYNwMvO6tCRHsRSlckBJ-HwM6FXMc-Y1uJ4PjI';
 
 // [이전 방식 정리] 예전에는 커스텀 REST 서버 주소(JORONG_API_BASE_URL)를 기준으로 로컬/서버 모드를
 // 나눴지만, 지금은 Supabase 프로젝트에 직접 연결하는 방식으로 확정되어 더 이상 사용하지 않습니다.
