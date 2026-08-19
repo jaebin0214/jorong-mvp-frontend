@@ -222,7 +222,11 @@
       value: state.targetValue,
       valueChange: state.targetValue - state.previousTargetValue,
     };
-    const position = payload.position ?? state.position;
+    // `position: null`은 "이 시장에 투자하지 않음"이라는 유효한 서버 응답입니다.
+    // null을 ??로 무시하면 이전 사용자의 포지션이 화면에 남을 수 있어 명시적으로 구분합니다.
+    const hasPosition = Object.prototype.hasOwnProperty.call(payload, 'position');
+    const hasSettlement = Object.prototype.hasOwnProperty.call(payload, 'settlement');
+    const position = hasPosition ? payload.position : state.position;
     const positionMetrics = payload.positionMetrics || payload.metrics || calculatePositionMetrics(position, target.value);
     return {
       ...payload,
@@ -230,12 +234,23 @@
       target,
       position,
       positionMetrics,
-      settlement: payload.settlement ?? state.settlement,
+      settlement: hasSettlement ? payload.settlement : state.settlement,
       investments: payload.investments || payload.orders || state.orders,
       orders: payload.orders || payload.investments || state.orders,
       market: payload.market || state.market,
       marketSummary: payload.marketSummary || state.marketSummary,
     };
+  }
+
+  // [정산 조회 판별] 포지션이 없는 사용자는 종료된 시장의 전체 결과·댓글을 볼 수 있어야 합니다.
+  // 단, 포지션이 있는데 settlement가 없으면 서버 정산이 끝나지 않은 상태이므로 기존 대기 흐름을 유지합니다.
+  function isTerminalSettlementMarket(response = {}) {
+    const terminalStatuses = new Set(['CLOSED', 'SETTLED', 'ARCHIVED']);
+    const responseStatus = response.market?.status || response.session?.status || response.status;
+    const configuredStatus = window.MarketConfig?.get?.().session?.status;
+    return terminalStatuses.has(String(responseStatus || '').toUpperCase())
+      || terminalStatuses.has(String(configuredStatus || '').toUpperCase())
+      || window.MarketCountdown?.isEnded?.() === true;
   }
 
   function applyLocalSnapshot(snapshot) {
@@ -393,14 +408,22 @@
     return applySnapshot(body);
   }
 
-  // [정산 조회] get_my_settlement는 시장이 아직 SETTLED가 아니면 settlement:null을 정상 응답으로 반환하므로,
-  // 여기서 명시적으로 실패시켜 market-settlement-ui.js가 "정산 처리 중" 대기·폴링 화면으로 전환하게 합니다.
+  // [정산 조회] 종료 시장에서 포지션이 없는 사용자는 settlement:null이 정상입니다.
+  // 이 경우에도 시장 전체 결과와 읽기 전용 댓글 기록을 보여줍니다. 포지션이 있는데 settlement가 없을 때만
+  // market-settlement-ui.js가 "정산 처리 중" 대기·폴링 화면으로 전환하게 합니다.
   // 클라이언트는 API 연결 시 지갑에 직접 지급하지 않습니다 — 정산은 항상 서버(settle_market)가 확정합니다.
   async function loadSettlement() {
     if (!supabaseClient) return settleLocalMarket();
-    const body = await callRpc('get_my_settlement', { p_market_id: getMarketSessionId() });
-    if (!body.settlement) throw createError('SETTLEMENT_PENDING', '아직 정산이 완료되지 않았습니다. 잠시 후 다시 확인해주세요.');
-    return applySnapshot(body);
+    const body = await callRpc('get_my_settlement', { p_market_id: getMarketSessionId() }) || {};
+    const position = body.position ?? body.openPosition ?? null;
+    const hasPosition = Boolean(position);
+
+    if (!body.settlement && (hasPosition || !isTerminalSettlementMarket(body))) {
+      throw createError('SETTLEMENT_PENDING', '아직 정산이 완료되지 않았습니다. 잠시 후 다시 확인해주세요.');
+    }
+
+    // 포지션이 없는 종료 시장은 settlement:null을 그대로 전달해 UI에서 "투자 내역 없음"으로 렌더링합니다.
+    return applySnapshot({ ...body, position, settlement: body.settlement ?? null });
   }
 
   // [이전 화면 호환] 기존 마이페이지가 투자 로그를 요청할 때도 현재 포지션 응답을 사용합니다.

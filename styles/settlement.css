@@ -47,8 +47,8 @@
 .market-ratio b:last-child { color:#f5425c; }
 .market-ratio > span { height:13px; display:flex; overflow:hidden; border-radius:999px; background:#eef1f5; }
 .market-ratio i { display:block; height:100%; transition:width .25s ease; }
-#settlement-support-bar { width:0; background:#1463f2; }
-#settlement-mock-bar { width:100%; background:#f5425c; }
+/* 시장 요약을 받기 전에는 어느 쪽도 선택되지 않은 중립 회색 상태입니다. */
+#settlement-support-bar, #settlement-mock-bar { width:0; background:#cbd5e1; }
 /* [마감 댓글 기록] 거래 중 커뮤니티와 같은 카드·댓글 디자인을 사용하되, 작성 영역은 포함하지 않습니다. */
 .settlement-comment-history { min-height:0; margin-top:22px; }
 .settlement-comment-history .exchange-community-heading h2 { margin:0; color:#092045; font-size:20px; letter-spacing:-.045em; }

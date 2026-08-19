@@ -98,11 +98,23 @@
   function renderMarketSummary(summary = {}) {
     const supportRatio = Number(summary.supportRatio) || 0;
     const mockRatio = Number(summary.mockRatio) || 0;
+    const totalVolume = Number(summary.totalVolume) || 0;
+    const participants = Number(summary.participants) || 0;
+    // 거래 기록이 전혀 없을 때는 어느 의견도 우세하다는 인상을 주지 않도록 중립 회색으로 둡니다.
+    const hasMarketActivity = totalVolume > 0 || participants > 0 || supportRatio > 0 || mockRatio > 0;
+    const supportBar = document.querySelector('#settlement-support-bar');
+    const mockBar = document.querySelector('#settlement-mock-bar');
     setText('#settlement-market-volume', `총 거래량 ${formatInvestment(summary.totalVolume)} · 참여 ${Number(summary.participants) || 0}명`);
     setText('#settlement-support-ratio', `옹호 ${supportRatio.toFixed(0)}%`);
     setText('#settlement-mock-ratio', `조롱 ${mockRatio.toFixed(0)}%`);
-    document.querySelector('#settlement-support-bar').style.width = `${Math.max(0, Math.min(100, supportRatio))}%`;
-    document.querySelector('#settlement-mock-bar').style.width = `${Math.max(0, Math.min(100, mockRatio))}%`;
+    if (supportBar) {
+      supportBar.style.width = `${Math.max(0, Math.min(100, supportRatio))}%`;
+      supportBar.style.background = hasMarketActivity ? '#1463f2' : '#cbd5e1';
+    }
+    if (mockBar) {
+      mockBar.style.width = `${Math.max(0, Math.min(100, mockRatio))}%`;
+      mockBar.style.background = hasMarketActivity ? '#f5425c' : '#cbd5e1';
+    }
   }
 
   // [시장 댓글 기록] 거래 중 댓글과 같은 렌더러를 읽기 전용으로 호출합니다.

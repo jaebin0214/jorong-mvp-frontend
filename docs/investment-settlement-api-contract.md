@@ -154,6 +154,27 @@ Idempotency-Key: 8d35d8c0-2e9e-4b5e-9277-1b5e1fd46679
 }
 ```
 
+### 미참여 사용자 응답
+
+종료된 시장을 열었지만 해당 사용자가 주문·포지션을 한 번도 만들지 않은 경우에도 이 API는 오류나 `SETTLEMENT_PENDING`이 아니라 **성공 응답**을 반환해야 합니다. 시장 전체 결과와 읽기 전용 댓글 기록을 표시하기 위해 `market`, `wallet`, `marketSummary`는 반드시 포함합니다.
+
+```json
+{
+  "market": {
+    "id": "round-001-hoon",
+    "status": "SETTLED",
+    "closePrice": "860.00000000",
+    "nextOpenAt": "2026-08-15T13:00:00+09:00"
+  },
+  "position": null,
+  "settlement": null,
+  "wallet": { "points": 100000 },
+  "marketSummary": { "supportRatio": 38, "mockRatio": 62, "totalVolume": "1248000", "participants": 312 }
+}
+```
+
+프론트는 이 경우 개인 결과 카드에 `투자 내역 없음`을 표시하고, 시장 비율·거래량·참여자 및 댓글 기록은 정상적으로 표시합니다. 반대로 **포지션이 존재하는데** `settlement`만 없는 경우는 서버 정산 진행 중으로 판단해 `SETTLEMENT_PENDING` 처리 또는 `202` 응답을 사용합니다.
+
 정산 지급액은 `ROUND_HALF_UP`으로 KRW 정수 반올림한 뒤 지갑에 기록합니다.
 
 ## 5. 개인 사이클 리포트
