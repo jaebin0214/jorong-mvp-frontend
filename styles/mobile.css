@@ -1341,6 +1341,119 @@
   }
 }
 
+/* [모바일 정산 스크롤] 정산 정보는 한 화면 안에 억지로 축소하지 않습니다.
+   카드의 읽기 크기와 최소 높이는 유지하고, 거래소 본문(main) 전체를 세로로 스크롤해
+   종목·개인 정산·시장 결과·댓글 기록을 순서대로 확인합니다. */
+@media (max-width: 767px) {
+  .app-shell.is-market-settlement > main {
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-shell.is-market-settlement .exchange-view {
+    height: auto;
+    min-height: 100%;
+    overflow: visible;
+  }
+  .app-shell.is-market-settlement .market-settlement-view {
+    width: 100%;
+    height: auto;
+    min-height: 100%;
+    display: block;
+    overflow: visible;
+    box-sizing: border-box;
+    padding: 24px var(--mobile-gutter) calc(var(--mobile-bottom-nav-height) + 28px);
+  }
+  .app-shell.is-market-settlement .market-settlement-view > * { box-sizing: border-box; }
+
+  .app-shell.is-market-settlement .market-settlement-hero {
+    display: grid;
+    justify-items: center;
+    gap: 8px;
+    margin-bottom: 22px;
+    padding: 0;
+  }
+  .app-shell.is-market-settlement .market-settlement-hero > span {
+    height: 24px;
+    padding: 0 11px;
+    font-size: 10px;
+  }
+  .app-shell.is-market-settlement .market-settlement-hero h1 { font-size: 23px; line-height: 1.34; }
+  .app-shell.is-market-settlement .market-settlement-hero > p { font-size: 12px; line-height: 1.5; }
+  .app-shell.is-market-settlement .next-market-block { width: 280px; gap: 6px; margin-top: 10px; }
+  .app-shell.is-market-settlement .next-market-block > strong { height: 56px; font-size: 27px; }
+  .app-shell.is-market-settlement .next-market-block > small { font-size: 11px; }
+
+  .app-shell.is-market-settlement .market-settlement-row {
+    display: block;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--mobile-line);
+    border-radius: var(--mobile-card-radius);
+    background: var(--mobile-surface);
+  }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-subject-card {
+    min-height: 136px;
+    display: grid;
+    grid-template-columns: 100px minmax(0, 1fr);
+    align-items: center;
+    justify-items: start;
+    gap: 16px;
+    border: 0;
+    border-bottom: 1px solid var(--mobile-line);
+    border-radius: 0;
+    padding: 18px;
+  }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-subject-card img {
+    width: 100px;
+    height: 100px;
+    border-radius: 10px;
+  }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-subject-copy { gap: 6px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-subject-copy > b { font-size: 17px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-subject-copy > span { font-size: 13px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-subject-copy > p { font-size: 12px; line-height: 1.5; }
+
+  .app-shell.is-market-settlement .market-settlement-row .settlement-result-card {
+    min-height: 348px;
+    height: auto;
+    gap: 16px;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    padding: 20px;
+  }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-result-card h2 { font-size: 18px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-result-card > header b { min-width: 72px; height: 28px; font-size: 11px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-pnl { gap: 5px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-pnl > span { font-size: 12px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-pnl > strong { font-size: 23px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-metrics { gap: 14px 18px; padding-top: 15px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-metrics span { font-size: 11px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-metrics b { font-size: 14px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-payout { min-height: 62px; margin-top: 4px; padding: 12px 14px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-payout div > b { font-size: 12px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-payout div > span { font-size: 10px; }
+  .app-shell.is-market-settlement .market-settlement-row .settlement-payout > strong { font-size: 24px; }
+
+  .app-shell.is-market-settlement .market-final-summary {
+    min-height: 132px;
+    display: grid;
+    align-content: center;
+    gap: 15px;
+    margin-top: 20px;
+    padding: 18px;
+  }
+  .app-shell.is-market-settlement .market-final-summary h2 { font-size: 16px; }
+  .app-shell.is-market-settlement .market-final-summary p { margin-top: 5px; font-size: 11px; }
+  .app-shell.is-market-settlement .market-ratio { gap: 9px; }
+  .app-shell.is-market-settlement .market-ratio b { font-size: 12px; }
+  .app-shell.is-market-settlement .market-ratio > span { height: 11px; }
+  .app-shell.is-market-settlement .settlement-comment-history { margin-top: 20px; padding: 18px; }
+  .app-shell.is-market-settlement .mobile-settlement-actions { margin-top: 20px; }
+  .app-shell.is-market-settlement .mobile-settlement-actions button { height: 50px; font-size: 13px; }
+}
+
 /* iPhone SE급의 짧은 세로 화면에서는 회원가입 폼의 핵심 조작만 안전하게 한 화면에 유지합니다. */
 @media (max-width: 767px) and (max-height: 600px) {
   .signup-view { padding-top: 10px; padding-bottom: 10px; }
