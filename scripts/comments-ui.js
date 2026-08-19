@@ -7,7 +7,6 @@
   const countLabel = document.querySelector('#exchange-comment-count');
   // [모바일 대표 댓글] 전체 목록을 중복 저장하지 않고, 렌더링한 카드 하나만 복제해 메인 화면에 압축 표시합니다.
   const mobilePreview = document.querySelector('#mobile-comment-preview');
-  const mobilePreviewHint = document.querySelector('#mobile-comment-preview-hint');
   // [잠긴 투자 카드] 별도 조롱 작성 버튼 대신 카드 전체를 눌러 기존 동작을 실행합니다.
   const roastCta = document.querySelector('#exchange-roast-cta');
   const toast = document.querySelector('#toast');
@@ -103,7 +102,6 @@
     const previewComment = getMobilePreviewComment(comments);
     mobilePreview.replaceChildren();
     mobilePreview.hidden = !previewComment;
-    if (mobilePreviewHint instanceof HTMLElement) mobilePreviewHint.hidden = !previewComment;
     if (!previewComment) return;
 
     const source = [...commentList.querySelectorAll('.exchange-comment')]

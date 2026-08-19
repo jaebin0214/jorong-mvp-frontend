@@ -21,9 +21,7 @@
   const desktopCommentInput = document.querySelector('#exchange-comment-text');
   const communityCard = document.querySelector('#exchange-community-card');
   const communityClose = document.querySelector('#mobile-community-close');
-  const communityPreviewHint = document.querySelector('#mobile-comment-preview-hint');
   const composer = document.querySelector('#mobile-comment-composer');
-  const composerOpen = document.querySelector('#mobile-community-compose');
   const composerClose = document.querySelector('#mobile-comment-composer-close');
   const composerForm = document.querySelector('#mobile-comment-form');
   const composerInput = document.querySelector('#mobile-comment-text');
@@ -212,16 +210,7 @@
   roastCta?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') handleRoastCta(event);
   }, true);
-  // 댓글 작성은 별도 전환 화면 대신 전체 댓글을 보는 동일한 시트 안에서 수행합니다.
-  composerOpen?.addEventListener('click', (event) => {
-    event.stopPropagation();
-    openMobileCommentSheet(composerOpen, { focusInput: true });
-  });
   communityClose?.addEventListener('click', closeMobileCommentSheet);
-  communityPreviewHint?.addEventListener('click', (event) => {
-    event.stopPropagation();
-    openMobileCommentSheet(communityPreviewHint);
-  });
   communityCard?.addEventListener('click', (event) => {
     if (!isMobile() || isMobileCommentSheetOpen()) return;
     event.preventDefault();
