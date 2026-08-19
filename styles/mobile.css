@@ -1596,7 +1596,6 @@
     cursor: pointer;
   }
   .mobile-community-heading-copy { display: flex; align-items: center; min-width: 0; }
-  .mobile-community-close { display: none; }
   .mobile-comment-preview { display: block; margin-top: 8px; }
   .mobile-comment-preview[hidden] { display: none; }
   .mobile-comment-preview .exchange-comment { padding: 8px 0 4px; }
@@ -1629,11 +1628,9 @@
     transform: translateX(-50%);
   }
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-community-heading { position: sticky; z-index: 2; top: -14px; min-height: 52px; margin: -14px calc(-1 * var(--mobile-gutter)) 8px; padding: 10px var(--mobile-gutter); border-bottom: 1px solid var(--mobile-line); background: #fff; justify-content: flex-start; }
-  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .mobile-community-close { width: 36px; height: 36px; display: grid; place-items: center; flex: 0 0 36px; border: 0; padding: 0; color: var(--mobile-ink); background: transparent; font-size: 32px; font-weight: 500; line-height: 1; }
-  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .mobile-community-heading-copy { gap: 4px; }
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-community-heading h1 { font-size: 17px; }
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .mobile-comment-preview { display: none; }
-  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-comment-form { display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 8px; margin: 0 0 10px; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-comment-form { position: sticky; z-index: 1; top: 38px; display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 8px; margin: 0 0 10px; padding: 0 0 10px; background: #fff; }
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open.is-mobile-comments-readonly .exchange-comment-form { display: none; }
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-comment-form input { min-width: 0; height: 42px; border: 1px solid var(--mobile-line); border-radius: 12px; padding: 0 12px; color: var(--mobile-ink); background: #f8fbff; font-size: 12px; }
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-comment-form button { height: 42px; border-radius: 12px; color: #fff; background: var(--mobile-blue); font-size: 12px; font-weight: 800; }

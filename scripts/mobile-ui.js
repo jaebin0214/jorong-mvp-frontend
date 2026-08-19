@@ -20,7 +20,6 @@
   const desktopCommentForm = document.querySelector('#exchange-comment-form');
   const desktopCommentInput = document.querySelector('#exchange-comment-text');
   const communityCard = document.querySelector('#exchange-community-card');
-  const communityClose = document.querySelector('#mobile-community-close');
   const composer = document.querySelector('#mobile-comment-composer');
   const composerClose = document.querySelector('#mobile-comment-composer-close');
   const composerForm = document.querySelector('#mobile-comment-form');
@@ -180,9 +179,10 @@
     communityCard.classList.toggle('is-mobile-comments-readonly', !canWrite);
     communityCard.setAttribute('role', 'dialog');
     communityCard.setAttribute('aria-modal', 'true');
+    communityCard.tabIndex = -1;
     document.body.classList.add('is-mobile-comments-open');
     if (focusInput && canWrite) window.setTimeout(() => desktopCommentInput.focus({ preventScroll: true }), 80);
-    else window.setTimeout(() => communityClose?.focus({ preventScroll: true }), 0);
+    else window.setTimeout(() => communityCard.focus({ preventScroll: true }), 0);
   }
 
   function closeMobileCommentSheet() {
@@ -190,8 +190,29 @@
     communityCard.classList.remove('is-mobile-comments-open');
     communityCard.removeAttribute('role');
     communityCard.removeAttribute('aria-modal');
+    communityCard.removeAttribute('tabindex');
     document.body.classList.remove('is-mobile-comments-open');
     priorFocus?.focus?.({ preventScroll: true });
+  }
+
+  // [댓글 시트 닫기] 댓글 목록의 최상단에서만 아래로 끌어내릴 수 있게 하여,
+  // 목록을 읽으려고 스크롤할 때 시트가 실수로 닫히지 않게 합니다.
+  function bindCommentSheetDismiss() {
+    if (!(communityCard instanceof HTMLElement)) return;
+    let startY = null;
+    let startScrollTop = 0;
+    communityCard.addEventListener('touchstart', (event) => {
+      startY = event.touches[0]?.clientY ?? null;
+      startScrollTop = communityCard.scrollTop;
+    }, { passive: true });
+    communityCard.addEventListener('touchend', (event) => {
+      const endY = event.changedTouches[0]?.clientY;
+      const distance = Number(endY) - Number(startY);
+      const wasAtTop = startScrollTop <= 0 && communityCard.scrollTop <= 0;
+      startY = null;
+      if (!isMobileCommentSheetOpen() || !wasAtTop || !Number.isFinite(distance) || distance < 64) return;
+      closeMobileCommentSheet();
+    }, { passive: true });
   }
 
   // [잠긴 투자 카드] 다른 사용자의 댓글 수와 무관하게 현재 사용자가 잠겨 있으면 작성 화면으로 보냅니다.
@@ -210,7 +231,6 @@
   roastCta?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') handleRoastCta(event);
   }, true);
-  communityClose?.addEventListener('click', closeMobileCommentSheet);
   communityCard?.addEventListener('click', (event) => {
     if (!isMobile() || isMobileCommentSheetOpen()) return;
     event.preventDefault();
@@ -222,6 +242,7 @@
       openMobileCommentSheet(communityCard);
     }
   });
+  bindCommentSheetDismiss();
   composerClose?.addEventListener('click', closeComposer);
   composerInput.addEventListener('input', () => { composerLength.textContent = String(composerInput.value.length); });
 
