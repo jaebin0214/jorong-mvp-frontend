@@ -75,3 +75,42 @@ test('Supabase 연결 시 투자 직후에도 임시 로컬 캔들이 아닌 서
   assert.equal(window.PriceHistoryService.getInitialPrice(), 925);
   assert.equal(window.PriceHistoryService.getCandleIntervalSeconds(), 30);
 });
+
+test('Supabase가 과거 revision 또는 더 작은 누적 거래량을 반환하면 마지막 확정 캔들을 유지한다', async () => {
+  const startAt = Date.parse('2026-08-16T00:00:00.000Z');
+  const endAt = startAt + (6 * 60 * 60 * 1000);
+  const responses = [
+    {
+      marketSessionId: 'market-stable-history',
+      revision: 8,
+      candles: [
+        { startedAt: new Date(startAt).toISOString(), endedAt: new Date(startAt + 30_000).toISOString(), open: 1000, high: 1040, low: 1000, close: 1040, volume: 3000 },
+        { startedAt: new Date(startAt + 30_000).toISOString(), endedAt: new Date(startAt + 60_000).toISOString(), open: 1040, high: 1060, low: 1030, close: 1050, volume: 2000 },
+      ],
+    },
+    {
+      // 복제 지연으로 첫 번째 주문만 보이는 오래된 응답을 흉내 냅니다.
+      marketSessionId: 'market-stable-history',
+      revision: 7,
+      candles: [
+        { startedAt: new Date(startAt).toISOString(), endedAt: new Date(startAt + 30_000).toISOString(), open: 1000, high: 1040, low: 1000, close: 1040, volume: 3000 },
+      ],
+    },
+  ];
+  const window = {
+    JorongSupabase: {
+      rpc: async () => ({ data: responses.shift(), error: null }),
+    },
+    MarketConfig: { get: () => ({ session: { id: 'market-stable-history', startsAt: new Date(startAt).toISOString(), durationHours: 6 }, subject: { id: 'subject-01', initialPrice: 1000 } }) },
+    MarketCountdown: { getSessionId: () => 'market-stable-history', getEndAt: () => endAt },
+  };
+  vm.runInNewContext(source, { window, Date, JSON, Math, String, Number, Object, Array, URLSearchParams });
+
+  const accepted = await window.PriceHistoryService.loadCandles();
+  const stale = await window.PriceHistoryService.loadCandles();
+
+  assert.equal(accepted.length, 2);
+  assert.equal(stale.length, 2);
+  assert.equal(stale.at(-1).close, 1050);
+  assert.equal(window.PriceHistoryService.getLatestServerHistoryMeta().revision, 8);
+});

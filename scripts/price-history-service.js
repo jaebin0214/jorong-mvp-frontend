@@ -12,6 +12,10 @@ window.PriceHistoryService = (() => {
   // 운영 설정 캐시가 오래되었을 때도 실제 장의 기준가와 맞춰서 그려집니다.
   let latestInitialPrice = Number(subject.initialPrice);
   let latestCandleIntervalSeconds = 60;
+  // [서버 이력 단조성] 주문 취소가 없는 MVP에서 같은 시장의 확정 캔들 이력은
+  // 시간·누적 거래량 기준으로 뒤로 갈 수 없습니다. 복제 지연이나 캐시로 더 오래된 응답이 오면
+  // 직전에 확인한 이력을 유지해 차트가 잠깐 깨지는 현상을 막습니다.
+  let latestServerHistory = null;
 
   // [현재 시장 ID] 서버 시계가 다른 라운드를 지정해도 해당 라운드의 모든 투자 기록으로 캔들을 조회합니다.
   function getMarketSessionId() {
@@ -52,6 +56,55 @@ window.PriceHistoryService = (() => {
 
     if (![open, high, low, close].every((value) => Number.isFinite(value) && value > 0)) return null;
     return { startedAt, endedAt, open, high: Math.max(open, high, low, close), low: Math.min(open, high, low, close), close, volume: Number(candle.volume) || 0 };
+  }
+
+  function getHistoryRevision(body) {
+    const value = body?.revision
+      ?? body?.marketRevision
+      ?? body?.market_revision
+      ?? body?.market?.revision
+      ?? body?.market?.marketRevision;
+    const revision = Number(value);
+    return Number.isFinite(revision) ? revision : null;
+  }
+
+  function summarizeCandles(candles) {
+    return candles.reduce((summary, candle) => ({
+      count: summary.count + 1,
+      latestEndedAt: Math.max(summary.latestEndedAt, Number(candle.endedAt) || 0),
+      totalVolume: summary.totalVolume + Math.max(0, Number(candle.volume) || 0),
+    }), { count: 0, latestEndedAt: 0, totalVolume: 0 });
+  }
+
+  function cloneCandles(candles) {
+    return candles.map((candle) => ({ ...candle }));
+  }
+
+  function acceptServerHistory({ marketId, candles, revision, asOf }) {
+    const summary = summarizeCandles(candles);
+    const previous = latestServerHistory;
+    const isSameMarket = previous?.marketId === marketId;
+    const hasOlderRevision = isSameMarket
+      && previous.revision != null
+      && revision != null
+      && revision < previous.revision;
+    // `revision`을 아직 제공하지 않는 백엔드와도 호환되도록, 주문 원장이 감소할 수 없는
+    // 현재 규칙으로 응답의 최소 단조성을 검증합니다.
+    const hasOlderAggregate = isSameMarket
+      && (summary.count < previous.summary.count
+        || summary.latestEndedAt < previous.summary.latestEndedAt
+        || summary.totalVolume + 1e-9 < previous.summary.totalVolume);
+
+    if (hasOlderRevision || hasOlderAggregate) return cloneCandles(previous.candles);
+
+    latestServerHistory = {
+      marketId,
+      revision,
+      asOf: asOf || null,
+      candles: cloneCandles(candles),
+      summary,
+    };
+    return candles;
   }
 
   // [로컬 캔들] 투자 시점과 가격 변동값을 하나의 캔들로 만들어 MVP에서도 그래프 변화를 확인합니다.
@@ -130,11 +183,17 @@ window.PriceHistoryService = (() => {
         latestInitialPrice = responseInitialPrice;
       }
       latestCandleIntervalSeconds = intervalSeconds;
-      return body.candles
+      const normalizedCandles = body.candles
         .map(normalizeCandle)
         .filter(Boolean)
         // 서버 응답 순서와 상관없이 시간축에 맞춰 캔들을 그립니다.
         .sort((left, right) => left.startedAt - right.startedAt);
+      return acceptServerHistory({
+        marketId: String(body.marketSessionId ?? body.market_session_id ?? body.marketId ?? getMarketSessionId()),
+        candles: normalizedCandles,
+        revision: getHistoryRevision(body),
+        asOf: body.asOf ?? body.as_of ?? body.updatedAt ?? body.updated_at,
+      });
     }
 
     try {
@@ -184,6 +243,13 @@ window.PriceHistoryService = (() => {
     getInitialPrice: () => latestInitialPrice,
     // [차트 시간 단위] 실제 서버가 응답한 단위를 UI가 읽어 캔들 폭을 실제 시간 비율에 맞춥니다.
     getCandleIntervalSeconds: () => latestCandleIntervalSeconds,
+    // 디버깅·운영 확인용: 마지막으로 수용한 서버 이력의 버전과 조회 기준 시각입니다.
+    getLatestServerHistoryMeta: () => latestServerHistory && ({
+      marketId: latestServerHistory.marketId,
+      revision: latestServerHistory.revision,
+      asOf: latestServerHistory.asOf,
+      ...latestServerHistory.summary,
+    }),
     loadCandles,
     recordInvestment,
   });

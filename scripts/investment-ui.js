@@ -29,8 +29,9 @@
   let isSubmitting = false;
   let toastTimer;
   let positionPnlFitFrame = null;
-  // 계정 전환 중 이전 계정의 비동기 포트폴리오 응답이 늦게 돌아와 화면을 덮지 않게 합니다.
+  // 계정 전환·주문 처리 중 이전 비동기 포트폴리오 응답이 늦게 돌아와 화면을 덮지 않게 합니다.
   let refreshSequence = 0;
+  let portfolioEpoch = 0;
 
   if (!roastCta || !firstPanel || !statusCard || !additionalPanel || !firstAmountInput || !additionalAmountInput || !math) return;
 
@@ -73,6 +74,46 @@
 
   function formatProfit(value) {
     return math.formatCredits(String(value || '0'));
+  }
+
+  // [요청 범위] 10초 폴링 응답은 요청을 시작한 계정·시장과 현재 화면의 계정·시장이 같을 때만 적용합니다.
+  // 로그인 전환 또는 다음 시장 자동 오픈 사이에 도착한 이전 응답이 새 화면을 덮는 일을 막습니다.
+  function getPortfolioRequestContext() {
+    const account = window.AuthService?.getCurrentAccount?.();
+    return {
+      accountId: String(account?.id || account?.nickname || 'anonymous'),
+      marketId: String(window.MarketCountdown?.getSessionId?.() || window.InvestmentService?.getSnapshot?.()?.market?.id || ''),
+    };
+  }
+
+  function isSamePortfolioContext(left, right) {
+    return left?.accountId === right?.accountId && left?.marketId === right?.marketId;
+  }
+
+  function isOpenPosition(position) {
+    return Boolean(position) && String(position.status || 'OPEN').toUpperCase() !== 'SETTLED';
+  }
+
+  function isTerminalSnapshot(snapshot) {
+    const status = String(snapshot?.market?.status || snapshot?.session?.status || '').toUpperCase();
+    return Boolean(snapshot?.settlement) || ['CLOSED', 'SETTLED', 'ARCHIVED'].includes(status);
+  }
+
+  // [단조 포지션 보호] 이 MVP에는 투자 취소·부분 매도가 없으므로 같은 장의 총 투자금·수량은 줄어들 수 없습니다.
+  // 주문 직후 늦게 도착한 구(舊) 폴링 응답이 더 작은 포지션 또는 null을 반환하면 최신 주문 결과를 유지합니다.
+  function isPositionRegression(nextSnapshot) {
+    const confirmed = activeSnapshot?.position;
+    const incoming = nextSnapshot?.position;
+    if (!isOpenPosition(confirmed) || isTerminalSnapshot(nextSnapshot)) return false;
+    if (!isOpenPosition(incoming)) return true;
+    if (math.normalizeSide(confirmed.side) !== math.normalizeSide(incoming.side)) return true;
+
+    const confirmedInvestment = Number(confirmed.totalInvestment);
+    const incomingInvestment = Number(incoming.totalInvestment);
+    const confirmedQuantity = Number(confirmed.quantity);
+    const incomingQuantity = Number(incoming.quantity);
+    return (Number.isFinite(confirmedInvestment) && Number.isFinite(incomingInvestment) && incomingInvestment < confirmedInvestment)
+      || (Number.isFinite(confirmedQuantity) && Number.isFinite(incomingQuantity) && incomingQuantity + 1e-12 < confirmedQuantity);
   }
 
   // [손익 문구 맞춤] 카드 높이는 고정하고, 긴 손익·수익률 문자열만 한 줄 안에서 줄입니다.
@@ -211,6 +252,27 @@
     return true;
   }
 
+  // [포트폴리오 반영] 직접 주문 응답은 즉시 적용하고, 폴링 응답은 포지션이 과거 상태로 되돌아가지 않을 때만 적용합니다.
+  function applyPortfolioSnapshot(result, { preserveAdditionalPanel = false, fromRefresh = false } = {}) {
+    const shouldKeepConfirmedPosition = fromRefresh && isPositionRegression(result);
+
+    if (shouldKeepConfirmedPosition) {
+      // 같은 응답의 지갑·현재가도 같은 과거 스냅샷일 수 있으므로 일부만 섞지 않습니다.
+      // 다음 정상 응답이 도착하기 전까지 마지막으로 확정된 주문 결과를 그대로 유지합니다.
+      renderBalance(activeSnapshot?.wallet?.points);
+      renderPosition(activeSnapshot, { preserveAdditionalPanel: true });
+      return false;
+    }
+
+    activeSnapshot = result;
+    renderBalance(result?.wallet?.points);
+    if (result?.target?.value != null) window.TargetValueUI?.update(result.target);
+    if (!renderPosition(result, { preserveAdditionalPanel })) {
+      setVisiblePanel(hasCurrentUserRootComment ? firstPanel : roastCta);
+    }
+    return true;
+  }
+
   function renderAdditionalPreview() {
     const position = activeSnapshot?.position;
     if (!position) return;
@@ -295,6 +357,10 @@
       return;
     }
 
+    // 이미 시작된 폴링 요청은 이 주문보다 과거 상태를 들고 있을 수 있으므로 즉시 무효화합니다.
+    const requestContext = getPortfolioRequestContext();
+    const requestEpoch = ++portfolioEpoch;
+    ++refreshSequence;
     isSubmitting = true;
     button.disabled = true;
     try {
@@ -303,11 +369,13 @@
         side,
         investmentAmount: amount,
       });
-      activeSnapshot = result;
-      renderBalance(result.wallet?.points);
-      if (result.target?.value != null) window.TargetValueUI?.update(result.target);
+      // 주문 대기 중 로그아웃·시장 전환이 일어났다면 이전 계정 화면에는 결과를 반영하지 않습니다.
+      if (requestEpoch !== portfolioEpoch || !isSamePortfolioContext(requestContext, getPortfolioRequestContext())) return;
+      // 주문 직후에 시작됐을 수 있는 모든 포트폴리오 폴링도 한 번 더 무효화합니다.
+      ++portfolioEpoch;
+      ++refreshSequence;
       window.PriceChartUI?.recordInvestment(result);
-      renderPosition(result);
+      applyPortfolioSnapshot(result);
       window.dispatchEvent(new CustomEvent('jorong:investment-created', { detail: result }));
       showToast(`${sideLabel(side)}에 ${amount.toLocaleString('ko-KR')} 크레딧을 투자했습니다.`);
     } catch (error) {
@@ -342,18 +410,16 @@
   });
 
   async function refresh() {
+    // 주문을 체결하는 동안에는 서버의 중간 스냅샷으로 입력 패널을 바꾸지 않습니다.
+    if (isSubmitting) return;
     const sequence = ++refreshSequence;
+    const epoch = portfolioEpoch;
+    const requestContext = getPortfolioRequestContext();
     try {
       const result = await window.InvestmentService.loadPortfolio();
-      // 로그인 계정이 바뀐 뒤 이전 계정의 응답이 도착한 경우에는 무시합니다.
-      if (sequence !== refreshSequence) return;
-      activeSnapshot = result;
-      renderBalance(result.wallet?.points);
-      if (result.target?.value != null) window.TargetValueUI?.update(result.target);
-      // 포지션이 없는 새 계정은 이전 계정의 추가 투자 화면을 유지하지 않습니다.
-      if (!renderPosition(result, { preserveAdditionalPanel: true })) {
-        setVisiblePanel(hasCurrentUserRootComment ? firstPanel : roastCta);
-      }
+      // 로그인 계정·시장 전환 또는 직접 주문 이후의 오래된 응답은 적용하지 않습니다.
+      if (sequence !== refreshSequence || epoch !== portfolioEpoch || !isSamePortfolioContext(requestContext, getPortfolioRequestContext())) return;
+      applyPortfolioSnapshot(result, { preserveAdditionalPanel: true, fromRefresh: true });
     } catch (_) {
       // 로그인 전 또는 서버 연결 전 오류는 기존 투자 시작 화면을 유지합니다.
     }
@@ -362,6 +428,8 @@
   // [인증 세션 변경] 같은 브라우저에서 다른 계정으로 전환해도 이전 계정의 포지션·추가 투자 UI가
   // 보이지 않도록 즉시 잠근 뒤, 새 계정의 포트폴리오와 댓글 상태를 다시 불러옵니다.
   window.addEventListener('jorong:auth-session', (event) => {
+    ++portfolioEpoch;
+    ++refreshSequence;
     activeSnapshot = null;
     hasCurrentUserRootComment = false;
     resetFirstInvestmentForm();
