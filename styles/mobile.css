@@ -461,7 +461,7 @@
     backdrop-filter: blur(12px);
   }
   .mobile-bottom-nav button { display: grid; place-items: center; gap: 1px; border: 0; color: #adb8cc; background: transparent; font-size: 9px; font-weight: 700; }
-  .mobile-bottom-nav button span { width: 18px; height: 18px; font-size: 15px; line-height: 18px; }
+  .mobile-bottom-nav button span { width: 18px; height: 18px; font-size: 20px; line-height: 18px; }
   .mobile-bottom-nav button.is-active { color: var(--mobile-blue); font-weight: 850; }
   .scroll-top-button { right: 16px; bottom: calc(94px + env(safe-area-inset-bottom)); }
 
