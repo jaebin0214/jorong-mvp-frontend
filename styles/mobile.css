@@ -75,6 +75,19 @@
   }
   .landing-header-actions > .header-balance[hidden],
   .app-shell.is-exchange .exchange-header-actions > .header-balance[hidden] { display:none !important; }
+  /* 화면 상태마다 헤더 묶음이 달라져도 로그인한 모바일 사용자는
+     항상 "보유 크레딧 → 프로필" 순서로 같은 계정 정보를 확인합니다. */
+  .app-shell.is-landing .landing-header-actions,
+  .app-shell.is-exchange .exchange-header-actions {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-shell.is-landing .landing-header-actions > .header-balance:not([hidden]),
+  .app-shell.is-exchange .exchange-header-actions > .header-balance:not([hidden]) { display:inline-flex; }
+  .app-shell.is-landing .landing-header-actions .header-profile,
+  .app-shell.is-exchange .exchange-header-actions .header-profile { min-width:0; }
   .header-profile { display: inline-flex; align-items: center; gap: 4px; }
   .exchange-header-actions .header-member-name,
   .landing-header-actions .header-member-name { min-height: 30px; padding: 0 4px; color: var(--mobile-ink); background: transparent; font-size: 11px; }
@@ -985,8 +998,21 @@
     padding-right: var(--mobile-gutter);
     padding-left: var(--mobile-gutter);
   }
-  .app-shell.is-market-settlement .wordmark,
-  .app-shell.is-market-settlement .header-actions { display: none; }
+  /* 정산 화면도 로그인 사용자의 보유 크레딧·프로필을 유지합니다.
+     종목명 워드마크만 숨기고, 좌측의 정산 제목과 우측 계정 영역을 함께 표시합니다. */
+  .app-shell.is-market-settlement .wordmark { display: none; }
+  .app-shell.is-market-settlement .header-actions {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    margin-left: auto;
+  }
+  .app-shell.is-market-settlement .exchange-header-actions {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
   .mobile-settlement-back,
   .mobile-settlement-title { display: none; }
   .app-shell.is-market-settlement .mobile-settlement-back {
