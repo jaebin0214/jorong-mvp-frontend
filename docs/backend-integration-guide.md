@@ -36,7 +36,7 @@ window.JORONG_API_BASE_URL = 'https://api.example.com';
 { "nickname": "웃긴개미_241", "password": "user-entered-password" }
 ```
 
-서버는 닉네임 중복을 검사하고, `users` 생성과 **초기 10,000 포인트**의 `point_ledger` 기록을 같은 트랜잭션에서 처리합니다. 클라이언트가 초기 포인트를 보내거나 정하지 않습니다.
+서버는 닉네임 중복을 검사하고, `users` 생성과 **초기 100,000 크레딧**의 `point_ledger` 기록을 같은 트랜잭션에서 처리합니다. 클라이언트가 초기 크레딧을 보내거나 정하지 않습니다.
 
 ### `POST /auth/login`
 
@@ -51,7 +51,7 @@ window.JORONG_API_BASE_URL = 'https://api.example.com';
 ```json
 {
   "account": { "id": "user_123", "nickname": "웃긴개미_241", "createdAt": "2026-08-12T10:00:00.000Z" },
-  "wallet": { "points": 10000 },
+  "wallet": { "points": 100000 },
   "investmentLogs": [],
   "accessToken": "optional-token-if-not-using-cookie"
 }

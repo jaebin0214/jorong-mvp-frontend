@@ -7,7 +7,7 @@
   const PRICE_IMPACT_RATE = 0.01; // 로컬 시연 전용 가격 반영 규칙입니다. 서버 연결 시의 가격 산식은 place_order RPC(app_settings.price.sensitivity)가 확정합니다.
   const LOCAL_STORE_VERSION = 2;
   const LOCAL_STORE_KEY = `jorong:investment-ledger:${config.session.id}`;
-  const INITIAL_POINTS = 10000;
+  const INITIAL_POINTS = 100000;
   // [저장소 예외 대비] file://, 시크릿 모드 등 localStorage를 쓸 수 없는 환경에서도
   // 같은 접속 중에는 첫 주문 뒤의 잔액 원장을 잃지 않도록 메모리 사본을 유지합니다.
   let memoryLocalLedger = null;
@@ -90,7 +90,7 @@
 
   function loadLocalLedger({ refreshFromStorage = false } = {}) {
     const isCurrentLedger = (ledger) => ledger?.version === LOCAL_STORE_VERSION && ledger?.market?.id === getMarketSessionId();
-    // localStorage 접근이 막힌 경우에도 추가 투자 때 새 10,000 크레딧 원장을 만들지 않게 합니다.
+    // localStorage 접근이 막힌 경우에도 추가 투자 때 새 100,000 크레딧 원장을 만들지 않게 합니다.
     if (!refreshFromStorage && isCurrentLedger(memoryLocalLedger)) return memoryLocalLedger;
     try {
       const stored = JSON.parse(window.localStorage.getItem(LOCAL_STORE_KEY) || 'null');
@@ -326,7 +326,7 @@
       createdAt: new Date().toISOString(),
     };
 
-    // 추가 투자는 "초기 10,000 - 이번 투자금"이 아니라 "직전 잔액 - 이번 투자금"으로 계산합니다.
+    // 추가 투자는 "초기 100,000 - 이번 투자금"이 아니라 "직전 잔액 - 이번 투자금"으로 계산합니다.
     account.walletPoints = balanceBeforeOrder - integerAmount;
     account.position = { ...nextPosition, id: account.position?.id || `local-position-${getCurrentUserKey()}-${getMarketSessionId()}`, updatedAt: order.createdAt };
     account.orders.unshift(order);
