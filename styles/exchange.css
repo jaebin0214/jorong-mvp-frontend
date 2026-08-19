@@ -105,6 +105,8 @@
 .exchange-comment-empty[hidden] { display:none; }
 /* [댓글 목록 확장] 내부 스크롤을 없애고 댓글 수만큼 카드와 전체 페이지가 아래로 늘어나도록 합니다. */
 .exchange-comment-list { margin:0 8px; overflow:visible; padding:0; }
+/* 모바일 대표 댓글은 원본 목록을 복제한 전용 미리보기입니다. 데스크톱에서는 원본 목록만 보여 중복 표시를 막습니다. */
+.mobile-comment-preview { display:none; }
 .exchange-comment-list .exchange-comment { margin-top:15px; }
 .exchange-comment .exchange-hype-button { width:120px; min-width:120px; height:25px; border:0; border-radius:15px; padding:0; color:transparent; background:#aee7ff url('../assets/comment_hype.png') center / 100% 100% no-repeat; font-size:0; cursor:pointer; }
 .exchange-comment .exchange-hype-button:hover:not(:disabled) { filter:brightness(.82) saturate(1.28); }
