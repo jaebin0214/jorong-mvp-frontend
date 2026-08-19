@@ -8,8 +8,9 @@ window.AuthService = (() => {
   const LOCAL_SESSION_STORAGE_KEY = 'jorong-mvp-local-session';
   // [로컬 계정 디렉터리] 관리자 화면이 실제 로컬 가입자를 읽을 수 있도록 비밀번호 없이 계정 요약만 공유합니다.
   const LOCAL_ACCOUNT_DIRECTORY_KEY = 'jorong-mvp-local-accounts-v1';
-  // [신규 가입 보너스] 로컬 시연 신규 계정도 서버 운영 정책과 같은 100,000 크레딧으로 시작합니다.
-  const INITIAL_POINTS = 100000;
+  // [회원가입 초기 잔액] 가입 자체에는 보상을 지급하지 않습니다.
+  // 시장 개장 크레딧은 InvestmentService(로컬) 또는 서버 지갑 원장(API)에서 별도로 지급합니다.
+  const INITIAL_POINTS = 0;
   const localAccounts = new Map();
   let currentAccount = null;
   // [세션 복원 상태] 라우팅이 Supabase 세션 확인보다 먼저 로그인 화면으로 이동시키지 않도록,
@@ -190,7 +191,8 @@ window.AuthService = (() => {
     return { available: !!body.available, message: body.message };
   }
 
-  // [회원가입] points는 클라이언트가 보내지 않습니다. 서버가 트랜잭션으로 신규 회원과 초기 100,000 크레딧을 생성합니다.
+  // [회원가입] points는 클라이언트가 보내지 않습니다. 신규 계정은 0 크레딧으로 생성되며,
+  // 시장 참여 크레딧은 시장별 서버 원장에서 별도로 한 번만 지급합니다.
   // Supabase 연결 시 응답에는 1회성 평문 복구 코드(recovery_code)가 포함되며, auth-ui.js가 이를 화면에 표시합니다.
   async function signup(payload) {
     const credentials = validateCredentials(payload);

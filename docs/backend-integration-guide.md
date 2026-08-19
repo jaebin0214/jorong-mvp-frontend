@@ -17,7 +17,7 @@ window.JORONG_API_BASE_URL = 'https://api.example.com';
 | 테이블 | 필수 필드 | 용도 / 제약 |
 | --- | --- | --- |
 | `users` | `id`, `nickname`, `password_hash`, `points`, `created_at` | `nickname`은 UNIQUE. 비밀번호 원문은 저장하지 않고 Argon2id 또는 bcrypt 해시만 저장합니다. `points`는 현재 잔액 캐시입니다. |
-| `point_ledger` | `id`, `user_id`, `market_session_id`, `type`, `amount`, `balance_after`, `investment_id`, `created_at` | 투자 차감·정산 보상 같은 포인트 변동을 불변 로그로 기록합니다. 잔액 검증/감사 기준입니다. |
+| `point_ledger` | `id`, `user_id`, `market_session_id`, `type`, `amount`, `balance_after`, `investment_id`, `created_at` | 시장 참여 지급(`MARKET_OPEN_GRANT`)·투자 차감·정산 보상 같은 크레딧 변동을 불변 로그로 기록합니다. 잔액 검증/감사 기준입니다. |
 | `market_sessions` | `id`, `target_id`, `target_name`, `target_image_url`, `initial_price`, `starts_at`, `ends_at`, `status` | 운영자가 여는 시장 라운드. `status`: `SCHEDULED`, `OPEN`, `CLOSED`, `SETTLED`. |
 | `investment_orders` | `id`, `user_id`, `market_id`, `side`, `investment_amount`, `execution_price`, `added_quantity`, `idempotency_key`, `created_at` | 모든 주문 로그. `side`: `SUPPORT` 또는 `MOCK`. |
 | `positions` | `id`, `user_id`, `market_id`, `side`, `total_investment`, `quantity`, `average_price`, `status` | 한 사용자·시장당 하나의 가중평균 포지션. `UNIQUE(user_id, market_id)`. |
@@ -36,7 +36,13 @@ window.JORONG_API_BASE_URL = 'https://api.example.com';
 { "nickname": "웃긴개미_241", "password": "user-entered-password" }
 ```
 
-서버는 닉네임 중복을 검사하고, `users` 생성과 **초기 100,000 크레딧**의 `point_ledger` 기록을 같은 트랜잭션에서 처리합니다. 클라이언트가 초기 크레딧을 보내거나 정하지 않습니다.
+서버는 닉네임 중복을 검사해 신규 사용자를 **0 크레딧**으로 생성합니다. 가입 보상은 지급하지 않으며, 시장 참여 크레딧은 아래의 시장별 지급 규칙으로 처리합니다.
+
+### 시장 참여 크레딧 지급
+
+거래 중(`OPEN`)인 시장에 로그인 사용자가 참여할 때마다, 기존 잔액에 `100,000` 크레딧을 더합니다. 서버는 `point_ledger`에 `type: MARKET_OPEN_GRANT` 기록을 남기고, `UNIQUE(user_id, market_session_id, type)` 또는 동등한 멱등 키로 같은 사용자·회차의 중복 지급을 막아야 합니다. 새로고침·다중 탭·재시도에서 프론트가 잔액을 직접 더하면 안 됩니다.
+
+`get_my_position` 또는 시장 입장 전용 RPC는 지급 처리 뒤 최신 `wallet.points`를 반환해야 합니다. 시장이 닫힌 뒤에는 지급하지 않습니다.
 
 ### `POST /auth/login`
 
