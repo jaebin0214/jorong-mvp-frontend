@@ -1529,7 +1529,8 @@
     flex-direction: column;
     gap: 9px;
     width: 100%;
-    margin: 0;
+    /* 타이머 바로 아래에 종목 설명 카드가 이어지도록 상위 flex 간격만 상쇄합니다. */
+    margin: -7px 0 0;
   }
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-focus-grid > * { grid-row: auto; }
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-subject-card {
@@ -1544,11 +1545,12 @@
     flex-basis: 92px;
   }
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-chart-card {
-    height: 128px !important;
-    min-height: 128px !important;
-    flex: 0 0 128px;
+    /* 캔들과 거래량을 충분히 읽을 수 있도록 모바일 차트의 세로 영역을 확장합니다. */
+    height: 180px !important;
+    min-height: 180px !important;
+    flex: 0 0 180px;
   }
-  .app-shell.is-exchange:not(.is-market-settlement) .exchange-chart { height: 126px; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-chart { height: 178px; }
 
   /* 투자 시트는 기존처럼 탭했을 때만 하단에서 열리고, 접힌 선택 영역은 문서 흐름에 둡니다. */
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-roast-card {
