@@ -118,7 +118,8 @@
 
   // [HYPE 버튼] 이 댓글에 이미 HYPE를 보냈으면 이 버튼만 잠급니다. 다른 댓글에는 라운드당 제한 없이 계속 HYPE할 수 있습니다.
   // (확정 2026-08-17: 라운드당 1회 제한 폐지, 댓글당 1회만 제한 — 최종 허용/집계는 서버가 반환한 데이터로 다시 그립니다.)
-  function createHypeButton(comment, card) {
+  // [HYPE 표현] 정산 기록에서는 같은 모양을 유지하되, 마감된 시장의 기록이므로 읽기 전용으로 표시합니다.
+  function createHypeButton(comment, card, { readOnly = false } = {}) {
     const button = document.createElement('button');
     const isSelected = hypedCommentIds.has(comment.id) || comment.isHypedByCurrentUser === true;
     button.type = 'button';
@@ -131,6 +132,13 @@
       button.disabled = true;
       button.setAttribute('aria-label', '이미 이 댓글에 HYPE를 보냈습니다.');
       card.classList.add('is-hyped');
+    }
+
+    if (readOnly) {
+      button.disabled = true;
+      button.classList.add('is-read-only');
+      button.setAttribute('aria-label', '마감된 시장의 HYPE 기록입니다.');
+      return button;
     }
 
     button.addEventListener('click', async () => {
@@ -185,7 +193,7 @@
   }
 
   // [답글 영역] 최초에는 최대 3개만 표시하고, ‘답글 더보기’를 누를 때마다 3개씩 추가로 표시합니다.
-  function attachReplyArea(contentArea, parentComment, replyButton, { allowReply = true } = {}) {
+  function attachReplyArea(contentArea, parentComment, replyButton, { allowReply = true, readOnly = false } = {}) {
     const replyArea = document.createElement('div');
     const replyForm = document.createElement('form');
     const replyInput = document.createElement('input');
@@ -207,9 +215,10 @@
     moreButton.type = 'button';
     moreButton.className = 'exchange-reply-more';
     replyForm.append(replyInput, submitButton);
-    replyArea.append(replyForm, replyList, moreButton);
+    // 정산 기록에는 답글 작성 폼을 추가하지 않고, 이미 작성된 답글과 더보기 동작만 표시합니다.
+    if (allowReply) replyArea.append(replyForm);
+    replyArea.append(replyList, moreButton);
     contentArea.append(replyArea);
-    replyForm.hidden = !allowReply;
 
     function updateReplyVisibility() {
       Array.from(replyList.children).forEach((reply, index) => { reply.hidden = index >= visibleReplyCount; });
@@ -238,10 +247,10 @@
       header.append(nickname, time);
       const bestBadge = createBestBadge(replyData);
       if (bestBadge) header.append(bestBadge);
-      if (isCurrentUsersComment(replyData)) header.append(createDeleteButton(replyData.id));
+      if (!readOnly && isCurrentUsersComment(replyData)) header.append(createDeleteButton(replyData.id));
       const hypeControl = document.createElement('div');
       hypeControl.className = 'exchange-reply-hype';
-      if (!isDeleted) hypeControl.append(createHypeButton(replyData, reply), createHypeCount(replyData));
+      if (!isDeleted) hypeControl.append(createHypeButton(replyData, reply, { readOnly }), createHypeCount(replyData));
       body.append(header, message);
       reply.append(avatar, body, hypeControl);
       replyList.append(reply);
@@ -296,7 +305,9 @@
     });
   }
 
-  function appendComment(commentData) {
+  // [댓글 카드 공통 렌더러] 거래 중 목록과 정산 기록이 동일한 정렬·카드 디자인을 공유합니다.
+  // readOnly=true이면 HYPE·답글 작성·삭제 같은 시장 조작 요소만 비활성화합니다.
+  function appendComment(commentData, { targetList = commentList, readOnly = false } = {}) {
     const comment = document.createElement('article');
     const avatar = document.createElement('i');
     const contentArea = document.createElement('div');
@@ -325,15 +336,19 @@
     header.append(nickname, time);
     const bestBadge = createBestBadge(commentData);
     if (bestBadge) header.append(bestBadge);
-    if (isCurrentUsersComment(commentData)) header.append(createDeleteButton(commentData.id));
-    if (!isDeleted) footer.append(createHypeButton(commentData, comment), createHypeCount(commentData), replyButton, reportLabel);
+    if (!readOnly && isCurrentUsersComment(commentData)) header.append(createDeleteButton(commentData.id));
+    if (!isDeleted) {
+      footer.append(createHypeButton(commentData, comment, { readOnly }), createHypeCount(commentData));
+      // 마감 뒤에는 새 답글·신고와 같은 작성·처리 동작을 노출하지 않습니다.
+      if (!readOnly) footer.append(replyButton, reportLabel);
+    }
     contentArea.append(header, message);
     if (!isDeleted) contentArea.append(footer);
     // 삭제된 원댓글의 기존 답글은 보존하되 새 답글 작성 제어는 노출하지 않습니다.
-    if (isDeleted && (commentData.replies || []).length) attachReplyArea(contentArea, commentData, null, { allowReply: false });
-    else if (!isDeleted) attachReplyArea(contentArea, commentData, replyButton);
+    if (isDeleted && (commentData.replies || []).length) attachReplyArea(contentArea, commentData, null, { allowReply: false, readOnly });
+    else if (!isDeleted) attachReplyArea(contentArea, commentData, readOnly ? null : replyButton, { allowReply: !readOnly, readOnly });
     comment.append(avatar, contentArea);
-    commentList.append(comment);
+    targetList.append(comment);
   }
 
   // [목록 새로고침] 저장 직후와 재접속 시 서버가 보유한 정확한 HYPE 수·삭제 상태·답글 트리를 기준으로 다시 렌더링합니다.
@@ -352,6 +367,23 @@
     // 계정별 댓글 작성 여부를 투자 UI에 전달해 다른 사용자의 댓글로 잠금이 풀리지 않게 합니다.
     window.InvestmentUI?.setCommentUnlockState?.(hasCurrentUserRootComment);
     window.CommentCloseUI?.syncCommentingState?.();
+    return result;
+  }
+
+  // [정산 댓글 기록] 최신 서버/로컬 댓글을 다시 읽어, 시장 목록과 완전히 같은 순서·카드 형태로 읽기 전용 복제본을 만듭니다.
+  // 답글은 최초 3개만 보이고 ‘답글 더보기’로 3개씩 추가되는 기존 규칙도 그대로 재사용합니다.
+  async function renderReadOnlyHistory(targetList) {
+    if (!(targetList instanceof HTMLElement)) return { count: 0 };
+    const sourceComments = await refreshComments();
+    const comments = sourceComments.comments || [];
+    const ordered = orderRootComments(comments);
+    hypedCommentIds = Array.isArray(sourceComments.currentUserHypedCommentIds)
+      ? new Set(sourceComments.currentUserHypedCommentIds)
+      : collectCurrentUserHypeIds(comments);
+    topHypeCommentIds = ordered.topHypeIds;
+    targetList.replaceChildren();
+    ordered.comments.forEach((comment) => appendComment(comment, { targetList, readOnly: true }));
+    return { count: targetList.querySelectorAll('.exchange-comment, .exchange-reply').length };
   }
 
   form.addEventListener('submit', async (event) => {
@@ -406,5 +438,6 @@
   });
   // 계정을 바꾸면 다른 사용자의 삭제 버튼·HYPE 선택 상태를 즉시 다시 계산합니다.
   window.addEventListener('jorong:auth-session', () => refreshComments().catch(() => {}));
-  window.CommentUI = Object.freeze({ refreshComments });
+  window.CommentUI = Object.freeze({ refreshComments, renderReadOnlyHistory });
+  window.dispatchEvent(new CustomEvent('jorong:comment-ui-ready'));
 })();

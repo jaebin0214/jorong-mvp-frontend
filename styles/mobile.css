@@ -1092,6 +1092,21 @@
   .mobile-settlement-actions { display: grid; grid-template-columns: 1fr 1.12fr; flex: 0 0 auto; gap: 8px; }
   .mobile-settlement-actions button { height: 44px; border: 0; border-radius: 11px; color: var(--mobile-blue); background: var(--mobile-blue-soft); font-size: 12px; font-weight: 850; }
   .mobile-settlement-actions button:last-child { color: #fff; background: var(--mobile-blue); }
+  /* [정산 댓글 기록] 카드 내부가 아닌 정산 화면 전체를 스크롤해 모든 댓글을 읽습니다. */
+  .market-settlement-view { justify-content: flex-start; }
+  .settlement-comment-history {
+    min-height: 0;
+    height: auto;
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 14px;
+    overflow: visible;
+  }
+  .settlement-comment-history .exchange-community-heading { min-height: 24px; }
+  .settlement-comment-history .exchange-community-heading h2 { font-size: 15px; }
+  .settlement-comment-history .exchange-comment-empty { min-height: 104px; margin: 8px 0 0; }
+  .settlement-comment-history .exchange-comment-list { display: block; min-height: 0; overflow: visible; }
+  .settlement-comment-history .exchange-comment { margin-top: 0; }
 
   /* [모바일 사이클 리포트] 리포트 카드에서도 종목 이미지·정산·시장 비율·내 댓글을 모두 유지합니다.
      카드 목록만 화면 안에서 스크롤되므로 과거 회차가 많아져도 하단 탐색을 가리지 않습니다. */

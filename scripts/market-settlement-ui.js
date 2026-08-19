@@ -6,11 +6,16 @@
   const exchangeView = document.querySelector('#exchange');
   const appShell = document.querySelector('.app-shell');
   const shareButton = document.querySelector('#settlement-share-button');
+  const commentHistory = document.querySelector('#settlement-comment-history');
+  const commentHistoryList = document.querySelector('#settlement-comment-list');
+  const commentHistoryCount = document.querySelector('#settlement-comment-count');
+  const commentHistoryEmpty = document.querySelector('#settlement-comment-empty');
   const toast = document.querySelector('#toast');
   const math = window.FinancialMath;
   let activeMarket = null;
   let nextMarketTimerId = null;
   let settlementPollId = null;
+  let commentHistoryRequestId = 0;
 
   if (!exchangeRebuild || !settlementView || !resultCard || !math) return;
 
@@ -100,6 +105,32 @@
     document.querySelector('#settlement-mock-bar').style.width = `${Math.max(0, Math.min(100, mockRatio))}%`;
   }
 
+  // [시장 댓글 기록] 거래 중 댓글과 같은 렌더러를 읽기 전용으로 호출합니다.
+  // 마감 시점의 정렬(베스트 HYPE 2개 → 나머지 오래된 순)과 답글 더보기 규칙도 그대로 유지됩니다.
+  async function renderSettlementCommentHistory() {
+    if (!commentHistory || !commentHistoryList || !commentHistoryCount || !commentHistoryEmpty) return;
+    const requestId = ++commentHistoryRequestId;
+    commentHistoryList.replaceChildren();
+    commentHistoryCount.textContent = '댓글 0';
+    commentHistoryEmpty.hidden = false;
+    commentHistoryEmpty.textContent = '시장 댓글 기록을 불러오는 중입니다.';
+
+    const renderReadOnlyHistory = window.CommentUI?.renderReadOnlyHistory;
+    // market-settlement-ui가 comments-ui보다 먼저 로드되는 초기 진입은 아래 준비 이벤트에서 다시 시도합니다.
+    if (typeof renderReadOnlyHistory !== 'function') return;
+
+    try {
+      const { count = 0 } = await renderReadOnlyHistory(commentHistoryList);
+      if (requestId !== commentHistoryRequestId) return;
+      commentHistoryCount.textContent = `댓글 ${count}`;
+      commentHistoryEmpty.hidden = count > 0;
+      if (!count) commentHistoryEmpty.textContent = '이 시장에 남겨진 댓글이 없습니다.';
+    } catch (_) {
+      if (requestId !== commentHistoryRequestId) return;
+      commentHistoryEmpty.textContent = '시장 댓글 기록을 불러오지 못했습니다.';
+    }
+  }
+
   function renderSettlement(snapshot) {
     const subject = window.MarketConfig.get().subject;
     const market = snapshot.market || {};
@@ -146,6 +177,7 @@
     }
     renderMarketSummary(snapshot.marketSummary || market.summary || {});
     renderNextMarketCountdown();
+    renderSettlementCommentHistory();
     // 시장 종료 이벤트보다 늦게 초기화된 경우에도 개인 리포트 보관을 한 번 더 보장합니다.
     window.CycleReportService?.archiveSnapshot?.(snapshot);
   }
@@ -215,6 +247,14 @@
     revealSettlementView();
     if (event.detail) renderSettlement(event.detail);
     else show();
+  });
+  // 댓글 UI가 나중에 초기화되는 첫 정산 진입도 읽기 전용 기록을 채웁니다.
+  window.addEventListener('jorong:comment-ui-ready', () => {
+    if (!settlementView.hidden) renderSettlementCommentHistory();
+  });
+  // 로컬 시연에서 댓글 상태가 변경된 경우, 정산 기록도 같은 시장의 최신 상태로 맞춥니다.
+  window.addEventListener('jorong:comments-changed', () => {
+    if (!settlementView.hidden) renderSettlementCommentHistory();
   });
 
   // 운영자 페이지에서 다음 종목을 예약한 직후, 새로고침 전에도 정산창의 타이머를 최신 예약으로 교체합니다.
