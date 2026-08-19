@@ -5,6 +5,9 @@
   const commentList = document.querySelector('#exchange-comment-list');
   const emptyMessage = document.querySelector('#exchange-comment-empty');
   const countLabel = document.querySelector('#exchange-comment-count');
+  // [모바일 대표 댓글] 전체 목록을 중복 저장하지 않고, 렌더링한 카드 하나만 복제해 메인 화면에 압축 표시합니다.
+  const mobilePreview = document.querySelector('#mobile-comment-preview');
+  const mobilePreviewHint = document.querySelector('#mobile-comment-preview-hint');
   // [잠긴 투자 카드] 별도 조롱 작성 버튼 대신 카드 전체를 눌러 기존 동작을 실행합니다.
   const roastCta = document.querySelector('#exchange-roast-cta');
   const toast = document.querySelector('#toast');
@@ -74,6 +77,43 @@
       comments: [...topHype, ...roots.filter((comment) => !topHypeIdSet.has(comment.id)).sort(byOldest)],
       topHypeIds,
     };
+  }
+
+  // [모바일 대표 선택] HYPE가 있으면 가장 많은 원댓글, 없으면 가장 최근 원댓글을 보여 줍니다.
+  // 삭제 댓글은 대표 후보에서 제외해 사용자가 바로 읽을 수 있는 대화를 먼저 볼 수 있게 합니다.
+  function getMobilePreviewComment(comments) {
+    const roots = (Array.isArray(comments) ? comments : []).filter((comment) => !isDeletedComment(comment));
+    if (!roots.length) return null;
+    const hyped = roots
+      .filter((comment) => Number(comment.hypeCount || 0) > 0)
+      .sort((left, right) => (
+        Number(right.hypeCount || 0) - Number(left.hypeCount || 0)
+        || getCreatedAtTime(right) - getCreatedAtTime(left)
+      ));
+    if (hyped.length) return hyped[0];
+    return [...roots].sort((left, right) => (
+      getCreatedAtTime(right) - getCreatedAtTime(left)
+      || String(right.id || '').localeCompare(String(left.id || ''))
+    ))[0];
+  }
+
+  // [모바일 미리보기] 실제 카드의 디자인을 그대로 쓰되, HYPE·답글·삭제 버튼은 댓글 시트 안에서만 조작하도록 제거합니다.
+  function renderMobilePreview(comments) {
+    if (!(mobilePreview instanceof HTMLElement)) return;
+    const previewComment = getMobilePreviewComment(comments);
+    mobilePreview.replaceChildren();
+    mobilePreview.hidden = !previewComment;
+    if (mobilePreviewHint instanceof HTMLElement) mobilePreviewHint.hidden = !previewComment;
+    if (!previewComment) return;
+
+    const source = [...commentList.querySelectorAll('.exchange-comment')]
+      .find((element) => element.dataset.commentId === String(previewComment.id));
+    if (!(source instanceof HTMLElement)) return;
+    const previewCard = source.cloneNode(true);
+    previewCard.classList.add('is-mobile-comment-preview-card');
+    previewCard.removeAttribute('data-comment-id');
+    previewCard.querySelectorAll('button, em, .exchange-reply-area, .exchange-replies, .exchange-reply-more').forEach((element) => element.remove());
+    mobilePreview.append(previewCard);
   }
 
   // [내 HYPE 전부 수집] 서버 응답에 currentUserHypedCommentIds가 없는 경우(예: 구버전 캐시)를 대비해
@@ -321,6 +361,7 @@
     const reportLabel = document.createElement('em');
 
     comment.className = 'exchange-comment';
+    comment.dataset.commentId = String(commentData.id || '');
     avatar.textContent = getAvatarText(author.nickname);
     const isDeleted = isDeletedComment(commentData);
     nickname.textContent = isDeleted ? '삭제된 사용자' : author.nickname;
@@ -349,6 +390,7 @@
     else if (!isDeleted) attachReplyArea(contentArea, commentData, readOnly ? null : replyButton, { allowReply: !readOnly, readOnly });
     comment.append(avatar, contentArea);
     targetList.append(comment);
+    return comment;
   }
 
   // [목록 새로고침] 저장 직후와 재접속 시 서버가 보유한 정확한 HYPE 수·삭제 상태·답글 트리를 기준으로 다시 렌더링합니다.
@@ -364,6 +406,7 @@
     commentList.replaceChildren();
     ordered.comments.forEach(appendComment);
     updateCommentCount();
+    renderMobilePreview(comments);
     // 계정별 댓글 작성 여부를 투자 UI에 전달해 다른 사용자의 댓글로 잠금이 풀리지 않게 합니다.
     window.InvestmentUI?.setCommentUnlockState?.(hasCurrentUserRootComment);
     window.CommentCloseUI?.syncCommentingState?.();
@@ -407,6 +450,8 @@
       input.value = '';
       await refreshComments();
       window.InvestmentUI.open();
+      // 모바일은 댓글 시트를 닫고 기존 투자 바텀시트 흐름으로 이어 줍니다.
+      window.dispatchEvent(new CustomEvent('jorong:comment-created'));
     } catch (error) {
       showToast(error.message || '댓글을 등록하지 못했습니다.');
     } finally {

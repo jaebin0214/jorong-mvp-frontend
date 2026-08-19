@@ -19,6 +19,9 @@
   const commentEmpty = document.querySelector('#exchange-comment-empty');
   const desktopCommentForm = document.querySelector('#exchange-comment-form');
   const desktopCommentInput = document.querySelector('#exchange-comment-text');
+  const communityCard = document.querySelector('#exchange-community-card');
+  const communityClose = document.querySelector('#mobile-community-close');
+  const communityPreviewHint = document.querySelector('#mobile-comment-preview-hint');
   const composer = document.querySelector('#mobile-comment-composer');
   const composerOpen = document.querySelector('#mobile-community-compose');
   const composerClose = document.querySelector('#mobile-comment-composer-close');
@@ -164,13 +167,42 @@
     return Boolean(commentEmpty && !commentEmpty.hidden);
   }
 
+  // [모바일 댓글 시트] YouTube 댓글처럼 대표 댓글을 누르면 전체 목록·작성 폼을 한곳에서 읽고 작성합니다.
+  function isMobileCommentSheetOpen() {
+    return communityCard?.classList.contains('is-mobile-comments-open');
+  }
+
+  function openMobileCommentSheet(opener = document.activeElement, { focusInput = false } = {}) {
+    if (!isMobile() || !(communityCard instanceof HTMLElement)) return;
+    priorFocus = opener instanceof HTMLElement ? opener : null;
+    // 장이 닫힌 뒤에는 같은 시트로 기록을 읽을 수만 있고, 새 댓글 입력은 노출하지 않습니다.
+    const commentingState = window.CommentService?.getCommentingState?.();
+    const canWrite = !commentingState || commentingState.isOpen;
+    communityCard.classList.add('is-mobile-comments-open');
+    communityCard.classList.toggle('is-mobile-comments-readonly', !canWrite);
+    communityCard.setAttribute('role', 'dialog');
+    communityCard.setAttribute('aria-modal', 'true');
+    document.body.classList.add('is-mobile-comments-open');
+    if (focusInput && canWrite) window.setTimeout(() => desktopCommentInput.focus({ preventScroll: true }), 80);
+    else window.setTimeout(() => communityClose?.focus({ preventScroll: true }), 0);
+  }
+
+  function closeMobileCommentSheet() {
+    if (!(communityCard instanceof HTMLElement)) return;
+    communityCard.classList.remove('is-mobile-comments-open');
+    communityCard.removeAttribute('role');
+    communityCard.removeAttribute('aria-modal');
+    document.body.classList.remove('is-mobile-comments-open');
+    priorFocus?.focus?.({ preventScroll: true });
+  }
+
   // [잠긴 투자 카드] 다른 사용자의 댓글 수와 무관하게 현재 사용자가 잠겨 있으면 작성 화면으로 보냅니다.
   function handleRoastCta(event) {
     if (!isMobile()) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     if (!roastCta.hidden || shouldWriteFirstComment()) {
-      openComposer(roastCta);
+      openMobileCommentSheet(roastCta, { focusInput: true });
     } else {
       window.InvestmentUI?.open?.();
     }
@@ -180,7 +212,27 @@
   roastCta?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' || event.key === ' ') handleRoastCta(event);
   }, true);
-  composerOpen?.addEventListener('click', () => openComposer(composerOpen));
+  // 댓글 작성은 별도 전환 화면 대신 전체 댓글을 보는 동일한 시트 안에서 수행합니다.
+  composerOpen?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    openMobileCommentSheet(composerOpen, { focusInput: true });
+  });
+  communityClose?.addEventListener('click', closeMobileCommentSheet);
+  communityPreviewHint?.addEventListener('click', (event) => {
+    event.stopPropagation();
+    openMobileCommentSheet(communityPreviewHint);
+  });
+  communityCard?.addEventListener('click', (event) => {
+    if (!isMobile() || isMobileCommentSheetOpen()) return;
+    event.preventDefault();
+    openMobileCommentSheet(communityCard);
+  });
+  communityCard?.addEventListener('keydown', (event) => {
+    if (!isMobileCommentSheetOpen() && (event.key === 'Enter' || event.key === ' ')) {
+      event.preventDefault();
+      openMobileCommentSheet(communityCard);
+    }
+  });
   composerClose?.addEventListener('click', closeComposer);
   composerInput.addEventListener('input', () => { composerLength.textContent = String(composerInput.value.length); });
 
@@ -227,21 +279,33 @@
   window.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
     if (!composer.hidden) closeComposer();
+    else if (isMobileCommentSheetOpen()) closeMobileCommentSheet();
     else if (isInvestmentSheetOpen()) closeInvestmentSheet();
   });
   window.addEventListener('jorong:view-changed', (event) => {
     const viewId = event.detail?.viewId;
     syncBottomNavigation(viewId);
-    if (viewId !== 'exchange') closeInvestmentSheet();
+    if (viewId !== 'exchange') {
+      closeInvestmentSheet();
+      closeMobileCommentSheet();
+    }
   });
   window.addEventListener('jorong:market-clock-synced', renderLandingTimer);
   window.addEventListener('jorong:market-ended', renderLandingTimer);
   window.addEventListener('jorong:market-config-updated', (event) => setMobileSubjectName(event.detail?.subject?.name));
   window.addEventListener('jorong:investment-panel-changed', syncInvestmentSheetDock);
+  window.addEventListener('jorong:comment-created', () => {
+    if (!isMobile()) return;
+    closeMobileCommentSheet();
+    window.setTimeout(openInvestmentSheet, 0);
+  });
 
   function syncResponsiveState() {
     if (!isMobile() && !composer.hidden) closeComposer();
-    if (!isMobile()) closeInvestmentSheet();
+    if (!isMobile()) {
+      closeInvestmentSheet();
+      closeMobileCommentSheet();
+    }
     syncInvestmentSheetDock();
     renderLandingTimer();
   }
@@ -256,6 +320,8 @@
   window.MobileUI = Object.freeze({
     openCommentComposer: openComposer,
     closeCommentComposer: closeComposer,
+    openCommentSheet: openMobileCommentSheet,
+    closeCommentSheet: closeMobileCommentSheet,
     openInvestmentSheet,
     closeInvestmentSheet,
     setSubjectName: setMobileSubjectName,

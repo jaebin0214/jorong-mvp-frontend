@@ -204,7 +204,19 @@
               </aside>
             </div>
             <!-- [댓글 프로토타입] 서버 저장 없이 현재 브라우저 화면에서만 새 댓글을 추가합니다. -->
-            <section class="exchange-community-card"><div class="exchange-community-heading"><div><h1>조롱 커뮤니티</h1><span id="exchange-comment-count">댓글 0</span></div><button class="mobile-community-compose" id="mobile-community-compose" type="button">조롱 남기기</button></div><form class="exchange-comment-form" id="exchange-comment-form"><input id="exchange-comment-text" type="text" maxlength="160" placeholder="이 종목에 대한 조롱을 남겨보세요. 댓글은 투자와 별도로 작성할 수 있습니다." aria-label="조롱 댓글" /><button type="submit">조롱 작성</button></form><p class="exchange-comment-empty" id="exchange-comment-empty">첫 번째 조롱을 남겨보세요.</p><div class="exchange-comment-list" id="exchange-comment-list" aria-live="polite"></div></section>
+            <!-- [모바일 댓글] 평소에는 대표 댓글 한 개만 미리 보이고, 카드를 누르면 같은 목록·작성 폼이 하단 댓글 시트에서 열립니다. -->
+            <section class="exchange-community-card" id="exchange-community-card" aria-label="조롱 커뮤니티 댓글 보기">
+              <div class="exchange-community-heading">
+                <div class="mobile-community-heading-copy"><button class="mobile-community-close" id="mobile-community-close" type="button" aria-label="댓글 닫기">‹</button><div><h1>조롱 커뮤니티</h1><span id="exchange-comment-count">댓글 0</span></div></div>
+                <button class="mobile-community-compose" id="mobile-community-compose" type="button">댓글 작성</button>
+              </div>
+              <!-- [공통 저장 폼] 모바일 댓글 시트와 데스크톱 댓글 영역이 같은 CommentService submit 흐름을 공유합니다. -->
+              <form class="exchange-comment-form" id="exchange-comment-form"><input id="exchange-comment-text" type="text" maxlength="160" placeholder="이 종목에 대한 조롱을 남겨보세요." aria-label="조롱 댓글" /><button type="submit">등록</button></form>
+              <p class="exchange-comment-empty" id="exchange-comment-empty">첫 번째 조롱을 남겨보세요.</p>
+              <div class="mobile-comment-preview" id="mobile-comment-preview" hidden aria-live="polite"></div>
+              <button class="mobile-comment-preview-hint" id="mobile-comment-preview-hint" type="button" hidden>댓글 모두 보기</button>
+              <div class="exchange-comment-list" id="exchange-comment-list" aria-live="polite"></div>
+            </section>
           </div>
           <!-- [장 종료 정산] 서버가 확정한 마감 가격·정산 결과를 거래 화면 대신 표시합니다. -->
           <section class="market-settlement-view" id="market-settlement-view" hidden aria-live="polite">

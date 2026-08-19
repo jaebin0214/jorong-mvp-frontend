@@ -1502,10 +1502,10 @@
     min-height: 100%;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 7px;
     overflow: visible;
     box-sizing: border-box;
-    padding: 12px var(--mobile-gutter) calc(var(--mobile-bottom-nav-height) + 24px);
+    padding: 8px var(--mobile-gutter) calc(var(--mobile-bottom-nav-height) + 24px);
   }
   /* 기존 타이머 카드(84~112px)를 76px로 낮춰 상단 점유 높이를 줄입니다. */
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-hero-bar {
@@ -1527,7 +1527,7 @@
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-focus-grid {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 9px;
     width: 100%;
     margin: 0;
   }
@@ -1584,6 +1584,60 @@
     display: block;
     overflow: visible;
   }
+
+  /* [모바일 댓글] 메인 거래소에서는 대표 댓글 한 장만, 열었을 때는 YouTube식 전체 댓글 하단 시트를 보여 줍니다. */
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card {
+    min-height: 0;
+    padding: 14px;
+    cursor: pointer;
+  }
+  .mobile-community-heading-copy { display: flex; align-items: center; min-width: 0; }
+  .mobile-community-close { display: none; }
+  .mobile-comment-preview { display: block; margin-top: 8px; }
+  .mobile-comment-preview[hidden],
+  .mobile-comment-preview-hint[hidden] { display: none; }
+  .mobile-comment-preview .exchange-comment { padding: 8px 0 4px; }
+  .mobile-comment-preview .exchange-comment > i { width: 30px; height: 30px; }
+  .mobile-comment-preview .exchange-comment p { display: -webkit-box; margin: 5px 0 7px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .mobile-comment-preview .exchange-comment footer { min-height: 20px; }
+  .mobile-comment-preview .exchange-hype-count { font-size: 10px; }
+  .mobile-comment-preview-hint { width: 100%; height: 28px; margin-top: 2px; border: 0; padding: 0; color: var(--mobile-blue); background: transparent; font-size: 11px; font-weight: 800; text-align: left; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card:not(.is-mobile-comments-open) .exchange-comment-list,
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card:not(.is-mobile-comments-open) .exchange-comment-form { display: none; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card:not(.is-mobile-comments-open) .exchange-comment-empty { min-height: 72px; margin: 8px 0 0; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card .exchange-comment-empty[hidden] { display: none !important; }
+
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open {
+    position: fixed;
+    z-index: 170;
+    inset: auto 0 0;
+    width: 100%;
+    height: min(82dvh, 720px);
+    min-height: 420px;
+    margin: 0;
+    border: 0;
+    border-radius: 22px 22px 0 0;
+    padding: 14px var(--mobile-gutter) calc(18px + env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    box-shadow: 0 -18px 56px rgb(9 32 69 / 24%), 0 -100vmax 0 100vmax rgb(9 32 69 / 38%);
+    cursor: default;
+  }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-community-heading { position: sticky; z-index: 1; top: -14px; min-height: 52px; margin: -14px calc(-1 * var(--mobile-gutter)) 8px; padding: 10px var(--mobile-gutter); border-bottom: 1px solid var(--mobile-line); background: #fff; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .mobile-community-close { width: 34px; height: 34px; display: grid; place-items: center; border: 0; padding: 0; color: var(--mobile-blue); background: transparent; font-size: 30px; line-height: 1; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .mobile-community-heading-copy { gap: 4px; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-community-heading h1 { font-size: 17px; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .mobile-community-compose { min-width: 68px; height: 32px; border-radius: 10px; font-size: 11px; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .mobile-comment-preview,
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .mobile-comment-preview-hint { display: none; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-comment-form { display: grid; grid-template-columns: minmax(0, 1fr) 56px; gap: 8px; margin: 0 0 10px; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open.is-mobile-comments-readonly .exchange-comment-form,
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open.is-mobile-comments-readonly .mobile-community-compose { display: none; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-comment-form input { min-width: 0; height: 42px; border: 1px solid var(--mobile-line); border-radius: 12px; padding: 0 12px; color: var(--mobile-ink); background: #f8fbff; font-size: 12px; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-comment-form button { height: 42px; border-radius: 12px; color: #fff; background: var(--mobile-blue); font-size: 12px; font-weight: 800; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-comment-empty { min-height: 84px; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-comment-list { display: block; overflow: visible; }
+  body.is-mobile-comments-open { overflow: hidden; }
 }
 
 /* iPhone SE급의 짧은 세로 화면에서는 회원가입 폼의 핵심 조작만 안전하게 한 화면에 유지합니다. */
