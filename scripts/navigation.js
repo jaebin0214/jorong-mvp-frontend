@@ -3,7 +3,10 @@ window.Navigation = (() => {
   const views = [...document.querySelectorAll('.view')];
   const appShell = document.querySelector('.app-shell');
   const exchangeViewIds = new Set(['exchange', 'board', 'cycle-report']);
-  const protectedViewIds = new Set(['cycle-report']);
+  // [인증 보호 화면] 실제 거래와 개인 정산 내역은 로그인 뒤에만 접근합니다.
+  // 따라서 랜딩 헤더의 ‘거래소’ 탭, URL의 #exchange 직접 진입도 비로그인 상태에서는
+  // 모두 로그인 화면으로 보냅니다.
+  const protectedViewIds = new Set(['exchange', 'cycle-report']);
   // [URL 경로] 정적 사이트에서도 새로고침·공유 링크·뒤로가기를 복원하기 위해
   // 각 화면 ID를 URL 해시(#exchange 등)와 1:1로 연결합니다.
   const viewIds = new Set(views.map((view) => view.id));
@@ -71,10 +74,10 @@ window.Navigation = (() => {
   }
 
   // data-view 속성만 지정하면 어느 버튼에서든 같은 방식으로 화면을 이동할 수 있습니다.
-  // 단, 랜딩의 시작하기는 비로그인 사용자를 먼저 로그인 화면으로 안내합니다.
+  // 거래소·개인 리포트 같은 보호 화면은 비로그인 사용자를 로그인 화면으로 안내합니다.
   document.querySelectorAll('[data-view]').forEach((button) => {
     button.addEventListener('click', () => {
-      // [개인 리포트 보호] 개인 투자·정산 정보 화면은 로그인한 사용자만 열 수 있습니다.
+      // [개인 화면 보호] 실제 거래·개인 투자·정산 정보는 로그인한 사용자만 열 수 있습니다.
       if (button.dataset.requiresAuth === 'true' && !window.AuthService?.getCurrentAccount?.()) {
         show('login');
         return;

@@ -49,8 +49,46 @@
     emptyMessage.hidden = commentCount > 0;
   }
 
+  // [작성 시각 호환] 로컬 시연 데이터는 createdAt, Supabase/RPC 응답은 created_at을
+  // 사용할 수 있으므로 두 필드를 모두 읽습니다.
+  function getCommentCreatedAt(comment) {
+    return comment?.createdAt || comment?.created_at || null;
+  }
+
+  // [상대 시간 표기] 서버가 timeLabel을 내려주지 않아도 작성 시각을 기준으로
+  // '몇 분 전'을 계산합니다. 작성 시각이 없는 구형 응답만 기존 라벨을 사용합니다.
+  function formatRelativeTime(comment) {
+    const createdAt = getCommentCreatedAt(comment);
+    const timestamp = Date.parse(createdAt || '');
+    if (!Number.isFinite(timestamp)) return comment?.timeLabel || '방금 전';
+
+    const elapsedSeconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+    if (elapsedSeconds < 60) return '방금 전';
+
+    const minutes = Math.floor(elapsedSeconds / 60);
+    if (minutes < 60) return `${minutes}분 전`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}시간 전`;
+
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}일 전`;
+
+    const date = new Date(timestamp);
+    return `${date.getMonth() + 1}.${date.getDate()}`;
+  }
+
+  // [시간 라벨 자동 갱신] 목록 전체를 다시 요청하지 않아도 '방금 전'이 1분 전으로
+  // 자연스럽게 바뀌도록, 이미 렌더링된 시간 텍스트만 1분마다 갱신합니다.
+  function refreshRelativeTimeLabels() {
+    document.querySelectorAll('[data-comment-created-at]').forEach((timeElement) => {
+      const createdAt = timeElement.dataset.commentCreatedAt;
+      if (createdAt) timeElement.textContent = formatRelativeTime({ createdAt });
+    });
+  }
+
   function getCreatedAtTime(comment) {
-    const timestamp = Date.parse(comment?.createdAt || '');
+    const timestamp = Date.parse(getCommentCreatedAt(comment) || '');
     return Number.isFinite(timestamp) ? timestamp : 0;
   }
 
@@ -279,7 +317,8 @@
       avatar.textContent = getAvatarText(author.nickname);
       const isDeleted = isDeletedComment(replyData);
       nickname.textContent = isDeleted ? '삭제된 사용자' : author.nickname;
-      time.textContent = replyData.timeLabel || '방금 전';
+      time.dataset.commentCreatedAt = getCommentCreatedAt(replyData) || '';
+      time.textContent = formatRelativeTime(replyData);
       message.textContent = isDeleted ? '삭제된 댓글입니다.' : (replyData.content || '');
       reply.classList.toggle('is-deleted', isDeleted);
       header.append(nickname, time);
@@ -363,7 +402,8 @@
     avatar.textContent = getAvatarText(author.nickname);
     const isDeleted = isDeletedComment(commentData);
     nickname.textContent = isDeleted ? '삭제된 사용자' : author.nickname;
-    time.textContent = commentData.timeLabel || '방금 전';
+    time.dataset.commentCreatedAt = getCommentCreatedAt(commentData) || '';
+    time.textContent = formatRelativeTime(commentData);
     message.textContent = isDeleted ? '삭제된 댓글입니다.' : (commentData.content || '');
     comment.classList.toggle('is-deleted', isDeleted);
     replyButton.type = 'button';
@@ -486,6 +526,7 @@
     updateCommentCount();
     showToast(error.message || '댓글을 불러오지 못했습니다.');
   });
+  window.setInterval(refreshRelativeTimeLabels, 60 * 1000);
   // 계정을 바꾸면 다른 사용자의 삭제 버튼·HYPE 선택 상태를 즉시 다시 계산합니다.
   window.addEventListener('jorong:auth-session', () => refreshComments().catch(() => {}));
   window.CommentUI = Object.freeze({ refreshComments, renderReadOnlyHistory });
