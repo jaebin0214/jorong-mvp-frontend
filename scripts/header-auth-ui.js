@@ -9,6 +9,7 @@
   const exchangeProfile = document.querySelector('#exchange-header-profile');
   const exchangeMemberName = document.querySelector('#exchange-header-member');
   const exchangeLogoutButton = document.querySelector('#exchange-header-logout');
+  const balanceLabels = [...document.querySelectorAll('[data-header-balance]')];
   const profiles = [
     { container: landingProfile, trigger: landingMemberName, logout: landingLogoutButton },
     { container: exchangeProfile, trigger: exchangeMemberName, logout: exchangeLogoutButton },
@@ -19,6 +20,17 @@
       container?.classList.remove('is-open');
       if (trigger) trigger.setAttribute('aria-expanded', 'false');
       if (logout) logout.hidden = true;
+    });
+  }
+
+  // [공통 보유 크레딧] 랜딩과 거래소 계정 영역이 서로 다른 DOM을 쓰더라도
+  // 같은 지갑 값을 즉시 표시하도록 한곳에서 동기화합니다.
+  function renderBalance(points, isLoggedIn = Boolean(window.AuthService?.getCurrentAccount?.())) {
+    const safePoints = Number.isFinite(Number(points)) ? Math.max(0, Math.floor(Number(points))) : 0;
+    const display = `${safePoints.toLocaleString('ko-KR')} 크레딧`;
+    balanceLabels.forEach((label) => {
+      label.hidden = !isLoggedIn;
+      if (isLoggedIn) label.textContent = display;
     });
   }
 
@@ -39,6 +51,7 @@
     if (exchangeMemberName) {
       exchangeMemberName.textContent = isLoggedIn ? `${nickname}님` : '';
     }
+    renderBalance(account?.points, isLoggedIn);
     if (!isLoggedIn) closeProfileMenus();
   }
 
@@ -73,5 +86,5 @@
 
   window.addEventListener('jorong:auth-session', (event) => render(event.detail?.account));
   render(window.AuthService?.getCurrentAccount?.());
-  window.HeaderAuthUI = Object.freeze({ render });
+  window.HeaderAuthUI = Object.freeze({ render, setBalance: renderBalance });
 })();

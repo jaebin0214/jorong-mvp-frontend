@@ -53,15 +53,17 @@
   .wordmark { min-width: 0; gap: 8px; }
   .wordmark .brand-logo { width: 24px; height: 24px; }
   .wordmark span { color: var(--mobile-ink); font-size: 17px; line-height: 24px; }
-  .app-shell.is-exchange .exchange-header-nav { display: none; }
+  .app-shell.is-exchange .exchange-header-nav,
+  .app-shell.is-landing .exchange-header-nav { display: none; }
   .header-actions { min-width: 0; margin-left: auto; }
   .account-prompt { display: none; }
   .landing-header-actions,
   .app-shell.is-exchange .exchange-header-actions { gap: 8px; }
   .header-login,
   .exchange-header-actions > button { min-width: 0; height: 32px; border-radius: 10px; padding: 0 11px; font-size: 12px; }
-  /* [모바일 보유 금액] 데스크톱과 동일하게 거래소 헤더에서 현재 포인트를 확인합니다. */
-  .app-shell.is-exchange .exchange-header-actions > b {
+  /* [모바일 보유 금액] 랜딩·거래소에서 프로필의 왼쪽에 같은 잔액을 표시합니다. */
+  .landing-header-actions > .header-balance,
+  .app-shell.is-exchange .exchange-header-actions > .header-balance {
     display: inline-flex;
     align-items: center;
     height: 30px;
@@ -71,6 +73,8 @@
     line-height: 1;
     white-space: nowrap;
   }
+  .landing-header-actions > .header-balance[hidden],
+  .app-shell.is-exchange .exchange-header-actions > .header-balance[hidden] { display:none !important; }
   .header-profile { display: inline-flex; align-items: center; gap: 4px; }
   .exchange-header-actions .header-member-name,
   .landing-header-actions .header-member-name { min-height: 30px; padding: 0 4px; color: var(--mobile-ink); background: transparent; font-size: 11px; }

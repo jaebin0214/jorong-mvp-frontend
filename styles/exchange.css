@@ -1,14 +1,17 @@
-/* [거래소 헤더] 랜딩과 다른 거래소 전용 탐색 메뉴를 active 화면에만 표시합니다. */
+/* [공통 상단 탭] 랜딩·거래소·게시판·사이클 리포트에서 같은 탐색과 계정 규칙을 사용합니다. */
 .exchange-header-nav, .exchange-header-actions { display:none; }
 .app-shell.is-exchange .landing-header-actions { display:none; }
-.app-shell.is-exchange .exchange-header-nav { display:flex; align-items:center; gap:28px; margin-left:26px; }
+.landing-header-actions { display:flex; align-items:center; gap:11px; }
+.app-shell.is-exchange .exchange-header-nav, .app-shell.is-landing .exchange-header-nav { display:flex; align-items:center; gap:28px; margin-left:26px; }
 .exchange-header-nav button { border:0; padding:5px 0; color:#243b60; background:transparent; font-size:15px; font-weight:850; }
 .exchange-header-nav button.is-active { color:#2162ee; }
 .app-shell.is-exchange .exchange-header-actions { display:flex; align-items:center; gap:11px; }
-.exchange-header-actions b { margin-right:24px; color:#162d56; font-size:15px; }
-.exchange-header-actions button { min-width:66px; height:29px; border:1px solid #d2deed; border-radius:5px; color:#17335e; background:#fff; font-size:15px; font-weight:850; }
-.exchange-header-actions .header-member-name { min-height:29px; padding:0 11px; font-size:14px; }
-.exchange-header-actions .header-logout-button { height:31px; font-size:12px; }
+.exchange-header-actions .header-balance { margin:0; }
+.exchange-header-actions > .header-login { min-width:90px; height:35px; border:1px solid #cdd9ea; border-radius:5px; color:var(--navy); background:#fff; font-size:15px; font-weight:850; }
+/* 랜딩과 같은 프로필 버튼·드롭다운을 거래소/게시판/리포트에도 강제로 적용합니다. */
+.exchange-header-actions .header-member-name { min-height:35px; border:0; padding:0 13px; color:#163566; background:#eef4ff; font-size:15px; }
+.exchange-header-actions .header-member-name:hover, .exchange-header-actions .header-member-name[aria-expanded="true"] { color:#0d55d7; background:#e1edff; }
+.exchange-header-actions .header-logout-button { height:34px; border:1px solid #d6e1ef; border-radius:6px; color:#294365; background:#fff; font-size:13px; }
 
 /* [거래소 본문] 제공된 종목 상세·댓글 통합 화면의 3단 상단 구조입니다. */
 .exchange-view { min-height:calc(100dvh - 51px); padding:0; background:#f6f8fc; }
@@ -69,7 +72,7 @@
     .exchange-subject-image { height:190px; } }
 @media (max-width:650px) { 
     .app-shell.is-exchange .exchange-header-nav { display:none; }
-    .exchange-header-actions b { display:none; }
+    .exchange-header-actions .header-balance { display:none; }
     .exchange-header-actions button { min-width:58px; }
     .exchange-rebuild { padding:24px 14px; }
     .exchange-hero-bar { height:auto; place-items:center; margin-bottom:25px; }

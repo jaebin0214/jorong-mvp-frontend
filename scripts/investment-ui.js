@@ -16,7 +16,7 @@
   const addInvestmentButton = document.querySelector('#position-add-investment');
   const balanceLabel = document.querySelector('#investment-balance');
   const additionalBalanceLabel = document.querySelector('#additional-investment-balance');
-  const headerBalanceLabel = document.querySelector('#exchange-header-balance');
+  const headerBalanceLabels = [...document.querySelectorAll('[data-header-balance]')];
   const toast = document.querySelector('#toast');
   const math = window.FinancialMath;
   let firstAmount = 5000;
@@ -141,7 +141,9 @@
     const display = formatBalance(availablePoints);
     balanceLabel.textContent = display;
     if (additionalBalanceLabel) additionalBalanceLabel.textContent = display;
-    if (headerBalanceLabel) headerBalanceLabel.textContent = display;
+    // 랜딩으로 돌아간 뒤에도 같은 최신 보유 크레딧이 보이도록 두 헤더를 함께 갱신합니다.
+    if (window.HeaderAuthUI?.setBalance) window.HeaderAuthUI.setBalance(availablePoints);
+    else headerBalanceLabels.forEach((label) => { label.textContent = display; });
     // 주문 완료 또는 잔액 동기화 뒤, 입력된 금액도 새 잔액을 넘지 않게 즉시 보정합니다.
     firstAmount = Math.min(firstAmount, availablePoints);
     additionalAmount = Math.min(additionalAmount, availablePoints);

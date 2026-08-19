@@ -77,6 +77,8 @@
 .header-logout-button { position:absolute; z-index:110; top:calc(100% + 7px); right:0; min-width:100%; height:34px; border:1px solid #d6e1ef; border-radius:6px; padding:0 12px; color:#294365; background:#fff; box-shadow:0 8px 18px rgb(23 51 94 / 14%); font:inherit; font-size:13px; font-weight:800; white-space:nowrap; cursor:pointer; }
 .header-logout-button:hover { color:#d83d58; border-color:#ffcbd4; background:#fff6f8; }
 .header-logout-button[hidden] { display:none; }
+.header-balance { display:inline-flex; align-items:center; min-height:35px; margin:0; color:#162d56; font-size:15px; font-weight:850; line-height:1; white-space:nowrap; }
+.header-balance[hidden] { display:none !important; }
 /* [숨김 상태] 로그인 전 빈 닉네임 영역이 사각형으로 보이지 않도록 hidden 속성을 명시적으로 우선 적용합니다. */
 .header-member-name[hidden] { display:none; }
 /* [맨 위로 이동] 댓글창의 왼쪽 바깥에 두고, 문서가 길어져도 화면 하단에 고정합니다. */

@@ -33,8 +33,15 @@
   }
 
   function setHeaderBalance(points) {
-    const label = document.querySelector('#exchange-header-balance');
-    if (label && Number.isFinite(Number(points))) label.textContent = `${Math.round(Number(points)).toLocaleString('ko-KR')} 크레딧`;
+    if (!Number.isFinite(Number(points))) return;
+    // 정산 후 지급된 잔액도 랜딩·거래소·게시판·리포트 헤더에서 같은 값으로 보입니다.
+    if (window.HeaderAuthUI?.setBalance) {
+      window.HeaderAuthUI.setBalance(points);
+      return;
+    }
+    document.querySelectorAll('[data-header-balance]').forEach((label) => {
+      label.textContent = `${Math.round(Number(points)).toLocaleString('ko-KR')} 크레딧`;
+    });
   }
 
   // [모바일 정산 앱 바] 정산 화면이 실제로 열려 있는 동안에만 공통 헤더를 ‘정산 결과’ 상태로 바꿉니다.

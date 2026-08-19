@@ -55,6 +55,8 @@ window.Navigation = (() => {
     views.forEach((view) => view.classList.toggle('is-active', view === target));
     // 거래소 화면에서만 전용 상단 메뉴와 계정 영역을 표시합니다.
     appShell?.classList.toggle('is-exchange', exchangeViewIds.has(target.id));
+    // 랜딩도 같은 상단 탭으로 다른 주요 화면을 이동할 수 있도록 별도 상태를 둡니다.
+    appShell?.classList.toggle('is-landing', target.id === 'landing');
     // [정산 전용 모바일 헤더] 정산 결과는 exchange 화면 안에서만 표시되므로,
     // 리포트·게시판 등으로 이동한 뒤에도 정산 헤더가 남지 않게 여기서 함께 동기화합니다.
     const settlementView = document.querySelector('#market-settlement-view');
