@@ -67,17 +67,28 @@ window.FinancialMath = (() => {
     return amount;
   }
 
-  function parsePositivePrice(value) {
+  // [가격 그대로 파싱] 화면 표시·손익 계산에 쓰는 "진짜" 가격입니다. 2026-08-19부로 서버
+  // 가격(current_price)이 마이너스여도 거래가 계속되도록 바뀌어서, 더 이상 여기서 양수 여부를
+  // 검증하지 않습니다(검증하면 마이너스 가격 종목에서 화면 전체가 죽습니다 — 실제로 겪은 버그:
+  // "추가 투자" 패널을 열 때 calculateMetrics가 던진 INVALID_EXECUTION_PRICE로 전체가 멈춤).
+  function parsePrice(value) {
+    return parseDecimal(value, PRICE_DECIMALS);
+  }
+
+  // [나눗셈 전용] 수량(quantity) = 투자금 ÷ 가격 을 계산할 때만 쓰는 분모입니다. 서버
+  // place_order()의 v_qty_divisor := greatest(execution_price, 1)과 동일하게, 가격이 1 이하
+  // (0·마이너스 포함)면 1로 바닥을 깝니다 — 그래야 수량이 항상 양수로 남고 0으로 나누는
+  // 사고도 나지 않습니다. 실제 체결가 표시에는 이 값이 아니라 parsePrice()를 씁니다.
+  function priceDivisor(value) {
     const price = parseDecimal(value, PRICE_DECIMALS);
-    if (price <= 0n) throw createError('INVALID_EXECUTION_PRICE', '현재 가격이 유효하지 않습니다.');
-    return price;
+    return price > PRICE_SCALE ? price : PRICE_SCALE;
   }
 
   // [추가 수량] amount / executionPrice를 수량 소수점 12자리로 반올림해 보관합니다.
   function calculateAddedQuantity(investmentAmount, executionPrice) {
     const amount = parseInvestment(investmentAmount);
-    const price = parsePositivePrice(executionPrice);
-    const quantity = divideRoundHalfUp(amount * PRICE_SCALE * QUANTITY_SCALE, price);
+    const divisor = priceDivisor(executionPrice);
+    const quantity = divideRoundHalfUp(amount * PRICE_SCALE * QUANTITY_SCALE, divisor);
     return toDecimalString(quantity, QUANTITY_DECIMALS);
   }
 
@@ -91,8 +102,9 @@ window.FinancialMath = (() => {
     const oldInvestment = position ? parseInvestment(position.totalInvestment) : 0n;
     const oldQuantity = position ? parseDecimal(position.quantity, QUANTITY_DECIMALS) : 0n;
     const additionalInvestment = parseInvestment(investmentAmount);
-    const price = parsePositivePrice(executionPrice);
-    const addedQuantity = divideRoundHalfUp(additionalInvestment * PRICE_SCALE * QUANTITY_SCALE, price);
+    const price = parsePrice(executionPrice);
+    const divisor = priceDivisor(executionPrice);
+    const addedQuantity = divideRoundHalfUp(additionalInvestment * PRICE_SCALE * QUANTITY_SCALE, divisor);
     const totalInvestment = oldInvestment + additionalInvestment;
     const quantity = oldQuantity + addedQuantity;
     const averagePrice = divideRoundHalfUp(totalInvestment * QUANTITY_SCALE * PRICE_SCALE, quantity);
@@ -114,8 +126,8 @@ window.FinancialMath = (() => {
     const side = normalizeSide(position.side);
     const totalInvestment = parseInvestment(position.totalInvestment);
     const quantity = parseDecimal(position.quantity, QUANTITY_DECIMALS);
-    const averagePrice = parsePositivePrice(position.averagePrice);
-    const current = parsePositivePrice(currentPrice);
+    const averagePrice = parsePrice(position.averagePrice);
+    const current = parsePrice(currentPrice);
     const direction = side === 'SUPPORT' ? 1n : -1n;
     const pnl = divideRoundHalfUp(
       direction * (current - averagePrice) * quantity * PNL_SCALE,

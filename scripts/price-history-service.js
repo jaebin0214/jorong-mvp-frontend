@@ -54,7 +54,10 @@ window.PriceHistoryService = (() => {
     const low = Number(candle.low);
     const close = Number(candle.close);
 
-    if (![open, high, low, close].every((value) => Number.isFinite(value) && value > 0)) return null;
+    // 2026-08-19: 서버 가격이 마이너스여도 거래가 계속되도록 바뀌어서, 여기서도 양수 여부는
+    // 더 이상 걸러내지 않습니다(걸러내면 가격이 마이너스로 내려간 뒤의 캔들이 전부 사라져
+    // 그래프가 멈춘 것처럼 보이는 버그가 있었습니다). 숫자가 아닌 값(NaN 등)만 걸러냅니다.
+    if (![open, high, low, close].every((value) => Number.isFinite(value))) return null;
     return { startedAt, endedAt, open, high: Math.max(open, high, low, close), low: Math.min(open, high, low, close), close, volume: Number(candle.volume) || 0 };
   }
 
