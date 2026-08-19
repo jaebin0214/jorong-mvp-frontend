@@ -427,6 +427,13 @@
     return { count: targetList.querySelectorAll('.exchange-comment, .exchange-reply').length };
   }
 
+  // 댓글 입력 중 스페이스바가 다른 키보드 이벤트에 가로채이지 않게 합니다.
+  input.addEventListener('keydown', (event) => {
+    if (event.key === ' ' || event.code === 'Space') {
+      event.stopPropagation();
+    }
+  });
+  
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     const state = getCommentingState();

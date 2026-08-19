@@ -1211,7 +1211,7 @@
   /* [첫 투자 시트 높이] 댓글 작성 직후 열리는 투자하기 시트만 덜 높게 올립니다.
      내부 여백·버튼 순서는 유지하며, 투자 현황·추가 투자 시트에는 영향을 주지 않습니다. */
   .exchange-roast-card > .investment-panel:not([hidden]) {
-    height: min(472px, calc(var(--mobile-viewport-height) - var(--mobile-header-height)));
+    height: min(552px, calc(var(--mobile-viewport-height) - var(--mobile-header-height)));
   }
   .mobile-comment-composer { grid-template-rows: var(--mobile-header-height) minmax(0, 1fr); }
   .mobile-comment-composer > header {
@@ -1611,24 +1611,28 @@
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open {
     position: fixed;
     z-index: 170;
-    inset: auto auto 0 50%;
-    /* 화면 폭 전체를 기준으로 잡으면 내부의 고정 폭 버튼·여백이 더해질 때 가로 스크롤이 생길 수 있습니다.
-       양쪽 공통 여백을 제외한 실제 모바일 콘텐츠 폭 안에 시트를 고정합니다. */
-    width: min(calc(108vw - (var(--mobile-gutter) * 2)), 500px);
-    max-width: calc(108vw - (var(--mobile-gutter) * 2));
-    height: min(82dvh, 720px);
-    min-height: min(420px, 78dvh);
+    right: 0;
+    bottom: 0;
+    left: 0;
+    /* [댓글 바텀 시트] 투자 현황·추가 투자 시트와 같은 전체 폭/하단 고정 문법을 사용합니다.
+       목록만 이 영역 안에서 스크롤하므로, 댓글이 많아도 화면 바깥으로 밀리지 않습니다. */
+    width: 100%;
+    max-width: none;
+    height: min(552px, calc(var(--mobile-viewport-height) - var(--mobile-header-height)));
+    max-height: calc(var(--mobile-viewport-height) - var(--mobile-header-height));
+    min-height: 0;
     margin: 0;
     border: 0;
     border-radius: 22px 22px 0 0;
-    padding: 14px var(--mobile-gutter) calc(18px + env(safe-area-inset-bottom));
+    padding: 12px var(--mobile-gutter) calc(20px + var(--mobile-safe-bottom));
     box-sizing: border-box;
+    background: #fff;
     overflow-x: hidden;
     overflow-y: auto;
     overscroll-behavior: contain;
-    box-shadow: 0 -18px 56px rgb(9 32 69 / 24%), 0 -100vmax 0 100vmax rgb(9 32 69 / 38%);
+    box-shadow: 0 -100vmax rgb(8 13 26 / 32%), 0 -16px 32px rgb(9 32 69 / 16%);
     cursor: default;
-    transform: translateX(-50%);
+    animation: mobile-comment-sheet-enter .38s cubic-bezier(.18, .87, .26, 1) both;
   }
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-community-heading { position: sticky; z-index: 2; top: -10px; min-height: 52px; margin: -14px calc(-1 * var(--mobile-gutter)) 8px; padding: 10px var(--mobile-gutter); border-bottom: 1px solid var(--mobile-line); background: #fff; justify-content: flex-start; }
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-community-heading h1 { font-size: 17px; }
@@ -1645,6 +1649,12 @@
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open :is(.exchange-comment p, .exchange-reply p, .exchange-comment b, .exchange-reply b, .exchange-comment span, .exchange-reply span, .exchange-comment small, .exchange-reply small) { overflow-wrap: anywhere; word-break: break-word; }
   .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card.is-mobile-comments-open .exchange-comment section { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
   body.is-mobile-comments-open { overflow: hidden; }
+
+  /* [댓글 시트 등장] 투자 바텀 시트와 동일하게 화면 하단에서 위로 올라옵니다. */
+  @keyframes mobile-comment-sheet-enter {
+    from { opacity: 0; transform: translateY(calc(100% + 76px)); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 }
 
 /* iPhone SE급의 짧은 세로 화면에서는 회원가입 폼의 핵심 조작만 안전하게 한 화면에 유지합니다. */

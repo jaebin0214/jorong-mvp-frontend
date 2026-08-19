@@ -49,7 +49,7 @@
 .position-metrics span { color:#6e7d99; font-size:10px; }
 .position-metrics b { color:#092045; font-size:13px; letter-spacing:-.025em; white-space:nowrap; }
 .position-lock-note { margin:0; border-radius:7px; padding:8px 10px; color:#1463f2; background:#e0f2ff; font-size:10px; line-height:1.4; word-break:keep-all; }
-.position-add-button { width:100% !important; height:38px !important; flex:0 0 auto; margin-top:auto; border:0; border-radius:7px !important; color:#fff; background:#1463f2 !important; font:inherit; font-size:12px !important; font-weight:850; cursor:pointer; }
+.position-add-button { width:100% !important; height:38px !important; flex:0 0 auto; margin-top:5px; border:0; border-radius:7px !important; color:#fff; background:#1463f2 !important; font:inherit; font-size:12px !important; font-weight:850; cursor:pointer; }
 .position-add-button:hover { background:#0d56dd !important; }
 
 /* [추가 투자] 기존 의견은 읽기 전용으로 두고, 현재 체결가와 예상 수량을 즉시 계산해 안내합니다. */
@@ -68,7 +68,7 @@
 .additional-investment-panel .investment-amount-input input { width:105px; min-width:0; border:0; padding:0; color:#1a3159; background:transparent; font:inherit; font-size:14px; font-weight:800; outline:0; }
 .additional-investment-panel .investment-amount-control > span { display:flex; gap:10px; }
 .additional-investment-panel .investment-amount-control button { width:auto; min-width:0; height:auto; border:0; padding:0; color:#657894; background:transparent; font-size:13px; font-weight:850; cursor:pointer; }
-.additional-investment-actions { display:grid; grid-template-columns:78px 1fr; gap:8px; margin-top:auto; }
+.additional-investment-actions { display:grid; grid-template-columns:78px 1fr; gap:8px; margin-top:5px; }
 .additional-investment-actions button { width:100% !important; height:38px !important; border:1px solid #dbe3f0; border-radius:7px !important; color:#526581; background:#fff; font:inherit; font-size:12px !important; font-weight:850; cursor:pointer; }
 .additional-investment-actions #additional-investment-submit { border-color:#1463f2; color:#fff; background:#1463f2; }
 
