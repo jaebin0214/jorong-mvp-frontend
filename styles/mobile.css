@@ -1484,6 +1484,108 @@
   .app-shell.is-market-settlement .mobile-settlement-actions button { height: 50px; font-size: 13px; }
 }
 
+/* [모바일 거래소 전체 스크롤] 한 화면용 grid 행을 사용하면 짧은 기기에서
+   타이머·종목·차트·댓글이 압축되거나 잘립니다. 정산 화면과 같은 원칙으로
+   카드의 읽기 크기는 유지하고, 거래소 화면 전체를 스크롤합니다. */
+@media (max-width: 767px) {
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-view.is-active {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-rebuild {
+    width: 100%;
+    height: auto;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    overflow: visible;
+    box-sizing: border-box;
+    padding: 12px var(--mobile-gutter) calc(var(--mobile-bottom-nav-height) + 24px);
+  }
+  /* 기존 타이머 카드(84~112px)를 76px로 낮춰 상단 점유 높이를 줄입니다. */
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-hero-bar {
+    height: 76px;
+    flex: 0 0 76px;
+    display: block;
+  }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-countdown {
+    height: 76px;
+    padding-bottom: 11px;
+    border-radius: 18px;
+    font-size: 29px;
+  }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-countdown-block > span {
+    top: 10px;
+    font-size: 10px;
+  }
+
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-focus-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    margin: 0;
+  }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-focus-grid > * { grid-row: auto; }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-subject-card {
+    min-height: 120px !important;
+    height: 120px;
+    flex: 0 0 120px;
+    padding: 14px;
+  }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-subject-image {
+    width: 92px !important;
+    height: 92px !important;
+    flex-basis: 92px;
+  }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-chart-card {
+    height: 128px !important;
+    min-height: 128px !important;
+    flex: 0 0 128px;
+  }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-chart { height: 126px; }
+
+  /* 투자 시트는 기존처럼 탭했을 때만 하단에서 열리고, 접힌 선택 영역은 문서 흐름에 둡니다. */
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-roast-card {
+    position: relative !important;
+    inset: auto !important;
+    z-index: auto;
+    width: 100% !important;
+    height: 54px !important;
+    min-height: 54px !important;
+    flex: 0 0 54px;
+    margin: 0;
+    overflow: visible;
+  }
+  .app-shell.is-exchange:not(.is-market-settlement) .mobile-investment-sheet-trigger,
+  .app-shell.is-exchange:not(.is-market-settlement) .mobile-investment-sheet-trigger::before,
+  .app-shell.is-exchange:not(.is-market-settlement) .mobile-investment-sheet-trigger::after { height:54px !important; }
+
+  /* 댓글도 카드 내부 스크롤로 가두지 않고 전체 거래소 화면의 세로 흐름을 따릅니다. */
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-community-card {
+    min-height: 150px;
+    height: auto;
+    flex: 0 0 auto;
+    display: block;
+    margin: 0;
+    overflow: visible;
+  }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-comment-empty {
+    min-height: 80px;
+    display: grid;
+  }
+  .app-shell.is-exchange:not(.is-market-settlement) .exchange-comment-list {
+    min-height: 0;
+    display: block;
+    overflow: visible;
+  }
+}
+
 /* iPhone SE급의 짧은 세로 화면에서는 회원가입 폼의 핵심 조작만 안전하게 한 화면에 유지합니다. */
 @media (max-width: 767px) and (max-height: 600px) {
   .signup-view { padding-top: 10px; padding-bottom: 10px; }
